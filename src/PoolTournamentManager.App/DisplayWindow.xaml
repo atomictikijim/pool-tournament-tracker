@@ -111,5 +111,49 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+
+        <!-- Ring game: read-only live rotation + money board -->
+        <StackPanel Grid.Row="2" Visibility="{Binding State.IsRingGame, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="{Binding State.RingStatusLine}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="22" FontWeight="Bold" Margin="0,0,0,14" />
+            <ItemsControl ItemsSource="{Binding State.RingSeats}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="14,10" Margin="0,0,14,14" Width="220">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Setter Property="Opacity" Value="1" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCurrentShooter}" Value="True">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}" />
+                                            <Setter Property="BorderThickness" Value="3" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsCashedOut}" Value="True">
+                                            <Setter Property="Opacity" Value="0.45" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock Text="{Binding RotationLabel}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="18" FontWeight="Bold" />
+                                <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" FontSize="15" Margin="0,4,0,0">
+                                    <Run Text="Net " />
+                                    <Run Text="{Binding NetDisplay, Mode=OneWay}" />
+                                    <Run Text="  ·  Won " />
+                                    <Run Text="{Binding WinningsDisplay, Mode=OneWay}" />
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
     </Grid>
 </Window>

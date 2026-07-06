@@ -3,6 +3,40 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-06 — The .NET SDK vanished (only the runtime remained), blocking every build
+
+**Issue:** At the start of the v0.7 work, `dotnet build`/`test`/`ef`/`run` all failed with "No
+.NET SDKs were found" even though prior sessions built fine. `C:\Program Files\dotnet` still had
+`dotnet.exe`, `host`, and `shared` (the runtimes: NETCore.App and WindowsDesktop.App 8.0.28 and
+10.0.9) but no `sdk` folder at all - so only the runtime host was present, not the SDK. Something
+(a Windows/VS update, most likely) had removed the SDK.
+
+**Fix:** Reinstalled the SDK the project targets with `winget install --id Microsoft.DotNet.SDK.8
+-e` (landed 8.0.422), then `dotnet tool install --global dotnet-ef`. Builds/tests/migrations
+worked immediately after. Note for a future session: if `dotnet` is on PATH but reports no SDKs,
+check for the `sdk` subfolder before assuming a PATH problem - the runtime and SDK are installed
+(and can be removed) independently. Also, on this machine the `dotnet` on the Git Bash PATH
+doesn't resolve; run .NET commands from PowerShell (or via the full path
+`C:\Program Files\dotnet\dotnet.exe`).
+
+## 2026-07-06 — Verified ring game via a real-SQLite integration test instead of UI automation
+
+**Issue:** v0.7 (ring game) needed end-to-end verification, but this app's UI is hostile to
+automation: `AutomationElement` can't see tab-page content at all, and synthetic clicks are
+unreliable (both documented below). Driving a brand-new multi-step money flow that way would have
+been slow and low-confidence.
+
+**Fix:** Verified the risky App->Data seam with a headless integration test in
+`PoolTournamentManager.Data.Tests` that drives the exact patterns the ViewModel uses against a
+real SQLite file - `AddAsync` on an untracked root at creation, then `TrackNew` for each
+mid-aggregate insert (money-ball payout, cash-out marker), reloading through the eager-loading
+`GetByIdAsync` after every step so nothing passes on change-tracker memory alone. The app was
+still launched once to confirm it starts and renders (migration applies, XAML parses, DI
+resolves). General lesson: for this codebase, an integration test through the repository is a
+better verification of a persistence change than fighting the UI-automation limitations - and it
+stays as a regression guard. `Core` logic stays in `Core.Tests`; the persistence round-trip goes
+in `Data.Tests`.
+
 ## 2026-07-06 — "Report Result" button's first click after typing scores does nothing; a second click always works
 
 **Issue:** Driving the app via synthetic mouse clicks (SetCursorPos + mouse_event) to verify round

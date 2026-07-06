@@ -33,6 +33,16 @@ public partial class TournamentStateService : ObservableObject
     [ObservableProperty]
     private ObservableCollection<StandingsRowViewModel> _standings = new();
 
+    [ObservableProperty]
+    private ObservableCollection<RingSeatViewModel> _ringSeats = new();
+
+    [ObservableProperty]
+    private bool _isRingGame;
+
+    /// <summary>One-line ring-game status, e.g. "Rack 3  ·  Pot $45  ·  Up: Alice".</summary>
+    [ObservableProperty]
+    private string _ringStatusLine = string.Empty;
+
     public TournamentStateService(ITournamentRepository tournamentRepository)
     {
         _tournamentRepository = tournamentRepository;
@@ -56,6 +66,9 @@ public partial class TournamentStateService : ObservableObject
             Rounds = new ObservableCollection<RoundGroupViewModel>();
             Tables = new ObservableCollection<Table>();
             Standings = new ObservableCollection<StandingsRowViewModel>();
+            RingSeats = new ObservableCollection<RingSeatViewModel>();
+            IsRingGame = false;
+            RingStatusLine = string.Empty;
             return;
         }
 
@@ -71,8 +84,21 @@ public partial class TournamentStateService : ObservableObject
         {
             Rounds = new ObservableCollection<RoundGroupViewModel>();
             Standings = new ObservableCollection<StandingsRowViewModel>();
+            RingSeats = new ObservableCollection<RingSeatViewModel>();
+            IsRingGame = false;
+            RingStatusLine = string.Empty;
             return;
         }
+
+        if (tournament.Format == TournamentFormat.RingGame)
+        {
+            RebuildRingGame(tournament);
+            return;
+        }
+
+        IsRingGame = false;
+        RingSeats = new ObservableCollection<RingSeatViewModel>();
+        RingStatusLine = string.Empty;
 
         if (tournament.Format == TournamentFormat.RoundRobin)
         {
@@ -109,6 +135,39 @@ public partial class TournamentStateService : ObservableObject
         }
 
         Rounds = rounds;
+    }
+
+    private void RebuildRingGame(Tournament tournament)
+    {
+        IsRingGame = true;
+        Rounds = new ObservableCollection<RoundGroupViewModel>();
+        Standings = new ObservableCollection<StandingsRowViewModel>();
+
+        var detail = tournament.RingGame;
+        var shooterId = detail?.CurrentShooterEntrantId;
+
+        RingSeats = new ObservableCollection<RingSeatViewModel>(
+            RingGameService.ComputeStandings(tournament)
+                .OrderBy(r => r.RotationPosition)
+                .Select(r => new RingSeatViewModel(r, shooterId)));
+
+        if (detail is null)
+        {
+            RingStatusLine = string.Empty;
+            return;
+        }
+
+        var pot = RingGameService.PotRemaining(tournament).ToString("C0");
+        if (tournament.Status == TournamentStatus.Completed)
+        {
+            var leader = RingGameService.ComputeStandings(tournament).FirstOrDefault();
+            RingStatusLine = $"Finished  ·  Pot {pot}  ·  Leader: {leader?.Entrant.Player?.FullName ?? "-"}";
+        }
+        else
+        {
+            var shooter = tournament.Entrants.FirstOrDefault(e => e.Id == shooterId)?.Player?.FullName ?? "-";
+            RingStatusLine = $"Rack {detail.CurrentRackNumber}  ·  Pot {pot}  ·  Up: {shooter}";
+        }
     }
 
     private void RebuildRoundRobinRounds(Tournament tournament)

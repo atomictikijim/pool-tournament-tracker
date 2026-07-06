@@ -12,6 +12,8 @@ public class PoolTournamentDbContext : DbContext
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<BracketDetail> BracketDetails => Set<BracketDetail>();
     public DbSet<BracketNode> BracketNodes => Set<BracketNode>();
+    public DbSet<RingGameDetail> RingGameDetails => Set<RingGameDetail>();
+    public DbSet<RingLedgerEntry> RingLedgerEntries => Set<RingLedgerEntry>();
 
     public PoolTournamentDbContext(DbContextOptions<PoolTournamentDbContext> options) : base(options)
     {
@@ -35,6 +37,7 @@ public class PoolTournamentDbContext : DbContext
             entity.HasMany(t => t.Tables).WithOne().HasForeignKey(tb => tb.TournamentId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(t => t.Matches).WithOne().HasForeignKey(m => m.TournamentId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(t => t.Bracket).WithOne().HasForeignKey<BracketDetail>(b => b.TournamentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(t => t.RingGame).WithOne().HasForeignKey<RingGameDetail>(r => r.TournamentId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TournamentEntrant>(entity =>
@@ -68,6 +71,18 @@ public class PoolTournamentDbContext : DbContext
         {
             entity.HasKey(n => n.Id);
             entity.HasOne(n => n.Match).WithMany().HasForeignKey(n => n.MatchId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RingGameDetail>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.HasMany(r => r.LedgerEntries).WithOne().HasForeignKey(l => l.RingGameDetailId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RingLedgerEntry>(entity =>
+        {
+            entity.HasKey(l => l.Id);
+            entity.HasOne(l => l.Entrant).WithMany().HasForeignKey(l => l.EntrantId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

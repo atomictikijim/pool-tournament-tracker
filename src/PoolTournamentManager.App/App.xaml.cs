@@ -48,6 +48,7 @@ public partial class App : Application
         services.AddScoped<ITournamentRepository, TournamentRepository>();
         services.AddSingleton<BracketGenerationService>();
         services.AddSingleton<RoundRobinSchedulingService>();
+        services.AddSingleton<RingGameService>();
         services.AddSingleton<Services.TournamentStateService>();
         services.AddSingleton<Services.ThemeService>();
         services.AddTransient<ViewModels.TournamentViewModel>();

@@ -134,6 +134,16 @@
                     <TextBlock Text="Seed by rating" />
                     <ComboBox ItemsSource="{Binding RatingSystems}" SelectedItem="{Binding NewTournamentRatingSystem}" Margin="0,0,0,6" />
 
+                    <!-- Ring-game-only setup: buy-in and money-ball payouts -->
+                    <StackPanel Visibility="{Binding IsCreatingRingGame, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="Buy-in ($)" />
+                        <TextBox Text="{Binding NewRingBuyIn}" Margin="0,0,0,6" />
+                        <TextBlock Text="5-ball payout ($)" />
+                        <TextBox Text="{Binding NewRingFivePayout}" Margin="0,0,0,6" />
+                        <TextBlock Text="9-ball payout ($)" />
+                        <TextBox Text="{Binding NewRingNinePayout}" Margin="0,0,0,6" />
+                    </StackPanel>
+
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,2">
                         <TextBlock Text="Entrants" VerticalAlignment="Center" />
                         <Button Content="Refresh" Command="{Binding LoadEntrantCandidatesCommand}" Padding="6,0" Margin="8,0,0,0" />
@@ -254,6 +264,84 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
+
+                    <!-- Ring game: live rotation, operator controls, and money ledger -->
+                    <Grid Grid.Row="2" Visibility="{Binding State.IsRingGame, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="{Binding State.RingStatusLine}" FontWeight="Bold" FontSize="15" Margin="0,0,0,10" />
+
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+                            <Button Content="Made the 5" Command="{Binding RecordFiveBallCommand}" Padding="10,4" Margin="0,0,8,0" />
+                            <Button Content="Made the 9 (rack over)" Command="{Binding RecordNineBallCommand}" Padding="10,4" Margin="0,0,8,0" />
+                            <Button Content="Miss / Next Player" Command="{Binding AdvanceShooterCommand}" Padding="10,4" />
+                        </StackPanel>
+
+                        <!-- Rotation: one card per player, current shooter highlighted, cashed-out dimmed -->
+                        <ItemsControl Grid.Row="2" ItemsSource="{Binding State.RingSeats}" Margin="0,0,0,12">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="10,6" Margin="0,0,10,10" Width="150">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+                                                <Setter Property="BorderThickness" Value="1" />
+                                                <Setter Property="Opacity" Value="1" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCurrentShooter}" Value="True">
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}" />
+                                                        <Setter Property="BorderThickness" Value="2" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsCashedOut}" Value="True">
+                                                        <Setter Property="Opacity" Value="0.5" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding RotationLabel}" FontWeight="SemiBold" />
+                                            <TextBlock Margin="0,2,0,4">
+                                                <Run Text="Net " />
+                                                <Run Text="{Binding NetDisplay, Mode=OneWay}" FontWeight="Bold" />
+                                            </TextBlock>
+                                            <Button Content="Cash Out"
+                                                    Command="{Binding DataContext.CashOutCommand, ElementName=TournamentRoot}"
+                                                    CommandParameter="{Binding}"
+                                                    IsEnabled="{Binding CanAct}"
+                                                    Padding="6,1" HorizontalAlignment="Left" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Money ledger -->
+                        <StackPanel Grid.Row="3">
+                            <TextBlock Text="Ledger" FontWeight="Bold" FontSize="13" Margin="0,0,0,6" />
+                            <DataGrid ItemsSource="{Binding State.RingSeats}"
+                                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                      HeadersVisibility="Column" MaxHeight="220">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="#" Binding="{Binding RotationPosition}" Width="30" />
+                                    <DataGridTextColumn Header="Player" Binding="{Binding PlayerName}" Width="150" />
+                                    <DataGridTextColumn Header="Buy-in" Binding="{Binding BuyInDisplay}" Width="70" />
+                                    <DataGridTextColumn Header="Winnings" Binding="{Binding WinningsDisplay}" Width="80" />
+                                    <DataGridTextColumn Header="Net" Binding="{Binding NetDisplay}" Width="70" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Grid>
                 </Grid>
 
                 <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1"

@@ -5,15 +5,69 @@ the top of each section.
 
 ## Current status
 
-v0.6.2 complete: removed the Active/Deactivate flag and workflow from
-Players - every player is now always an eligible tournament entrant.
+v0.7 complete: ring game - the first non-bracket, money-tracking format.
+Players shoot in a fixed drawn rotation order; the 5 and 9 pay out from a
+pot funded by buy-ins, with a live rotation/pot/ledger view and cash-out.
 
 ## Next steps
 
-- [ ] 0.7 — Ring game: seat/queue/ledger state machine, buy-in/out UI,
-  live seat/queue view (first non-bracket format).
+- [ ] 0.8 — Chip tournament (the remaining unimplemented format).
+- [ ] Ring game follow-ups: rebuys / adding a waiting player into a vacated
+  spot mid-session (deferred from 0.7; rotation is fixed for now), and
+  optional per-rack pot-distribution rules (pay-the-breaker, etc.).
 
 ## Change log
+
+## v0.7 — 2026-07-06
+
+- Ring game, the first non-bracket format and the first to track money.
+  Clarified with the user that this is a rotation-order ring game (9-ball):
+  N players pay an entry fee and shoot in a fixed drawn order for the
+  session; pocketing the 5 pays out and play continues, pocketing the 9
+  pays out and ends the rack (the break rotates to the next player).
+- `RingGameService` (pure/testable): `StartRingGame` (charges buy-ins,
+  draws rotation into `TournamentEntrant.SeedNumber`, seats the opening
+  breaker), `RecordMoneyBall` (5 vs 9 semantics), `AdvanceShooter`
+  (miss/turn passes, skipping cashed-out players and wrapping), `CashOut`
+  (marks `IsEliminated`, stamps realized net, completes the tournament at
+  one player left), and `ComputeStandings`/`PotRemaining`. Money is
+  conserved: every player's net sums to the negative of the pot still on
+  the table. Nothing about net/pot is persisted - always recomputed from
+  the ledger.
+- New entities `RingGameDetail` (1:1 with Tournament, like BracketDetail -
+  buy-in, 5/9 payouts, current rack, current shooter) and `RingLedgerEntry`
+  (BuyIn/MoneyBall/CashOut rows). Reused `TournamentEntrant.SeedNumber` as
+  the drawn rotation position and `IsEliminated` as "cashed out" to keep
+  the entrant schema unchanged. EF migration `AddRingGame` (two new tables,
+  no changes to existing ones).
+- Tournament creation now offers Ring Game (buy-in and 5/9 payout fields,
+  shown only for that format; no entrant-count restriction). Chip
+  tournament remains the only unsupported format. The admin Tournament tab
+  gains a live ring panel - rotation cards with the current shooter
+  highlighted and cashed-out players dimmed, "Made the 5 / Made the 9 /
+  Miss" and per-player "Cash Out" controls, a one-line "Rack N · Pot $X ·
+  Up: [player]" status, and a money ledger grid. The read-only Display
+  window mirrors the rotation + money board off the same shared state.
+- 11 new `Core.Tests` (64 total): buy-in/rotation/first-shooter setup,
+  <2-player rejection, 5-ball (pay + keep table) vs 9-ball (pay + rack
+  advance + break rotation), shooter advancement with wrap, rotation
+  skipping a cashed-out player, cash-out-while-your-turn handoff, realized
+  net on cash-out, completion at one player left, rejecting a cashed-out
+  shooter, and net-ordering + money-conservation of standings.
+- 1 new `Data.Tests` integration test against real SQLite: the full
+  create -> reload -> made-the-9 (persisted via `TrackNew`) -> reload ->
+  cash-out -> reload flow, asserting rotation, rack, shooter, winnings,
+  net, pot, and elimination all survive each reload.
+- Verified: the built exe launches cleanly against a real database (the
+  `AddRingGame` migration applies on startup, MainWindow XAML incl. the new
+  ring panel parses, DI resolves, no error log). The ring-game logic and
+  its full persistence round-trip were verified via the integration test
+  above rather than synthetic UI clicks, since UI Automation can't see this
+  app's tab-page content and synthetic clicks are unreliable here (both
+  documented in NOTES.md); the app was confirmed to start and render.
+- Environment note (see NOTES.md): the .NET SDK had gone missing on this
+  machine (only the runtime remained), blocking all builds; reinstalled the
+  .NET 8 SDK via winget to proceed.
 
 ## v0.6.2 — 2026-07-06 (UI)
 

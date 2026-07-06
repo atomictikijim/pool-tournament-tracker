@@ -15,6 +15,7 @@ public partial class TournamentViewModel : ObservableObject
     private readonly IPlayerRepository _playerRepository;
     private readonly BracketGenerationService _bracketService;
     private readonly RoundRobinSchedulingService _roundRobinService;
+    private readonly RingGameService _ringGameService;
 
     public TournamentStateService State { get; }
 
@@ -40,19 +41,35 @@ public partial class TournamentViewModel : ObservableObject
     private RatingSystem _newTournamentRatingSystem = RatingSystem.Fargo;
 
     [ObservableProperty]
+    private decimal _newRingBuyIn = 20m;
+
+    [ObservableProperty]
+    private decimal _newRingFivePayout = 5m;
+
+    [ObservableProperty]
+    private decimal _newRingNinePayout = 10m;
+
+    [ObservableProperty]
     private string? _statusMessage;
+
+    /// <summary>True while the create form has Ring Game selected, so ring-only fields can show.</summary>
+    public bool IsCreatingRingGame => NewTournamentFormat == TournamentFormat.RingGame;
+
+    partial void OnNewTournamentFormatChanged(TournamentFormat value) => OnPropertyChanged(nameof(IsCreatingRingGame));
 
     public TournamentViewModel(
         ITournamentRepository tournamentRepository,
         IPlayerRepository playerRepository,
         BracketGenerationService bracketService,
         RoundRobinSchedulingService roundRobinService,
+        RingGameService ringGameService,
         TournamentStateService state)
     {
         _tournamentRepository = tournamentRepository;
         _playerRepository = playerRepository;
         _bracketService = bracketService;
         _roundRobinService = roundRobinService;
+        _ringGameService = ringGameService;
         State = state;
     }
 
@@ -117,11 +134,9 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
-        if (NewTournamentFormat != TournamentFormat.SingleElimination &&
-            NewTournamentFormat != TournamentFormat.DoubleElimination &&
-            NewTournamentFormat != TournamentFormat.RoundRobin)
+        if (NewTournamentFormat == TournamentFormat.ChipTournament)
         {
-            StatusMessage = "Only single-elimination, double-elimination, and round robin are supported in this version.";
+            StatusMessage = "Chip tournaments aren't supported yet.";
             return;
         }
 
@@ -156,20 +171,29 @@ public partial class TournamentViewModel : ObservableObject
             });
         }
 
-        var missingRatingCount = tournament.Entrants.Count(e => !SeedingService.HasRating(e, NewTournamentRatingSystem));
-        SeedingService.AssignSeeds(tournament.Entrants, NewTournamentRatingSystem);
-
-        if (NewTournamentFormat == TournamentFormat.DoubleElimination)
+        var missingRatingCount = 0;
+        if (NewTournamentFormat == TournamentFormat.RingGame)
         {
-            _bracketService.GenerateDoubleElimination(tournament);
-        }
-        else if (NewTournamentFormat == TournamentFormat.RoundRobin)
-        {
-            _roundRobinService.GenerateSchedule(tournament);
+            // Rotation order is a draw (the entrant selection order), not a rating seed.
+            _ringGameService.StartRingGame(tournament, NewRingBuyIn, NewRingFivePayout, NewRingNinePayout);
         }
         else
         {
-            _bracketService.GenerateSingleElimination(tournament);
+            missingRatingCount = tournament.Entrants.Count(e => !SeedingService.HasRating(e, NewTournamentRatingSystem));
+            SeedingService.AssignSeeds(tournament.Entrants, NewTournamentRatingSystem);
+
+            if (NewTournamentFormat == TournamentFormat.DoubleElimination)
+            {
+                _bracketService.GenerateDoubleElimination(tournament);
+            }
+            else if (NewTournamentFormat == TournamentFormat.RoundRobin)
+            {
+                _roundRobinService.GenerateSchedule(tournament);
+            }
+            else
+            {
+                _bracketService.GenerateSingleElimination(tournament);
+            }
         }
 
         await _tournamentRepository.AddAsync(tournament);
@@ -265,5 +289,89 @@ public partial class TournamentViewModel : ObservableObject
         await _tournamentRepository.SaveChangesAsync();
         State.NotifyTableAssignmentsChanged();
         StatusMessage = "Table assignments saved.";
+    }
+
+    [RelayCommand]
+    private Task RecordFiveBallAsync() => RecordMoneyBallAsync(RingMoneyBall.Five);
+
+    [RelayCommand]
+    private Task RecordNineBallAsync() => RecordMoneyBallAsync(RingMoneyBall.Nine);
+
+    private async Task RecordMoneyBallAsync(RingMoneyBall ball)
+    {
+        var tournament = State.ActiveTournament;
+        var shooterId = tournament?.RingGame?.CurrentShooterEntrantId;
+        if (tournament is null || shooterId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var entry = _ringGameService.RecordMoneyBall(tournament, shooterId.Value, ball);
+            _tournamentRepository.TrackNew(entry);
+            await _tournamentRepository.SaveChangesAsync();
+            State.RebuildRounds();
+            var who = tournament.Entrants.FirstOrDefault(e => e.Id == shooterId)?.Player?.FullName ?? "Player";
+            StatusMessage = $"{who} made the {(ball == RingMoneyBall.Nine ? "9" : "5")}.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            StatusMessage = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task AdvanceShooterAsync()
+    {
+        var tournament = State.ActiveTournament;
+        if (tournament?.RingGame is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _ringGameService.AdvanceShooter(tournament);
+            await _tournamentRepository.SaveChangesAsync();
+            State.RebuildRounds();
+        }
+        catch (InvalidOperationException ex)
+        {
+            StatusMessage = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CashOutAsync(RingSeatViewModel? seat)
+    {
+        var tournament = State.ActiveTournament;
+        if (seat is null || tournament?.RingGame is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var entry = _ringGameService.CashOut(tournament, seat.EntrantId);
+            _tournamentRepository.TrackNew(entry);
+            await _tournamentRepository.SaveChangesAsync();
+            State.RebuildRounds();
+            await RefreshTournamentSummaryAsync();
+
+            if (tournament.Status == TournamentStatus.Completed)
+            {
+                var winner = RingGameService.ComputeStandings(tournament).FirstOrDefault()?.Entrant.Player?.FullName ?? "Unknown player";
+                StatusMessage = $"Ring game over - {winner} finishes on top!";
+            }
+            else
+            {
+                StatusMessage = $"{seat.PlayerName} cashed out at {seat.NetDisplay}.";
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            StatusMessage = ex.Message;
+        }
     }
 }
