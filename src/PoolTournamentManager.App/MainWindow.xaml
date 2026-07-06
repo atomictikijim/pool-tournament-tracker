@@ -50,7 +50,6 @@
                         <DataGridTextColumn Header="TAP" Binding="{Binding TapRating}" Width="70" />
                         <DataGridTextColumn Header="APA 8B" Binding="{Binding ApaEightBallSkill}" Width="60" />
                         <DataGridTextColumn Header="APA 9B" Binding="{Binding ApaNineBallSkill}" Width="60" />
-                        <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="50" />
                     </DataGrid.Columns>
                 </DataGrid>
 
@@ -81,12 +80,9 @@
                     <TextBlock Text="APA 9-Ball Skill (1-9)" />
                     <TextBox Text="{Binding Editor.ApaNineBallSkill, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" Margin="0,0,0,6" />
 
-                    <CheckBox Content="Active" IsChecked="{Binding Editor.IsActive}" Margin="0,4,0,12" />
-
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                         <Button Content="New Player" Command="{Binding AddNewPlayerCommand}" Padding="8,4" Margin="0,0,8,0" />
-                        <Button Content="Save" Command="{Binding SavePlayerCommand}" Padding="8,4" Margin="0,0,8,0" />
-                        <Button Content="Deactivate" Command="{Binding DeactivatePlayerCommand}" Padding="8,4" />
+                        <Button Content="Save" Command="{Binding SavePlayerCommand}" Padding="8,4" />
                     </StackPanel>
                 </StackPanel>
 
@@ -139,7 +135,7 @@
                     <ComboBox ItemsSource="{Binding RatingSystems}" SelectedItem="{Binding NewTournamentRatingSystem}" Margin="0,0,0,6" />
 
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,2">
-                        <TextBlock Text="Entrants (active players)" VerticalAlignment="Center" />
+                        <TextBlock Text="Entrants" VerticalAlignment="Center" />
                         <Button Content="Refresh" Command="{Binding LoadEntrantCandidatesCommand}" Padding="6,0" Margin="8,0,0,0" />
                     </StackPanel>
                     <ListBox ItemsSource="{Binding EntrantCandidates}" Height="150" Margin="0,0,0,8">

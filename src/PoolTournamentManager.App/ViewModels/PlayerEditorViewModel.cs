@@ -29,9 +29,6 @@ public partial class PlayerEditorViewModel : ObservableObject
     [ObservableProperty]
     private int? _apaNineBallSkill;
 
-    [ObservableProperty]
-    private bool _isActive = true;
-
     public void LoadFrom(Player player)
     {
         FirstName = player.FirstName;
@@ -42,7 +39,6 @@ public partial class PlayerEditorViewModel : ObservableObject
         TapRating = player.TapRating;
         ApaEightBallSkill = player.ApaEightBallSkill;
         ApaNineBallSkill = player.ApaNineBallSkill;
-        IsActive = player.IsActive;
     }
 
     public void Reset()
@@ -55,7 +51,6 @@ public partial class PlayerEditorViewModel : ObservableObject
         TapRating = null;
         ApaEightBallSkill = null;
         ApaNineBallSkill = null;
-        IsActive = true;
     }
 
     public void ApplyTo(Player player)
@@ -68,6 +63,5 @@ public partial class PlayerEditorViewModel : ObservableObject
         player.TapRating = TapRating;
         player.ApaEightBallSkill = ApaEightBallSkill;
         player.ApaNineBallSkill = ApaNineBallSkill;
-        player.IsActive = IsActive;
     }
 }

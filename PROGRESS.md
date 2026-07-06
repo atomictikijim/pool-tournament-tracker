@@ -5,8 +5,8 @@ the top of each section.
 
 ## Current status
 
-v0.6.1 complete: removed the redundant "USAPL Rating" player field (it
-duplicated Fargo Rate) and relabeled "Fargo Rate" to "Fargo Rating".
+v0.6.2 complete: removed the Active/Deactivate flag and workflow from
+Players - every player is now always an eligible tournament entrant.
 
 ## Next steps
 
@@ -14,6 +14,25 @@ duplicated Fargo Rate) and relabeled "Fargo Rate" to "Fargo Rating".
   live seat/queue view (first non-bracket format).
 
 ## Change log
+
+## v0.6.2 — 2026-07-06 (UI)
+
+- Removed `Player.IsActive` and the whole Deactivate workflow (the
+  "Active" roster grid column, the "Active" checkbox and "Deactivate"
+  button on the detail panel, and the `DeactivatePlayerCommand`) - not
+  needed, by explicit request. Entrant candidates for a new tournament
+  are no longer filtered by this flag; every player is eligible.
+  `RemovePlayerIsActive` migration drops the column - verified against
+  the real dev database, including a player that had actually been
+  deactivated in an earlier session, which now loads and appears as a
+  normal, selectable entrant candidate again.
+- `Table.IsActive` (a different entity, an unrelated feature) was left
+  untouched - the migration only targets the `Players` table.
+- Verified manually: ran the app against the existing dev database,
+  confirmed the roster grid and detail panel no longer show any
+  Active/Deactivate UI, and confirmed a previously-deactivated player now
+  shows up normally in both the roster and the Tournament tab's entrant
+  checklist.
 
 ## v0.6.1 — 2026-07-06 (UI)
 

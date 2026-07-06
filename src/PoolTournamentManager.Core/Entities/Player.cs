@@ -13,7 +13,5 @@ public class Player
     public int? ApaEightBallSkill { get; set; }
     public int? ApaNineBallSkill { get; set; }
 
-    public bool IsActive { get; set; } = true;
-
     public string FullName => $"{FirstName} {LastName}";
 }

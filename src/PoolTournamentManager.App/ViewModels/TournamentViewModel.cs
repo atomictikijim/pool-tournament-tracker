@@ -85,7 +85,7 @@ public partial class TournamentViewModel : ObservableObject
     {
         var players = await _playerRepository.GetAllAsync();
         EntrantCandidates.Clear();
-        foreach (var player in players.Where(p => p.IsActive))
+        foreach (var player in players)
         {
             EntrantCandidates.Add(new PlayerSelectionItem(player));
         }

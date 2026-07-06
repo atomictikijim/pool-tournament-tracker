@@ -41,7 +41,6 @@ public partial class MainWindowViewModel : ObservableObject
         {
             Editor.LoadFrom(value);
         }
-        DeactivatePlayerCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]
@@ -92,23 +91,4 @@ public partial class MainWindowViewModel : ObservableObject
         await LoadPlayersAsync();
         SelectedPlayer = Players.FirstOrDefault(p => p.Id == candidate.Id);
     }
-
-    [RelayCommand(CanExecute = nameof(CanDeactivatePlayer))]
-    public async Task DeactivatePlayerAsync()
-    {
-        if (_editingPlayer is null)
-        {
-            return;
-        }
-
-        var deactivatedPlayerId = _editingPlayer.Id;
-        _editingPlayer.IsActive = false;
-        await _playerRepository.UpdateAsync(_editingPlayer);
-        StatusMessage = $"Deactivated {_editingPlayer.FullName}.";
-
-        await LoadPlayersAsync();
-        SelectedPlayer = Players.FirstOrDefault(p => p.Id == deactivatedPlayerId);
-    }
-
-    public bool CanDeactivatePlayer() => _editingPlayer is { IsActive: true };
 }
