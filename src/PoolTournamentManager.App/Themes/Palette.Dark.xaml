@@ -9,6 +9,9 @@
     -->
 
     <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0B2A1A" />
+    <!-- Window/title-bar chrome deliberately matches the button green, by request - distinct
+         from AppBackgroundBrush, which still governs the TabControl/content area. -->
+    <SolidColorBrush x:Key="WindowChromeBrush" Color="#8FCB3E" />
     <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="#123A24" />
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="#17442C" />
     <SolidColorBrush x:Key="AppBorderBrush" Color="#2F5B3C" />

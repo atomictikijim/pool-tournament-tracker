@@ -5,16 +5,51 @@ the top of each section.
 
 ## Current status
 
-v0.4.1 complete: the app has a real visual identity - a swamp/gator-derived
-color scheme applied consistently across both windows, a taskbar/title-bar
-icon, and a header logo - that automatically follows (and live-tracks) the
-Windows light/dark setting.
+v0.4.2 complete: button text is readable in both themes, and dark mode's
+window chrome (native title bar, header banner, and tab strip) now matches
+the button green, while the actual content area (grids, cards, tables)
+keeps the original deep-green palette for readability.
 
 ## Next steps
 
 - [ ] 0.5 — Round robin: circle-method scheduler, standings + tiebreaks.
 
 ## Change log
+
+## v0.4.2 — 2026-07-06 (UI)
+
+- Fixed button text silently rendering in `TextPrimaryBrush` instead of the
+  intended `AccentPrimaryTextBrush` (white in light mode) - see NOTES.md.
+  Buttons now get an explicit `ContentTemplate` so their text color is a
+  real local value instead of losing to the global implicit `TextBlock`
+  style.
+- Dark mode's window chrome - the native title bar (via new
+  `TitleBarColorizer`, DWM `DWMWA_CAPTION_COLOR`/`DWMWA_TEXT_COLOR`), the
+  header banner behind the logo, and the tab strip - now matches the button
+  green (`WindowChromeBrush`, a new palette key), while `AppBackgroundBrush`
+  still governs the actual content area (grids, cards, bracket view) with
+  the original deep-green palette. Went through a couple of overshoots
+  first (matching the *entire* app background to the button green, which
+  made buttons disappear into it) before landing here by explicit
+  iteration with the user.
+- The selected tab now reads as "cut into" the content area below it
+  (its background switches to `AppBackgroundBrush`) rather than using a
+  colored underline, since the underline's obvious color choice
+  (`AccentPrimaryBrush`) is now the same as the strip it'd sit on.
+- `ThemeService` now also re-colors every open window's title bar on every
+  theme change (live, no restart), and exposes `ApplyTitleBar` for a
+  newly-opened window (e.g. the Display window) to call once on
+  `SourceInitialized`.
+
+- Fixed button text silently rendering in `TextPrimaryBrush` instead of the
+  intended `AccentPrimaryTextBrush` (white in light mode) - see NOTES.md.
+  Buttons now get an explicit `ContentTemplate` so their text color is a
+  real local value instead of losing to the global implicit `TextBlock`
+  style.
+- Dark theme's `AppBackgroundBrush` changed to the same green as
+  `AccentPrimaryBrush` (#8FCB3E), by explicit request - confirmed with the
+  user that this means buttons/borders blend into the background, visible
+  mainly via their white text.
 
 ## v0.4.1 — 2026-07-06 (UI)
 

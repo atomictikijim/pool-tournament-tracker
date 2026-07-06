@@ -3,6 +3,70 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-06 — Window's own native title bar isn't reachable from WPF at all
+
+**Issue:** Wanted the OS-drawn title bar (with the minimize/maximize/close buttons) to match the
+app's accent color in dark mode. `Window.Background`, and every other WPF property, only paints
+the *client area* - the title bar itself is drawn by DWM (the OS compositor), entirely outside
+anything WPF's Style/resource system can reach.
+
+**Fix:** Added `TitleBarColorizer`, a P/Invoke wrapper around `DwmSetWindowAttribute` with the
+`DWMWA_CAPTION_COLOR`/`DWMWA_TEXT_COLOR` attributes (Windows 11 22000+ only - no-ops harmlessly on
+older Windows). Needs a real HWND, so each window calls it from `SourceInitialized`, and
+`ThemeService` re-applies it to every open window on a live theme change (mirroring how it already
+re-applies the resource-dictionary palette swap).
+
+## 2026-07-06 — Window.Background set via implicit Style silently didn't render; TabControl's own chrome ignored it too
+
+**Issue:** Generic.xaml's implicit `Style TargetType="Window"` set `Background` to a themed brush,
+but the header area (a transparent StackPanel sitting directly on the Window, above the
+TabControl) rendered plain white regardless of theme - meanwhile `DisplayWindow.xaml`, which sets
+`Window.Background` as a **local** attribute instead of relying on the implicit style, rendered
+correctly. Separately, the `TabControl`'s own tab-strip area *also* rendered white despite a
+`Background` `Setter` on it, for the by-now-familiar reason (see the Button/TabItem/ComboBox entry
+below): its default template doesn't read `Background` at all for that chrome.
+
+**Fix:** Set `Background` as a **local** attribute directly on both `<Window>` elements (matching
+what already worked for `DisplayWindow`) instead of depending on the implicit `Style`. Gave
+`TabControl` a real `ControlTemplate` (a two-row `Grid`: a `Border` for the tab strip, a separate
+`Border` for the selected page's content) instead of a `Setter`, so the strip and the content area
+can each have their own explicit, reliable background. Broader lesson for this codebase: don't
+trust an implicit `Style` `Setter` for `Background`/`Foreground` on *any* control until it's been
+visually verified - for `Window` specifically, prefer a local attribute.
+
+## 2026-07-06 — A `<StaticResource x:Key=".." ResourceKey=".."/>` alias element silently failed
+
+**Issue:** Tried to make several palette keys (`SurfaceBackgroundBrush`, `CardBackgroundBrush`,
+etc.) all resolve to the same color as `AccentPrimaryBrush` by aliasing them via
+`<StaticResource x:Key="Foo" ResourceKey="AccentPrimaryBrush" />` inside the dark palette
+dictionary. Every `DynamicResource` binding against those aliased keys came back empty (rendered
+as if the background were unset/white) instead of the aliased color.
+
+**Fix:** Gave up on the alias and just duplicated the literal `SolidColorBrush` + `Color` value
+under each key. Not fully root-caused given the time available - noting it here so a future
+attempt at DRY-ing up palette values via aliasing knows this specific pattern is suspect and
+should be checked carefully rather than assumed to work.
+
+## 2026-07-06 — Button text silently used the wrong theme brush (Style Setter beat inherited Foreground)
+
+**Issue:** Button.Foreground was set to `AccentPrimaryTextBrush` (white in light mode) via the
+implicit `Button` `Style`, but the rendered text stayed dark. Root cause: `Button.Content` is
+always a plain string in this app, so with no `ContentTemplate`, WPF auto-wraps it in an anonymous
+`TextBlock`. That generated `TextBlock` matches the app's own global implicit
+`Style TargetType="TextBlock"` (which sets `Foreground` to `TextPrimaryBrush` for ordinary body
+text) - and a `Style` `Setter` on an element always wins over a `Foreground` value the element
+would otherwise have *inherited* from an ancestor (here, the Button), regardless of how that
+ancestor's value was itself set. So the button's own `Foreground` never had a chance to apply to
+its own text.
+
+**Fix:** Gave the `Button` style an explicit `ContentTemplate` (`<TextBlock Text="{Binding}"
+Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />`) so the
+text's `Foreground` is a real local value (via binding) on that specific `TextBlock`, which does
+outrank a `Style` `Setter`. General lesson for this codebase: *any* control whose default content
+wrapping produces a `TextBlock` (Button, CheckBox, TabItem headers, etc.) is at risk of the same
+issue if the app also has a global implicit `TextBlock` style - inheritance alone won't reliably
+carry a color through.
+
 ## 2026-07-06 — Button/TabItem/ComboBox default chrome ignores the Background property
 
 **Issue:** Setting `Background`/`Foreground`/`BorderBrush` via a `Style` `Setter` worked fine for

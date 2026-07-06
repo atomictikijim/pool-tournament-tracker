@@ -6,6 +6,7 @@
         mc:Ignorable="d"
         Title="Pool Tournament Manager" Height="700" Width="1200"
         Icon="Assets/Logo.png"
+        Background="{DynamicResource AppBackgroundBrush}"
         Loaded="MainWindow_OnLoaded">
     <Grid>
         <Grid.RowDefinitions>
@@ -13,10 +14,12 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="14,10,14,4">
-            <Image Source="Assets/Logo.png" Width="36" Height="36" Margin="0,0,10,0" />
-            <TextBlock Text="Pool Tournament Manager" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
-        </StackPanel>
+        <Border Grid.Row="0" Background="{DynamicResource WindowChromeBrush}">
+            <StackPanel Orientation="Horizontal" Margin="14,10,14,4">
+                <Image Source="Assets/Logo.png" Width="36" Height="36" Margin="0,0,10,0" />
+                <TextBlock Text="Pool Tournament Manager" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
 
         <TabControl Grid.Row="1" Margin="10">
         <TabItem Header="Players">

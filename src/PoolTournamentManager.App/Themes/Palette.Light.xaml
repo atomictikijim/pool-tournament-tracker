@@ -9,6 +9,9 @@
     -->
 
     <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F5FAF1" />
+    <!-- No colored chrome treatment requested for light mode - a hair off AppBackgroundBrush
+         (rather than identical) so the tab-strip-vs-content-area seam is still faintly visible. -->
+    <SolidColorBrush x:Key="WindowChromeBrush" Color="#F0F5EA" />
     <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="#F0F5EA" />
     <SolidColorBrush x:Key="AppBorderBrush" Color="#C9D9BE" />
