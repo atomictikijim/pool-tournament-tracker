@@ -5,17 +5,50 @@ the top of each section.
 
 ## Current status
 
-v0.3 complete: a read-only "Display" window (for a second monitor/projector)
-stays live-synced with the admin window - table assignments, bracket scores,
-and winner highlighting all update instantly with no polling or manual
-refresh, verified by actually running both windows side by side.
+v0.4 complete: double-elimination tournaments (losers bracket + Grand Final +
+single bracket-reset rematch) are fully playable end-to-end, reusing 0.2/0.3's
+UI, live-sync, and Display window with no separate code paths for rendering.
 
 ## Next steps
 
-- [ ] 0.4 — Double elimination: losers-bracket wiring + grand-final/reset
-      rule, reusing 0.2/0.3's UI and live-sync spine with a format switch.
+- [ ] 0.5 — Round robin: circle-method scheduler, standings + tiebreaks.
 
 ## Change log
+
+## v0.4 — 2026-07-06
+
+- `BracketGenerationService.GenerateDoubleElimination`: builds a losers
+  bracket alongside the winners bracket, wiring each winners-bracket round's
+  losers into the correct losers-bracket round (a "receiving" round once
+  counts already match, preceded by a pure "consolidation" round whenever
+  they don't) and a Grand Final between both brackets' champions, with a
+  single bracket-reset rematch if the losers-bracket champion wins it.
+  Requires an exact power-of-2 entrant count for now (2/4/8/16/32...) -
+  seeding byes through both brackets at once is a known gap, called out in
+  the UI's validation message rather than silently mishandled.
+- `RecordMatchResult` now returns every newly-materialized match a single
+  reported result can produce (up to two: the winner's advance and the
+  loser's drop into the losers bracket), not just one.
+- `BracketNode` gained explicit `FeedsIntoWinnerSlot`/`FeedsIntoLoserSlot`
+  fields (see NOTES.md) so losers-bracket "receiving" rounds - which mix a
+  losers-bracket survivor with a freshly-dropped winners-bracket loser on the
+  same node - can't collide on which slot each side lands in.
+  EF migration `AddDoubleEliminationSlots`.
+- Tournament creation now supports Double Elimination as a format choice,
+  validating the power-of-2 entrant count with a clear message when it isn't.
+- Bracket display (both the admin Tournament tab and the read-only Display
+  window) groups rounds by bracket side, not just round number, and labels
+  them "WB Round N"/"WB Final", "LB Round N"/"LB Final", "Grand Final", and
+  "Bracket Reset" - single-elimination brackets keep their original
+  unprefixed titles.
+- 8 new `Core.Tests` (37 total): non-power-of-2 rejection, node-shape checks,
+  a full 4-entrant playthrough with no reset, a full 4-entrant playthrough
+  that forces a bracket reset, and a full 8-entrant playthrough that
+  exercises the losers-bracket consolidation rounds.
+- Verified manually end-to-end: created a 4-entrant double-elimination
+  tournament, played it so the losers-bracket champion beat the winners-
+  bracket champion in the Grand Final (forcing a reset), played the reset,
+  and confirmed the champion and "Completed" status in both windows.
 
 ## v0.3 — 2026-07-06
 

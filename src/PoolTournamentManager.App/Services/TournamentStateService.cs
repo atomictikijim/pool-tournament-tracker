@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using PoolTournamentManager.App.ViewModels;
 using PoolTournamentManager.Core.Entities;
+using PoolTournamentManager.Core.Enums;
 using PoolTournamentManager.Core.Interfaces;
 
 namespace PoolTournamentManager.App.Services;
@@ -68,11 +69,12 @@ public partial class TournamentStateService : ObservableObject
             return;
         }
 
-        var totalRounds = bracket.Nodes.Max(n => n.RoundNumber);
+        var sideRank = new Dictionary<BracketSide, int> { [BracketSide.Winners] = 0, [BracketSide.Losers] = 1, [BracketSide.GrandFinal] = 2 };
         var groups = bracket.Nodes
             .Where(n => n.MatchId is not null)
-            .GroupBy(n => n.RoundNumber)
-            .OrderBy(g => g.Key);
+            .GroupBy(n => (n.Side, n.RoundNumber))
+            .OrderBy(g => sideRank[g.Key.Side])
+            .ThenBy(g => g.Key.RoundNumber);
 
         foreach (var group in groups)
         {
@@ -81,16 +83,31 @@ public partial class TournamentStateService : ObservableObject
                 .Select(n => new MatchRowViewModel(n.Match!))
                 .ToList();
 
-            var title = group.Key == totalRounds
-                ? "Final"
-                : group.Key == totalRounds - 1
-                    ? "Semifinals"
-                    : $"Round {group.Key}";
-
-            rounds.Add(new RoundGroupViewModel(group.Key, title, matchRows));
+            var title = BuildRoundTitle(bracket, group.Key.Side, group.Key.RoundNumber, group.Any(n => n.IsGrandFinalReset));
+            rounds.Add(new RoundGroupViewModel(group.Key.RoundNumber, title, matchRows));
         }
 
         Rounds = rounds;
+    }
+
+    private static string BuildRoundTitle(BracketDetail bracket, BracketSide side, int roundNumber, bool isReset)
+    {
+        if (side == BracketSide.GrandFinal)
+        {
+            return isReset ? "Bracket Reset" : "Grand Final";
+        }
+
+        var maxRoundForSide = bracket.Nodes.Where(n => n.Side == side).Max(n => n.RoundNumber);
+
+        if (!bracket.IsDoubleElimination)
+        {
+            if (roundNumber == maxRoundForSide) return "Final";
+            if (roundNumber == maxRoundForSide - 1) return "Semifinals";
+            return $"Round {roundNumber}";
+        }
+
+        var prefix = side == BracketSide.Winners ? "WB" : "LB";
+        return roundNumber == maxRoundForSide ? $"{prefix} Final" : $"{prefix} Round {roundNumber}";
     }
 
     /// <summary>

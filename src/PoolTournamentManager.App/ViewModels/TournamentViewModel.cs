@@ -114,9 +114,9 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
-        if (NewTournamentFormat != TournamentFormat.SingleElimination)
+        if (NewTournamentFormat != TournamentFormat.SingleElimination && NewTournamentFormat != TournamentFormat.DoubleElimination)
         {
-            StatusMessage = "Only single-elimination is supported in this version.";
+            StatusMessage = "Only single- and double-elimination are supported in this version.";
             return;
         }
 
@@ -124,6 +124,12 @@ public partial class TournamentViewModel : ObservableObject
         if (selected.Count < 2)
         {
             StatusMessage = "Select at least 2 players.";
+            return;
+        }
+
+        if (NewTournamentFormat == TournamentFormat.DoubleElimination && (selected.Count & (selected.Count - 1)) != 0)
+        {
+            StatusMessage = "Double elimination currently requires a power-of-2 number of entrants (2, 4, 8, 16, 32...).";
             return;
         }
 
@@ -147,7 +153,15 @@ public partial class TournamentViewModel : ObservableObject
 
         var missingRatingCount = tournament.Entrants.Count(e => !SeedingService.HasRating(e, NewTournamentRatingSystem));
         SeedingService.AssignSeeds(tournament.Entrants, NewTournamentRatingSystem);
-        _bracketService.GenerateSingleElimination(tournament);
+
+        if (NewTournamentFormat == TournamentFormat.DoubleElimination)
+        {
+            _bracketService.GenerateDoubleElimination(tournament);
+        }
+        else
+        {
+            _bracketService.GenerateSingleElimination(tournament);
+        }
 
         await _tournamentRepository.AddAsync(tournament);
 
@@ -182,8 +196,8 @@ public partial class TournamentViewModel : ObservableObject
 
         try
         {
-            var newMatch = _bracketService.RecordMatchResult(State.ActiveTournament, match, match.Player1Score.Value, match.Player2Score.Value);
-            if (newMatch is not null)
+            var newMatches = _bracketService.RecordMatchResult(State.ActiveTournament, match, match.Player1Score.Value, match.Player2Score.Value);
+            foreach (var newMatch in newMatches)
             {
                 _tournamentRepository.TrackNew(newMatch);
             }

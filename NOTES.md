@@ -3,6 +3,40 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-06 — Double elimination: a losers-bracket "receiving" round mixes two different propagation paths into one node
+
+**Issue:** `PropagateWinner`'s existing slot-assignment rule (`PositionInRound % 2 == 0` → slot 1,
+else slot 2) only works when a target node's two inputs arrive via the *same* path (two winners-
+bracket siblings, or two losers-bracket siblings) — position parity is exactly what disambiguates
+those two siblings. A losers-bracket "receiving" round breaks that assumption: one input is the
+survivor advancing from the previous LB round (via `FeedsIntoWinnerNodeId`) and the other is a
+freshly-dropped winners-bracket loser (via `FeedsIntoLoserNodeId`) - two *different* paths landing
+on the same node, where each source's own `PositionInRound` is unrelated to the other's and can't
+tell them apart (both are often position 0, colliding on the same computed slot).
+
+**Fix:** Added explicit `FeedsIntoWinnerSlot`/`FeedsIntoLoserSlot` (nullable int) fields to
+`BracketNode`, set unambiguously wherever double-elimination wiring is built (survivor always
+slot 1 in a receiving round, dropped loser always slot 2; parity still used for genuine sibling
+pairs like round-to-round winners-bracket advancement and losers-bracket consolidation rounds).
+`PropagateWinner`/`PropagateLoser` prefer the explicit slot and fall back to the old parity rule
+when it's null, so single-elimination's existing wiring (which never sets these fields) is
+unaffected.
+
+## 2026-07-06 — Double-elimination bracket display needed grouping by (Side, RoundNumber), not RoundNumber alone
+
+**Issue:** `TournamentStateService.RebuildRounds` grouped bracket nodes by `RoundNumber` alone to
+build the UI's left-to-right round columns. That's fine for single elimination (one continuous
+round sequence) but wrong for double elimination, where the winners bracket, losers bracket, and
+Grand Final all reuse overlapping round numbers (e.g. WB round 2 and LB round 2 both exist) - a
+plain `RoundNumber` grouping would have merged unrelated matches from different bracket sides into
+the same visual column.
+
+**Fix:** Group by the tuple `(Side, RoundNumber)`, ordered by an explicit side rank (Winners,
+then Losers, then GrandFinal) before round number, and title each group with a side prefix
+("WB Round 1", "LB Final", "Grand Final", "Bracket Reset") whenever `BracketDetail.IsDoubleElimination`
+is true. Single-elimination brackets keep their original unprefixed titles ("Round 1", "Semifinals",
+"Final") since `IsDoubleElimination` is false for them.
+
 ## 2026-07-06 — DisplayWindow: local property values silently defeated Style triggers
 
 **Issue:** The read-only display window's winner-highlight (gold + bold) and "table open"
