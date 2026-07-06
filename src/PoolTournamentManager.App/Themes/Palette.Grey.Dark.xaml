@@ -1,0 +1,27 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+    Grey dark palette - same structure/shading as Palette.Green.Dark.xaml, desaturated to a
+    graphite/steel neutral with a faint cool tint (rather than a fully flat gray) so the accent
+    still reads as distinct from plain text/borders. Key names must match every other
+    Palette.*.xaml exactly - ThemeService swaps dictionaries as a unit.
+    -->
+
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1B1D1F" />
+    <SolidColorBrush x:Key="WindowChromeBrush" Color="#8FA3B8" />
+    <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="#24272A" />
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#2C3033" />
+    <SolidColorBrush x:Key="AppBorderBrush" Color="#454A4F" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#EDEFF0" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A6ACB0" />
+
+    <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#8FA3B8" />
+    <SolidColorBrush x:Key="AccentPrimaryTextBrush" Color="#12181D" />
+    <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#8C6A3E" />
+
+    <SolidColorBrush x:Key="ControlBackgroundBrush" Color="#202325" />
+    <SolidColorBrush x:Key="SelectionBackgroundBrush" Color="#3A3F43" />
+
+</ResourceDictionary>

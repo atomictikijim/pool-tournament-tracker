@@ -3,6 +3,39 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-06 — System.Text.Json silently dropped a hand-written enum string, falling back to the default
+
+**Issue:** Manually wrote `{"ColorScheme":"Red"}` into `settings.json` to test the load path before
+trusting UI automation to click the right button (UI automation was proving flaky in this
+environment - see below). The app loaded and showed Green (the fallback default) instead of Red,
+with no visible error. Root cause: `System.Text.Json` serializes enums as their underlying
+**integer** by default; deserializing a **string** ("Red") into that same enum property throws
+`JsonException`, which `AppSettingsStore.LoadColorScheme`'s catch-all correctly swallowed (by
+design - a corrupt settings file should never block startup) but which also masked this bug
+completely, since the fallback (Green) looks identical to a legitimate first-run default.
+
+**Fix:** Added `JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } }`, applied
+to both `Serialize` and `Deserialize`, so the persisted file actually stores (and accepts) the
+enum's name. General lesson for this codebase: a silent fallback that exists to protect against a
+corrupt file also hides genuine serialization mismatches - when a persisted setting doesn't seem
+to be loading, check the fallback path is even being hit before assuming the bug is elsewhere (a
+one-line temporary `throw` instead of `catch` would have surfaced this immediately).
+
+## 2026-07-06 — UI Automation couldn't see a TabControl's selected page content at all
+
+**Issue:** After retemplating `TabControl` (see the entry below from the previous session) to
+separate the tab strip's background from the content area's, `AutomationElement.FindAll` for
+*anything* inside the selected tab's page - buttons, text, all of it - returned zero results,
+even though the content rendered correctly on screen and was interactable by mouse/keyboard. Not
+fully root-caused given the time available; suspect the custom template's plain
+`ContentPresenter ContentSource="SelectedContent"` inside a `Border` doesn't get hooked into
+`TabControlAutomationPeer`'s expectations the same way the default template's does.
+
+**Fix:** Not fixed - noted here so a future automated-UI-testing attempt against this app knows to
+expect it, and knows the content is real (confirmed via screenshots) even when automation can't
+see it. Verification for this session fell back to mouse clicks (once a coordinate-calculation
+mistake was found and corrected) and direct manipulation of the persisted settings file instead.
+
 ## 2026-07-06 — Window's own native title bar isn't reachable from WPF at all
 
 **Issue:** Wanted the OS-drawn title bar (with the minimize/maximize/close buttons) to match the

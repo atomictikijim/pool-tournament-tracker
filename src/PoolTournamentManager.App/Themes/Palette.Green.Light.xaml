@@ -2,10 +2,10 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-    Light palette - same swamp/gator-derived hues as Palette.Dark.xaml, re-balanced for a pale
-    background: the chartreuse accent becomes a deeper forest green so it stays readable on white,
-    and the teal shirt blue is darkened slightly for the same reason. Key names must match
-    Palette.Dark.xaml exactly - ThemeService swaps the two dictionaries as a unit.
+    Green (default) light palette - same swamp/gator-derived hues as Palette.Green.Dark.xaml,
+    re-balanced for a pale background: the chartreuse accent becomes a deeper forest green so it
+    stays readable on white, and the teal shirt blue is darkened slightly for the same reason. Key
+    names must match every other Palette.*.xaml exactly - ThemeService swaps dictionaries as a unit.
     -->
 
     <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F5FAF1" />

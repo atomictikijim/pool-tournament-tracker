@@ -2,10 +2,11 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-    Dark palette, drawn from the swamp-grass texture (deep greens, chartreuse highlights) and the
-    gator mascot's teal polo shirt. Every key here also exists in Palette.Light.xaml with the same
-    name - ThemeService swaps this whole dictionary in or out to match the Windows light/dark
-    setting, so anything bound with DynamicResource repaints instantly with no restart needed.
+    Green (default) dark palette, drawn from the swamp-grass texture (deep greens, chartreuse
+    highlights) and the gator mascot's teal polo shirt. Every key here also exists in every other
+    Palette.*.xaml with the same name - ThemeService swaps this whole dictionary in or out to
+    match the selected color scheme and the Windows light/dark setting, so anything bound with
+    DynamicResource repaints instantly with no restart needed.
     -->
 
     <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0B2A1A" />

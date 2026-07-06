@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+    Red light palette - same structure/shading as Palette.Green.Light.xaml, hue rotated to a
+    brick/crimson red. Key names must match every other Palette.*.xaml exactly - ThemeService
+    swaps dictionaries as a unit.
+    -->
+
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#FAF1F0" />
+    <SolidColorBrush x:Key="WindowChromeBrush" Color="#F5EAE8" />
+    <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#F5EAE8" />
+    <SolidColorBrush x:Key="AppBorderBrush" Color="#D9BEBE" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#241616" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#684F4F" />
+
+    <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#B23A2B" />
+    <SolidColorBrush x:Key="AccentPrimaryTextBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#2A4A74" />
+
+    <SolidColorBrush x:Key="ControlBackgroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SelectionBackgroundBrush" Color="#E8C9C9" />
+
+</ResourceDictionary>

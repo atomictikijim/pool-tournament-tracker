@@ -5,16 +5,39 @@ the top of each section.
 
 ## Current status
 
-v0.4.2 complete: button text is readable in both themes, and dark mode's
-window chrome (native title bar, header banner, and tab strip) now matches
-the button green, while the actual content area (grids, cards, tables)
-keeps the original deep-green palette for readability.
+v0.5 complete: the app has 4 selectable color schemes (Green/Red/Blue/Grey,
+Green the out-of-box default), each with its own light+dark variant, picked
+from a new Settings tab and persisted across restarts.
 
 ## Next steps
 
-- [ ] 0.5 — Round robin: circle-method scheduler, standings + tiebreaks.
+- [ ] 0.6 — Round robin: circle-method scheduler, standings + tiebreaks.
 
 ## Change log
+
+## v0.5 — 2026-07-06
+
+- Three new color schemes (Red, Blue, Grey) alongside the existing Green,
+  each with its own light+dark palette pair following the same
+  structure/shading as Green's (deep near-black background, a vivid
+  mid-bright accent, muted borders, pale text) with the hue rotated -
+  `Themes/Palette.{Scheme}.{Light,Dark}.xaml`, 6 new files.
+- New "Settings" tab: four color swatches: click one to switch schemes
+  live, no restart needed. The active scheme gets a highlighted border.
+- `ThemeService.ColorScheme` (new, an `AppColorScheme` enum) is now a
+  second axis alongside the existing Windows light/dark tracking - the
+  active palette dictionary is `Themes/Palette.{ColorScheme}.{Light,Dark}`,
+  computed from both. Persisted to
+  `%LOCALAPPDATA%\PoolTournamentManager\settings.json` (new
+  `AppSettingsStore`) and reloaded on startup.
+- Verified manually: all 4 schemes render correctly in both light and dark
+  mode (including the title bar), switching one live repaints every open
+  window instantly, and the choice survives an app restart.
+- Bug caught during that verification (see NOTES.md): `System.Text.Json`
+  serializes enums as bare integers by default, silently failing (and
+  falling back to Green) against a hand-written string value in the
+  settings file - fixed by adding `JsonStringEnumConverter` so the
+  persisted file is actually human-readable/editable as intended.
 
 ## v0.4.2 — 2026-07-06 (UI)
 

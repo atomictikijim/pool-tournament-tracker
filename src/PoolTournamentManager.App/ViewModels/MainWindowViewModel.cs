@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PoolTournamentManager.App.Services;
 using PoolTournamentManager.Core.Entities;
 using PoolTournamentManager.Core.Interfaces;
 using PoolTournamentManager.Core.Services;
@@ -18,16 +19,19 @@ public partial class MainWindowViewModel : ObservableObject
 
     public TournamentViewModel Tournament { get; }
 
+    public ThemeService Theme { get; }
+
     [ObservableProperty]
     private Player? _selectedPlayer;
 
     [ObservableProperty]
     private string? _statusMessage;
 
-    public MainWindowViewModel(IPlayerRepository playerRepository, TournamentViewModel tournamentViewModel)
+    public MainWindowViewModel(IPlayerRepository playerRepository, TournamentViewModel tournamentViewModel, ThemeService themeService)
     {
         _playerRepository = playerRepository;
         Tournament = tournamentViewModel;
+        Theme = themeService;
     }
 
     partial void OnSelectedPlayerChanged(Player? value)
