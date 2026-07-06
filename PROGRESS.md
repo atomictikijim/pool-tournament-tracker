@@ -5,11 +5,17 @@ the top of each section.
 
 ## Current status
 
-v0.8 complete: the read-only Display window now renders a proper live
-bracket tree (styled after digitalpool.com) instead of flat round columns -
-round columns left-to-right, each match centred between its two feeder
-matches, elbow connectors, winner rows highlighted, and winners/losers/
-grand-final sections for double elimination.
+v0.8.1 complete: seed numbers now show on every bracket box, and the
+operator's Tournament tab uses the same live bracket tree as the Display
+window (with editable boxes - inline score inputs + table picker + Report
+on the live match). Shared bracket templates now live in
+Themes/BracketTemplates.xaml so both windows render from one source.
+
+v0.8: the read-only Display window renders a proper live bracket tree
+(styled after digitalpool.com) instead of flat round columns - round
+columns left-to-right, each match centred between its two feeder matches,
+elbow connectors, winner rows highlighted, and winners/losers/grand-final
+sections for double elimination.
 
 ## Next steps
 
@@ -23,6 +29,36 @@ grand-final sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.8.1 — 2026-07-06
+
+- Seed numbers now render on every match box (both windows): a small muted
+  seed before each player name, matching digitalpool's seeded-bracket look.
+  Added `Player1Seed`/`Player2Seed` to `MatchRowViewModel` (from the
+  entrant's `SeedNumber`; null for BYE/TBD) and threaded seed through
+  `PlayerLineViewModel`.
+- Carried the bracket tree to the operator's Tournament tab. It previously
+  showed the editable bracket as flat round columns; it now uses the same
+  tree layout as the Display window, with editable boxes - each box keeps
+  the inline score TextBoxes, and the live (reportable) match shows a footer
+  with the table picker + Report button (hidden on finished/pending boxes,
+  which centre their two lines). Round robin keeps the simple round-column
+  list, now using the same editable card. Reporting wiring
+  (ReportResultCommand, score/table bindings) is unchanged from the
+  previously-verified flat card - only its position moved.
+- Refactored the read-only bracket templates (player line, match card, box,
+  connector, header, section label, canvas placement) into a shared
+  `Themes/BracketTemplates.xaml` merged in App.xaml, so both windows render
+  from one source; the operator tab adds only its editable card/box on top.
+  `BracketLayoutBuilder.Build` now takes box width/height/row-gap so the
+  compact display and the taller editable operator boxes share one
+  algorithm.
+- No test count change (68 total: 64 Core + 4 App); the builder's tests
+  still pass with the parameterised signature. Verified by rendering the
+  real `DisplayWindow` and the real `MainWindow` (Tournament tab) to PNG for
+  seeded single- and double-elimination brackets - seeds, winner highlights,
+  the editable Report footer on the live match, and the winners/losers
+  banding all render correctly. Dev DB restored to empty afterward.
 
 ## v0.8 — 2026-07-06
 

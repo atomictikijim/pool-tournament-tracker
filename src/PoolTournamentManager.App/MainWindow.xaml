@@ -9,6 +9,95 @@
         Icon="Assets/Logo.png"
         Background="{DynamicResource AppBackgroundBrush}"
         Loaded="MainWindow_OnLoaded">
+    <Window.Resources>
+        <!-- Editable match card for the operator's bracket tree: same seed/name/score look as the
+             read-only display (see Themes/BracketTemplates.xaml), but the score cells are TextBoxes
+             and a footer carries the table picker + Report control while the match is reportable.
+             ElementName=TournamentRoot reaches the tab's TournamentViewModel for the shared command
+             and table list. DataContext here is a MatchRowViewModel. -->
+        <DataTemplate x:Key="EditableMatchCardTemplate">
+            <Border Background="{DynamicResource CardBackgroundBrush}"
+                    BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="6,5">
+                <StackPanel VerticalAlignment="Center">
+                    <Grid Height="26">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="40" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding Player1Seed}" FontSize="11"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,6,0" />
+                        <TextBlock Grid.Column="1" Text="{Binding Player1Name}" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" Margin="0,0,6,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPlayer1Winner}" Value="True">
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox Grid.Column="2" Text="{Binding Match.Player1Score, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
+                                 IsEnabled="{Binding IsReportable}" />
+                    </Grid>
+
+                    <Border Height="1" Margin="2,4" Background="{DynamicResource AppBorderBrush}" />
+
+                    <Grid Height="26">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="40" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding Player2Seed}" FontSize="11"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,6,0" />
+                        <TextBlock Grid.Column="1" Text="{Binding Player2Name}" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" Margin="0,0,6,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPlayer2Winner}" Value="True">
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox Grid.Column="2" Text="{Binding Match.Player2Score, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
+                                 IsEnabled="{Binding IsReportable}" />
+                    </Grid>
+
+                    <Grid Margin="0,6,0,0" Visibility="{Binding IsReportable, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" Margin="0,0,6,0"
+                                  ItemsSource="{Binding DataContext.State.Tables, ElementName=TournamentRoot}"
+                                  SelectedValuePath="Id" DisplayMemberPath="Label"
+                                  SelectedValue="{Binding Match.TableId}" />
+                        <Button Grid.Column="1" Content="Report"
+                                Command="{Binding DataContext.ReportResultCommand, ElementName=TournamentRoot}"
+                                CommandParameter="{Binding}" Padding="8,2" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- A positioned editable match box on the operator bracket canvas. -->
+        <DataTemplate x:Key="EditableBracketBoxTemplate">
+            <ContentControl Width="{Binding Width}" Height="{Binding Height}"
+                            Content="{Binding Match}" ContentTemplate="{StaticResource EditableMatchCardTemplate}" />
+        </DataTemplate>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -209,7 +298,43 @@
                         </StackPanel>
                     </Border>
 
-                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <!-- Elimination bracket: same tree as the read-only Display window, with
+                         editable boxes (score inputs + table picker + Report on the live match). -->
+                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding IsEliminationBracket, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid Width="{Binding Bracket.Width}" Height="{Binding Bracket.Height}" HorizontalAlignment="Left" VerticalAlignment="Top">
+                            <ItemsControl ItemsSource="{Binding Bracket.Connectors}" ItemTemplate="{StaticResource BracketConnectorTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <ItemsControl ItemsSource="{Binding Bracket.SectionLabels}"
+                                          ItemContainerStyle="{StaticResource CanvasPlacementStyle}"
+                                          ItemTemplate="{StaticResource BracketSectionLabelTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <ItemsControl ItemsSource="{Binding Bracket.Headers}"
+                                          ItemContainerStyle="{StaticResource CanvasPlacementStyle}"
+                                          ItemTemplate="{StaticResource BracketHeaderTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <ItemsControl ItemsSource="{Binding Bracket.Boxes}"
+                                          ItemContainerStyle="{StaticResource CanvasPlacementStyle}"
+                                          ItemTemplate="{StaticResource EditableBracketBoxTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </Grid>
+                    </ScrollViewer>
+
+                    <!-- Round-robin fallback: simple round-column list, same editable card. -->
+                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding ShowFlatRounds, Converter={StaticResource BoolToVisibilityConverter}}">
                         <ItemsControl ItemsSource="{Binding State.Rounds}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -218,46 +343,14 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Margin="0,0,24,0" Width="260">
+                                    <StackPanel Margin="0,0,24,0" Width="250">
                                         <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="13" Margin="0,0,0,8" />
-                                        <ItemsControl ItemsSource="{Binding Matches}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" Padding="8" Margin="0,0,0,10">
-                                                        <StackPanel>
-                                                            <Grid>
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="40" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <TextBlock Grid.Column="0" Text="{Binding Player1Name}" />
-                                                                <TextBox Grid.Column="1" Text="{Binding Match.Player1Score, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
-                                                                         IsEnabled="{Binding IsReportable}" />
-                                                            </Grid>
-                                                            <Grid Margin="0,4,0,4">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="40" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <TextBlock Grid.Column="0" Text="{Binding Player2Name}" />
-                                                                <TextBox Grid.Column="1" Text="{Binding Match.Player2Score, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
-                                                                         IsEnabled="{Binding IsReportable}" />
-                                                            </Grid>
-                                                            <ComboBox Margin="0,0,0,6"
-                                                                      ItemsSource="{Binding DataContext.State.Tables, ElementName=TournamentRoot}"
-                                                                      SelectedValuePath="Id"
-                                                                      DisplayMemberPath="Label"
-                                                                      SelectedValue="{Binding Match.TableId}"
-                                                                      IsEnabled="{Binding IsReportable}" />
-                                                            <Button Content="Report Result"
-                                                                    Command="{Binding DataContext.ReportResultCommand, ElementName=TournamentRoot}"
-                                                                    CommandParameter="{Binding}"
-                                                                    IsEnabled="{Binding IsReportable}"
-                                                                    Padding="6,2" HorizontalAlignment="Left" />
-                                                        </StackPanel>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
+                                        <ItemsControl ItemsSource="{Binding Matches}" ItemTemplate="{StaticResource EditableMatchCardTemplate}">
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="Margin" Value="0,0,0,10" />
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
                                         </ItemsControl>
                                     </StackPanel>
                                 </DataTemplate>

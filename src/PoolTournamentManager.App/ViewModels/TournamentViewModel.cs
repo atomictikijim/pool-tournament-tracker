@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PoolTournamentManager.App.Services;
@@ -71,6 +72,47 @@ public partial class TournamentViewModel : ObservableObject
         _roundRobinService = roundRobinService;
         _ringGameService = ringGameService;
         State = state;
+        State.PropertyChanged += OnStateChanged;
+        RebuildBracket();
+    }
+
+    // ---- Live bracket tree (editable) --------------------------------------------------------
+    // Same tree layout as the read-only Display window, but with taller boxes so each match can
+    // carry inline score inputs + a Report control. Rebuilt whenever the shared round data changes.
+    private const double EditableBoxWidth = 250;
+    private const double EditableBoxHeight = 108;
+    private const double EditableRowGap = 18;
+
+    /// <summary>The positioned bracket tree for elimination formats (empty otherwise).</summary>
+    public BracketLayout Bracket { get; private set; } = new();
+
+    /// <summary>True when the active tournament is a single/double-elimination bracket.</summary>
+    public bool IsEliminationBracket { get; private set; }
+
+    /// <summary>True for round-robin, which falls back to the simple round-column list.</summary>
+    public bool ShowFlatRounds { get; private set; }
+
+    private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(TournamentStateService.ActiveTournament)
+            or nameof(TournamentStateService.Rounds))
+        {
+            RebuildBracket();
+        }
+    }
+
+    private void RebuildBracket()
+    {
+        var format = State.ActiveTournament?.Format;
+        IsEliminationBracket = format is TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination;
+        ShowFlatRounds = format is TournamentFormat.RoundRobin;
+        Bracket = IsEliminationBracket
+            ? BracketLayoutBuilder.Build(State.Rounds, EditableBoxWidth, EditableBoxHeight, EditableRowGap)
+            : new BracketLayout();
+
+        OnPropertyChanged(nameof(Bracket));
+        OnPropertyChanged(nameof(IsEliminationBracket));
+        OnPropertyChanged(nameof(ShowFlatRounds));
     }
 
     public async Task InitializeAsync()

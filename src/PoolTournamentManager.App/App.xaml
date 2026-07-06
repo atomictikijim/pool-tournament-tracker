@@ -12,6 +12,7 @@
                      ThemeService.Start() runs. -->
                 <ResourceDictionary Source="Themes/Palette.Green.Light.xaml" />
                 <ResourceDictionary Source="Themes/Generic.xaml" />
+                <ResourceDictionary Source="Themes/BracketTemplates.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <converters:EnumEqualsConverter x:Key="EnumEqualsConverter" />
             <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter" />

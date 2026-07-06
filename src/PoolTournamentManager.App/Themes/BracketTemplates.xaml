@@ -1,0 +1,99 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+    Shared bracket-tree building blocks used by both the read-only Display window and the
+    editable operator tab. The match-box positions come from BracketLayoutBuilder; these
+    templates just render the layers on a Canvas. Winner highlight is driven purely by the
+    DataTrigger on IsWinner against named parts (defaults live in Styles, never as local values)
+    so the trigger can win - see NOTES.md precedence traps.
+    -->
+
+    <!-- One read-only player line: seed, name, score. -->
+    <DataTemplate x:Key="PlayerLineTemplate">
+        <Border x:Name="LineRoot" CornerRadius="3" Margin="2,1">
+            <Grid Height="26">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="22" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="38" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="SeedText" Grid.Column="0" Text="{Binding SeedDisplay}" FontSize="11"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,6,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock x:Name="NameText" Grid.Column="1" Text="{Binding Name}"
+                           VerticalAlignment="Center" Margin="0,0,6,0" FontSize="14"
+                           TextTrimming="CharacterEllipsis" />
+                <Border x:Name="ScoreCell" Grid.Column="2" CornerRadius="0,3,3,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource SurfaceBackgroundBrush}" />
+                        </Style>
+                    </Border.Style>
+                    <TextBlock x:Name="ScoreText" Text="{Binding ScoreDisplay}" FontSize="14"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+        </Border>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsWinner}" Value="True">
+                <Setter TargetName="LineRoot" Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+                <Setter TargetName="ScoreCell" Property="Background" Value="Transparent" />
+                <Setter TargetName="SeedText" Property="Foreground" Value="{DynamicResource AccentPrimaryTextBrush}" />
+                <Setter TargetName="NameText" Property="Foreground" Value="{DynamicResource AccentPrimaryTextBrush}" />
+                <Setter TargetName="NameText" Property="FontWeight" Value="Bold" />
+                <Setter TargetName="ScoreText" Property="Foreground" Value="{DynamicResource AccentPrimaryTextBrush}" />
+                <Setter TargetName="ScoreText" Property="FontWeight" Value="Bold" />
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- The read-only card body for a MatchRowViewModel: two player lines + divider. -->
+    <DataTemplate x:Key="MatchCardTemplate">
+        <Border Background="{DynamicResource CardBackgroundBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="5">
+            <StackPanel VerticalAlignment="Center">
+                <ContentControl Content="{Binding Player1Line}" ContentTemplate="{StaticResource PlayerLineTemplate}" />
+                <Border Height="1" Margin="8,0" Background="{DynamicResource AppBorderBrush}" />
+                <ContentControl Content="{Binding Player2Line}" ContentTemplate="{StaticResource PlayerLineTemplate}" />
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <!-- A positioned read-only match box on the bracket canvas. -->
+    <DataTemplate x:Key="BracketBoxTemplate">
+        <ContentControl Width="{Binding Width}" Height="{Binding Height}"
+                        Content="{Binding Match}" ContentTemplate="{StaticResource MatchCardTemplate}" />
+    </DataTemplate>
+
+    <!-- Connector line segment (absolute coordinates on the canvas). -->
+    <DataTemplate x:Key="BracketConnectorTemplate">
+        <Line X1="{Binding X1}" Y1="{Binding Y1}" X2="{Binding X2}" Y2="{Binding Y2}"
+              Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="1.5" />
+    </DataTemplate>
+
+    <!-- Round header (e.g. "Semifinals", "WB Round 1"). -->
+    <DataTemplate x:Key="BracketHeaderTemplate">
+        <TextBlock Text="{Binding Text}" Width="{Binding Width}"
+                   Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" FontWeight="SemiBold"
+                   TextAlignment="Center" TextTrimming="CharacterEllipsis" />
+    </DataTemplate>
+
+    <!-- Section label ("Winners Bracket" / "Losers Bracket"). -->
+    <DataTemplate x:Key="BracketSectionLabelTemplate">
+        <TextBlock Text="{Binding Text}" Width="{Binding Width}"
+                   Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="17" FontWeight="Bold" />
+    </DataTemplate>
+
+    <!-- Places each canvas item at its computed (X, Y). -->
+    <Style x:Key="CanvasPlacementStyle" TargetType="ContentPresenter">
+        <Setter Property="Canvas.Left" Value="{Binding X}" />
+        <Setter Property="Canvas.Top" Value="{Binding Y}" />
+    </Style>
+
+</ResourceDictionary>

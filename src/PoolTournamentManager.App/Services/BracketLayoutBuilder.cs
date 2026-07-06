@@ -13,24 +13,30 @@ namespace PoolTournamentManager.App.Services;
 /// Layout is derived purely from each round's (Side, RoundNumber, ordered matches) — no bracket
 /// node graph is needed, because the standard pairing rules (a round with twice the matches of the
 /// next feeds pairwise; an equal-count "receiving" round feeds straight across) reconstruct the
-/// tree shape.
+/// tree shape. Box size is caller-supplied so the compact read-only display and the taller
+/// editable operator view can share one algorithm.
 /// </summary>
 public static class BracketLayoutBuilder
 {
-    private const double BoxWidth = 232;
-    private const double BoxHeight = 62;
     private const double ColumnGap = 68;   // horizontal room between columns, where connectors run
-    private const double RowGap = 22;      // vertical gap between adjacent first-round boxes
     private const double HeaderHeight = 32; // round-title band above each side
     private const double SectionGap = 56;   // vertical gap between the winners and losers bands
     private const double SectionLabelHeight = 30;
     private const double LeftPad = 10;
     private const double TopPad = 10;
 
-    private const double ColumnStride = BoxWidth + ColumnGap;
-
-    public static BracketLayout Build(IReadOnlyList<RoundGroupViewModel> rounds)
+    private readonly record struct Metrics(double BoxWidth, double BoxHeight, double RowGap)
     {
+        public double ColumnStride => BoxWidth + ColumnGap;
+    }
+
+    public static BracketLayout Build(
+        IReadOnlyList<RoundGroupViewModel> rounds,
+        double boxWidth = 232,
+        double boxHeight = 64,
+        double rowGap = 22)
+    {
+        var m = new Metrics(boxWidth, boxHeight, rowGap);
         var layout = new BracketLayout();
         if (rounds is null || rounds.Count == 0)
         {
@@ -49,11 +55,11 @@ public static class BracketLayoutBuilder
         // ---- Winners band -------------------------------------------------------------------
         var winnersHeaderY = TopPad + (isDouble ? SectionLabelHeight : 0);
         var winnersBandTop = winnersHeaderY + HeaderHeight;
-        var winnersBoxes = LayoutSide(layout, winners, columnBase: 0, bandTop: winnersBandTop, headerY: winnersHeaderY);
+        var winnersBoxes = LayoutSide(layout, m, winners, columnBase: 0, bandTop: winnersBandTop, headerY: winnersHeaderY);
 
         if (isDouble)
         {
-            layout.SectionLabels.Add(new BracketLabelViewModel("Winners Bracket", LeftPad, TopPad, BoxWidth * 2));
+            layout.SectionLabels.Add(new BracketLabelViewModel("Winners Bracket", LeftPad, TopPad, m.BoxWidth * 2));
         }
 
         var winnersBottom = winnersBoxes.Count > 0 ? winnersBoxes.Values.Max(b => b.Y + b.Height) : winnersBandTop;
@@ -67,8 +73,8 @@ public static class BracketLayoutBuilder
             var losersLabelY = winnersBottom + SectionGap;
             var losersHeaderY = losersLabelY + SectionLabelHeight;
             var losersBandTop = losersHeaderY + HeaderHeight;
-            layout.SectionLabels.Add(new BracketLabelViewModel("Losers Bracket", LeftPad, losersLabelY, BoxWidth * 2));
-            losersBoxes = LayoutSide(layout, losers, columnBase: 0, bandTop: losersBandTop, headerY: losersHeaderY);
+            layout.SectionLabels.Add(new BracketLabelViewModel("Losers Bracket", LeftPad, losersLabelY, m.BoxWidth * 2));
+            losersBoxes = LayoutSide(layout, m, losers, columnBase: 0, bandTop: losersBandTop, headerY: losersHeaderY);
             losersFinal = losersBoxes.GetValueOrDefault(Key(losers[^1], 0));
         }
 
@@ -81,12 +87,12 @@ public static class BracketLayoutBuilder
             var round = grandFinals[i];
             if (round.Matches.Count == 0) continue;
             var col = gfColumnBase + i;
-            var x = LeftPad + col * ColumnStride;
-            var centerY = winnersFinal?.CenterY ?? winnersBandTop + BoxHeight / 2;
-            var y = centerY - BoxHeight / 2;
+            var x = LeftPad + col * m.ColumnStride;
+            var centerY = winnersFinal?.CenterY ?? winnersBandTop + m.BoxHeight / 2;
+            var y = centerY - m.BoxHeight / 2;
 
-            layout.Headers.Add(new BracketLabelViewModel(round.Title, x, winnersHeaderY, BoxWidth));
-            var box = new PositionedMatchViewModel(round.Matches[0], x, y, BoxWidth, BoxHeight);
+            layout.Headers.Add(new BracketLabelViewModel(round.Title, x, winnersHeaderY, m.BoxWidth));
+            var box = new PositionedMatchViewModel(round.Matches[0], x, y, m.BoxWidth, m.BoxHeight);
             layout.Boxes.Add(box);
 
             if (i == 0)
@@ -102,7 +108,7 @@ public static class BracketLayoutBuilder
             previousGf = box;
         }
 
-        var maxRight = layout.Boxes.Count > 0 ? layout.Boxes.Max(b => b.RightX) : LeftPad + BoxWidth;
+        var maxRight = layout.Boxes.Count > 0 ? layout.Boxes.Max(b => b.RightX) : LeftPad + m.BoxWidth;
         var maxBottom = layout.Boxes.Count > 0 ? layout.Boxes.Max(b => b.Y + b.Height) : winnersBottom;
         layout.Width = maxRight + LeftPad;
         layout.Height = maxBottom + TopPad;
@@ -115,6 +121,7 @@ public static class BracketLayoutBuilder
     /// </summary>
     private static Dictionary<string, PositionedMatchViewModel> LayoutSide(
         BracketLayout layout,
+        Metrics m,
         List<RoundGroupViewModel> sideRounds,
         int columnBase,
         double bandTop,
@@ -126,8 +133,8 @@ public static class BracketLayoutBuilder
         for (var roundIndex = 0; roundIndex < sideRounds.Count; roundIndex++)
         {
             var round = sideRounds[roundIndex];
-            var x = LeftPad + (columnBase + roundIndex) * ColumnStride;
-            layout.Headers.Add(new BracketLabelViewModel(round.Title, x, headerY, BoxWidth));
+            var x = LeftPad + (columnBase + roundIndex) * m.ColumnStride;
+            layout.Headers.Add(new BracketLabelViewModel(round.Title, x, headerY, m.BoxWidth));
 
             var column = new List<PositionedMatchViewModel>();
             var count = round.Matches.Count;
@@ -141,7 +148,7 @@ public static class BracketLayoutBuilder
                 if (previousColumn is null || prevCount == 0)
                 {
                     // First column of this side: even vertical spacing.
-                    centerY = bandTop + BoxHeight / 2 + i * (BoxHeight + RowGap);
+                    centerY = bandTop + m.BoxHeight / 2 + i * (m.BoxHeight + m.RowGap);
                 }
                 else if (prevCount == 2 * count)
                 {
@@ -159,11 +166,11 @@ public static class BracketLayoutBuilder
                 else
                 {
                     // Irregular fan-in: fall back to even spacing, no connectors (avoids crossings).
-                    centerY = bandTop + BoxHeight / 2 + i * (BoxHeight + RowGap);
+                    centerY = bandTop + m.BoxHeight / 2 + i * (m.BoxHeight + m.RowGap);
                 }
 
-                var y = centerY - BoxHeight / 2;
-                var box = new PositionedMatchViewModel(round.Matches[i], x, y, BoxWidth, BoxHeight);
+                var y = centerY - m.BoxHeight / 2;
+                var box = new PositionedMatchViewModel(round.Matches[i], x, y, m.BoxWidth, m.BoxHeight);
                 boxes[Key(round, i)] = box;
                 column.Add(box);
                 layout.Boxes.Add(box);
