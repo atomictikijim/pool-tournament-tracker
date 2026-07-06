@@ -3,6 +3,45 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-06 — New Match entities created mid-tournament failed with "FOREIGN KEY constraint failed"
+
+**Issue:** Reporting a real (non-bye) match's score threw `DbUpdateException` / SQLite error 19
+whenever it caused a new next-round `Match` to materialize (e.g. when a bye-advanced player's
+semifinal opponent is finally decided). Root cause: EF Core's change tracker cannot tell a
+brand-new entity from a pre-existing one purely by reachability when it's attached to an
+*already-tracked* aggregate (our long-lived `Tournament` graph, loaded once and kept tracked for
+the app's lifetime) - because our entities use client-generated GUID keys (`Guid.NewGuid()` in
+the property initializer), a "non-default key + discovered only via navigation fixup, not via an
+explicit `Add()`" entity gets marked `Modified`/`Unchanged` instead of `Added`. EF then emits a
+no-op UPDATE (0 rows affected) instead of an INSERT, so when a sibling entity's FK (here,
+`BracketNode.MatchId`) points at that phantom row, the FK constraint fails. This did NOT show up
+at tournament-creation time because that path calls `_dbContext.Tournaments.Add(tournament)` on
+a still-untracked root, which makes EF walk the whole graph and correctly mark everything Added
+regardless of key values - the bug only bites when mutating an already-tracked, already-loaded
+aggregate later.
+
+**Fix:** `BracketGenerationService.RecordMatchResult` now returns the newly-materialized `Match`
+(if any) instead of just mutating in place. Added `ITournamentRepository.TrackNew(object)`
+(`_dbContext.Add(entity)`) so the Data-layer explicitly marks it `Added` before
+`SaveChangesAsync()`. Same fix applied to `TournamentViewModel.AddTableAsync`, which had the
+identical bug (silently never persisting new tables - no FK to trip over, so it failed quietly
+instead of throwing). General rule for this codebase: any time code adds a new entity to a
+collection navigation of an *already-tracked* entity (rather than to a fresh, unattached
+aggregate later passed to `Add()`), it must be explicitly tracked via `TrackNew` before saving.
+
+## 2026-07-06 — Bracket advancement treated a still-pending round-2+ slot as a bye
+
+**Issue:** `BracketGenerationService`'s single "materialize match" helper treated *any* node
+with an empty second slot as a permanent bye and auto-completed it. That's only true for
+round-1 nodes (where an empty slot means the opponent seed doesn't exist). For round-2+ nodes,
+an empty second slot just means the other semifinal hasn't been played yet - but the shared
+helper auto-completed those too, cascading extra "byes" and inflating the bye count (caught by
+`Core.Tests`: e.g. a 6-entrant bracket produced 4 byes instead of the expected 2).
+
+**Fix:** Split the logic into `MaterializeRound1Match` (always creates the match immediately -
+round 1 has complete information upfront) and `TryMaterializeAdvancedMatch` (only creates a
+`Scheduled` match once *both* slots are actually filled; never auto-completes as a bye).
+
 ## 2026-07-06 — Nullable int TextBox bindings showed a red validation border when empty
 
 **Issue:** `TextBox.Text` bound directly to a nullable `int` property (Fargo

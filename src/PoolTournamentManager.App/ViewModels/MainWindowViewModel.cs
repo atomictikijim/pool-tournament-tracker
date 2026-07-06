@@ -16,15 +16,18 @@ public partial class MainWindowViewModel : ObservableObject
 
     public PlayerEditorViewModel Editor { get; } = new();
 
+    public TournamentViewModel Tournament { get; }
+
     [ObservableProperty]
     private Player? _selectedPlayer;
 
     [ObservableProperty]
     private string? _statusMessage;
 
-    public MainWindowViewModel(IPlayerRepository playerRepository)
+    public MainWindowViewModel(IPlayerRepository playerRepository, TournamentViewModel tournamentViewModel)
     {
         _playerRepository = playerRepository;
+        Tournament = tournamentViewModel;
     }
 
     partial void OnSelectedPlayerChanged(Player? value)

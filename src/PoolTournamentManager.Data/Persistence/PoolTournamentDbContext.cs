@@ -6,6 +6,12 @@ namespace PoolTournamentManager.Data.Persistence;
 public class PoolTournamentDbContext : DbContext
 {
     public DbSet<Player> Players => Set<Player>();
+    public DbSet<Tournament> Tournaments => Set<Tournament>();
+    public DbSet<TournamentEntrant> TournamentEntrants => Set<TournamentEntrant>();
+    public DbSet<Table> Tables => Set<Table>();
+    public DbSet<Match> Matches => Set<Match>();
+    public DbSet<BracketDetail> BracketDetails => Set<BracketDetail>();
+    public DbSet<BracketNode> BracketNodes => Set<BracketNode>();
 
     public PoolTournamentDbContext(DbContextOptions<PoolTournamentDbContext> options) : base(options)
     {
@@ -18,6 +24,50 @@ public class PoolTournamentDbContext : DbContext
             entity.HasKey(p => p.Id);
             entity.Property(p => p.FirstName).IsRequired();
             entity.Property(p => p.LastName).IsRequired();
+        });
+
+        modelBuilder.Entity<Tournament>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Name).IsRequired();
+
+            entity.HasMany(t => t.Entrants).WithOne().HasForeignKey(e => e.TournamentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(t => t.Tables).WithOne().HasForeignKey(tb => tb.TournamentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(t => t.Matches).WithOne().HasForeignKey(m => m.TournamentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(t => t.Bracket).WithOne().HasForeignKey<BracketDetail>(b => b.TournamentId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TournamentEntrant>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Player).WithMany().HasForeignKey(e => e.PlayerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Table>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Label).IsRequired();
+        });
+
+        modelBuilder.Entity<Match>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.HasOne(m => m.Player1Entrant).WithMany().HasForeignKey(m => m.Player1EntrantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(m => m.Player2Entrant).WithMany().HasForeignKey(m => m.Player2EntrantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(m => m.Table).WithMany().HasForeignKey(m => m.TableId).OnDelete(DeleteBehavior.Restrict);
+            entity.Ignore(m => m.IsBye);
+        });
+
+        modelBuilder.Entity<BracketDetail>(entity =>
+        {
+            entity.HasKey(b => b.Id);
+            entity.HasMany(b => b.Nodes).WithOne().HasForeignKey(n => n.BracketDetailId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BracketNode>(entity =>
+        {
+            entity.HasKey(n => n.Id);
+            entity.HasOne(n => n.Match).WithMany().HasForeignKey(n => n.MatchId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

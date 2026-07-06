@@ -1,0 +1,50 @@
+using Microsoft.EntityFrameworkCore;
+using PoolTournamentManager.Core.Entities;
+using PoolTournamentManager.Core.Interfaces;
+
+namespace PoolTournamentManager.Data.Persistence;
+
+public class TournamentRepository : ITournamentRepository
+{
+    private readonly PoolTournamentDbContext _dbContext;
+
+    public TournamentRepository(PoolTournamentDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<List<Tournament>> GetAllAsync()
+    {
+        return await _dbContext.Tournaments
+            .OrderByDescending(t => t.Id)
+            .ToListAsync();
+    }
+
+    public async Task<Tournament?> GetByIdAsync(Guid id)
+    {
+        return await _dbContext.Tournaments
+            .Include(t => t.Entrants).ThenInclude(e => e.Player)
+            .Include(t => t.Tables)
+            .Include(t => t.Matches).ThenInclude(m => m.Player1Entrant).ThenInclude(e => e!.Player)
+            .Include(t => t.Matches).ThenInclude(m => m.Player2Entrant).ThenInclude(e => e!.Player)
+            .Include(t => t.Matches).ThenInclude(m => m.Table)
+            .Include(t => t.Bracket).ThenInclude(b => b!.Nodes).ThenInclude(n => n.Match)
+            .FirstOrDefaultAsync(t => t.Id == id);
+    }
+
+    public async Task AddAsync(Tournament tournament)
+    {
+        _dbContext.Tournaments.Add(tournament);
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public void TrackNew(object entity)
+    {
+        _dbContext.Add(entity);
+    }
+
+    public async Task SaveChangesAsync()
+    {
+        await _dbContext.SaveChangesAsync();
+    }
+}
