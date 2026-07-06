@@ -43,9 +43,12 @@ public partial class App : Application
         services.AddScoped<IPlayerRepository, PlayerRepository>();
         services.AddScoped<ITournamentRepository, TournamentRepository>();
         services.AddSingleton<BracketGenerationService>();
+        services.AddSingleton<Services.TournamentStateService>();
         services.AddTransient<ViewModels.TournamentViewModel>();
         services.AddTransient<ViewModels.MainWindowViewModel>();
+        services.AddTransient<ViewModels.DisplayWindowViewModel>();
         services.AddTransient<MainWindow>();
+        services.AddTransient<DisplayWindow>();
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

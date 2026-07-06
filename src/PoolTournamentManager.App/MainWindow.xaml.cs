@@ -1,4 +1,5 @@
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
 using PoolTournamentManager.App.ViewModels;
 
 namespace PoolTournamentManager.App;
@@ -6,11 +7,14 @@ namespace PoolTournamentManager.App;
 public partial class MainWindow : Window
 {
     private readonly MainWindowViewModel _viewModel;
+    private readonly IServiceProvider _serviceProvider;
+    private DisplayWindow? _displayWindow;
 
-    public MainWindow(MainWindowViewModel viewModel)
+    public MainWindow(MainWindowViewModel viewModel, IServiceProvider serviceProvider)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _serviceProvider = serviceProvider;
         DataContext = _viewModel;
     }
 
@@ -18,5 +22,19 @@ public partial class MainWindow : Window
     {
         await _viewModel.LoadPlayersAsync();
         await _viewModel.Tournament.InitializeAsync();
+    }
+
+    private void OpenDisplayWindowButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_displayWindow is null || !_displayWindow.IsLoaded)
+        {
+            _displayWindow = _serviceProvider.GetRequiredService<DisplayWindow>();
+            _displayWindow.Closed += (_, _) => _displayWindow = null;
+            _displayWindow.Show();
+        }
+        else
+        {
+            _displayWindow.Activate();
+        }
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PoolTournamentManager.App.Services;
 using PoolTournamentManager.Core.Entities;
 using PoolTournamentManager.Core.Enums;
 using PoolTournamentManager.Core.Interfaces;
@@ -14,7 +15,8 @@ public partial class TournamentViewModel : ObservableObject
     private readonly IPlayerRepository _playerRepository;
     private readonly BracketGenerationService _bracketService;
 
-    public ObservableCollection<Tournament> Tournaments { get; } = new();
+    public TournamentStateService State { get; }
+
     public ObservableCollection<PlayerSelectionItem> EntrantCandidates { get; } = new();
 
     public IEnumerable<GameType> GameTypes { get; } = Enum.GetValues<GameType>();
@@ -23,15 +25,6 @@ public partial class TournamentViewModel : ObservableObject
 
     [ObservableProperty]
     private Tournament? _selectedTournamentSummary;
-
-    [ObservableProperty]
-    private Tournament? _activeTournament;
-
-    [ObservableProperty]
-    private ObservableCollection<RoundGroupViewModel> _rounds = new();
-
-    [ObservableProperty]
-    private ObservableCollection<Table> _tables = new();
 
     [ObservableProperty]
     private string _newTournamentName = string.Empty;
@@ -51,29 +44,23 @@ public partial class TournamentViewModel : ObservableObject
     public TournamentViewModel(
         ITournamentRepository tournamentRepository,
         IPlayerRepository playerRepository,
-        BracketGenerationService bracketService)
+        BracketGenerationService bracketService,
+        TournamentStateService state)
     {
         _tournamentRepository = tournamentRepository;
         _playerRepository = playerRepository;
         _bracketService = bracketService;
+        State = state;
     }
 
     public async Task InitializeAsync()
     {
-        await LoadTournamentsAsync();
+        await State.LoadTournamentsAsync();
         await LoadEntrantCandidatesAsync();
     }
 
     [RelayCommand]
-    public async Task LoadTournamentsAsync()
-    {
-        var tournaments = await _tournamentRepository.GetAllAsync();
-        Tournaments.Clear();
-        foreach (var tournament in tournaments)
-        {
-            Tournaments.Add(tournament);
-        }
-    }
+    public async Task LoadTournamentsAsync() => await State.LoadTournamentsAsync();
 
     /// <summary>
     /// Reloads the tournament summary list, e.g. after a status change, and re-points
@@ -83,10 +70,10 @@ public partial class TournamentViewModel : ObservableObject
     private async Task RefreshTournamentSummaryAsync()
     {
         var selectedId = SelectedTournamentSummary?.Id;
-        await LoadTournamentsAsync();
+        await State.LoadTournamentsAsync();
         if (selectedId is not null)
         {
-            SelectedTournamentSummary = Tournaments.FirstOrDefault(t => t.Id == selectedId);
+            SelectedTournamentSummary = State.Tournaments.FirstOrDefault(t => t.Id == selectedId);
         }
     }
 
@@ -103,64 +90,19 @@ public partial class TournamentViewModel : ObservableObject
 
     partial void OnSelectedTournamentSummaryChanged(Tournament? value)
     {
-        _ = LoadActiveTournamentDetailAsync(value?.Id);
+        _ = SelectTournamentAsync(value?.Id);
     }
 
-    private async Task LoadActiveTournamentDetailAsync(Guid? tournamentId)
+    private async Task SelectTournamentAsync(Guid? tournamentId)
     {
-        if (tournamentId is null)
-        {
-            ActiveTournament = null;
-            Rounds = new ObservableCollection<RoundGroupViewModel>();
-            Tables = new ObservableCollection<Table>();
-            return;
-        }
-
         try
         {
-            ActiveTournament = await _tournamentRepository.GetByIdAsync(tournamentId.Value);
-            Tables = new ObservableCollection<Table>(ActiveTournament?.Tables ?? new List<Table>());
-            RebuildRounds();
+            await State.SelectTournamentAsync(tournamentId);
         }
         catch (Exception ex)
         {
             StatusMessage = $"Failed to load tournament: {ex.Message}";
         }
-    }
-
-    private void RebuildRounds()
-    {
-        var rounds = new ObservableCollection<RoundGroupViewModel>();
-        var bracket = ActiveTournament?.Bracket;
-        if (bracket is null || bracket.Nodes.Count == 0)
-        {
-            Rounds = rounds;
-            return;
-        }
-
-        var totalRounds = bracket.Nodes.Max(n => n.RoundNumber);
-        var groups = bracket.Nodes
-            .Where(n => n.MatchId is not null)
-            .GroupBy(n => n.RoundNumber)
-            .OrderBy(g => g.Key);
-
-        foreach (var group in groups)
-        {
-            var matchRows = group
-                .OrderBy(n => n.PositionInRound)
-                .Select(n => new MatchRowViewModel(n.Match!))
-                .ToList();
-
-            var title = group.Key == totalRounds
-                ? "Final"
-                : group.Key == totalRounds - 1
-                    ? "Semifinals"
-                    : $"Round {group.Key}";
-
-            rounds.Add(new RoundGroupViewModel(group.Key, title, matchRows));
-        }
-
-        Rounds = rounds;
     }
 
     [RelayCommand]
@@ -219,14 +161,14 @@ public partial class TournamentViewModel : ObservableObject
             candidate.IsSelected = false;
         }
 
-        await LoadTournamentsAsync();
-        SelectedTournamentSummary = Tournaments.FirstOrDefault(t => t.Id == tournament.Id);
+        await State.LoadTournamentsAsync();
+        SelectedTournamentSummary = State.Tournaments.FirstOrDefault(t => t.Id == tournament.Id);
     }
 
     [RelayCommand]
     private async Task ReportResultAsync(MatchRowViewModel? row)
     {
-        if (row is null || ActiveTournament is null)
+        if (row is null || State.ActiveTournament is null)
         {
             return;
         }
@@ -240,18 +182,18 @@ public partial class TournamentViewModel : ObservableObject
 
         try
         {
-            var newMatch = _bracketService.RecordMatchResult(ActiveTournament, match, match.Player1Score.Value, match.Player2Score.Value);
+            var newMatch = _bracketService.RecordMatchResult(State.ActiveTournament, match, match.Player1Score.Value, match.Player2Score.Value);
             if (newMatch is not null)
             {
                 _tournamentRepository.TrackNew(newMatch);
             }
             await _tournamentRepository.SaveChangesAsync();
-            RebuildRounds();
+            State.RebuildRounds();
             await RefreshTournamentSummaryAsync();
 
-            if (ActiveTournament.Status == TournamentStatus.Completed)
+            if (State.ActiveTournament.Status == TournamentStatus.Completed)
             {
-                var championName = ActiveTournament.Entrants
+                var championName = State.ActiveTournament.Entrants
                     .FirstOrDefault(e => e.Id == match.WinnerEntrantId)?.Player?.FullName ?? "Unknown player";
                 StatusMessage = $"{championName} wins the tournament!";
             }
@@ -269,14 +211,14 @@ public partial class TournamentViewModel : ObservableObject
     [RelayCommand]
     private async Task AddTableAsync()
     {
-        if (ActiveTournament is null)
+        if (State.ActiveTournament is null)
         {
             return;
         }
 
-        var table = new Table { TournamentId = ActiveTournament.Id, Label = $"Table {Tables.Count + 1}" };
-        ActiveTournament.Tables.Add(table);
-        Tables.Add(table);
+        var table = new Table { TournamentId = State.ActiveTournament.Id, Label = $"Table {State.Tables.Count + 1}" };
+        State.ActiveTournament.Tables.Add(table);
+        State.Tables.Add(table);
         _tournamentRepository.TrackNew(table);
         await _tournamentRepository.SaveChangesAsync();
     }
@@ -284,12 +226,13 @@ public partial class TournamentViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveAssignmentsAsync()
     {
-        if (ActiveTournament is null)
+        if (State.ActiveTournament is null)
         {
             return;
         }
 
         await _tournamentRepository.SaveChangesAsync();
+        State.NotifyTableAssignmentsChanged();
         StatusMessage = "Table assignments saved.";
     }
 }

@@ -99,7 +99,7 @@
                 <!-- Left: tournament list + create form -->
                 <StackPanel Grid.Column="0" Grid.Row="0">
                     <TextBlock Text="Tournaments" FontWeight="Bold" FontSize="14" Margin="0,0,0,6" />
-                    <ListBox ItemsSource="{Binding Tournaments}"
+                    <ListBox ItemsSource="{Binding State.Tournaments}"
                              SelectedItem="{Binding SelectedTournamentSummary}"
                              Height="130" Margin="0,0,0,10">
                         <ListBox.ItemTemplate>
@@ -150,7 +150,7 @@
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
                         <TextBlock Text="Tables:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Bold" />
-                        <ItemsControl ItemsSource="{Binding Tables}">
+                        <ItemsControl ItemsSource="{Binding State.Tables}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Orientation="Horizontal" />
@@ -166,10 +166,11 @@
                         </ItemsControl>
                         <Button Content="Add Table" Command="{Binding AddTableCommand}" Padding="6,2" Margin="6,0,0,0" />
                         <Button Content="Save Table Assignments" Command="{Binding SaveAssignmentsCommand}" Padding="6,2" Margin="6,0,0,0" />
+                        <Button x:Name="OpenDisplayWindowButton" Content="Open Display Window" Click="OpenDisplayWindowButton_OnClick" Padding="6,2" Margin="16,0,0,0" />
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding Rounds}">
+                        <ItemsControl ItemsSource="{Binding State.Rounds}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Orientation="Horizontal" />
@@ -203,7 +204,7 @@
                                                                          IsEnabled="{Binding IsReportable}" />
                                                             </Grid>
                                                             <ComboBox Margin="0,0,0,6"
-                                                                      ItemsSource="{Binding DataContext.Tables, ElementName=TournamentRoot}"
+                                                                      ItemsSource="{Binding DataContext.State.Tables, ElementName=TournamentRoot}"
                                                                       SelectedValuePath="Id"
                                                                       DisplayMemberPath="Label"
                                                                       SelectedValue="{Binding Match.TableId}"

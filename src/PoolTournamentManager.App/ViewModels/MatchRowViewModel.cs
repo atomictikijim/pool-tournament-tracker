@@ -12,6 +12,14 @@ public class MatchRowViewModel
         ? "BYE"
         : Match.Player2Entrant?.Player?.FullName ?? "TBD";
     public bool IsReportable => Match.Status == MatchStatus.Scheduled;
+    public bool IsComplete => Match.Status == MatchStatus.Completed;
+    public string? WinnerName => Match.WinnerEntrantId is null
+        ? null
+        : Match.WinnerEntrantId == Match.Player1EntrantId
+            ? Player1Name
+            : Player2Name;
+    public bool IsPlayer1Winner => Match.WinnerEntrantId is not null && Match.WinnerEntrantId == Match.Player1EntrantId;
+    public bool IsPlayer2Winner => Match.WinnerEntrantId is not null && Match.WinnerEntrantId == Match.Player2EntrantId;
 
     public MatchRowViewModel(Match match)
     {

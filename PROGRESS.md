@@ -5,18 +5,41 @@ the top of each section.
 
 ## Current status
 
-v0.2 complete: single-elimination tournaments run end-to-end (seed by rating,
-generate bracket with correct bye handling, enter scores, auto-advance
-winners, assign tables) against a local SQLite database, verified by
-actually running the app and playing a 6-entrant bracket to a champion.
+v0.3 complete: a read-only "Display" window (for a second monitor/projector)
+stays live-synced with the admin window - table assignments, bracket scores,
+and winner highlighting all update instantly with no polling or manual
+refresh, verified by actually running both windows side by side.
 
 ## Next steps
 
-- [ ] 0.3 — Display window + live sync: `ITournamentStateService`/DI
-      composition for a read-only second window (table assignments + live
-      bracket/scores), reused by every later format milestone.
+- [ ] 0.4 — Double elimination: losers-bracket wiring + grand-final/reset
+      rule, reusing 0.2/0.3's UI and live-sync spine with a format switch.
 
 ## Change log
+
+## v0.3 — 2026-07-06
+
+- `TournamentStateService` (DI singleton): the single shared source of truth
+  for the currently-open tournament, its bracket rounds, and its tables -
+  injected into both the admin window's `TournamentViewModel` and the new
+  `DisplayWindowViewModel`, so both windows are bound to the exact same
+  objects with no messaging/polling needed to stay in sync.
+- `DisplayWindow`: new read-only second window (dark/projector-style theme)
+  showing the tournament name/status, a live "Now Playing" table board, and
+  the full bracket with completed matches' winners highlighted in gold.
+  Structurally read-only - its ViewModel exposes no `ICommand` mutators, only
+  projections over the shared state.
+- "Open Display Window" button on the admin window's Tournament tab, opens/
+  activates a single display window instance via DI (`IServiceProvider`).
+- Verified manually end-to-end: created a tournament, opened the display
+  window, assigned a table and reported the final score entirely from the
+  admin window, and confirmed the display window reflected each change
+  immediately (status, "Now Playing" table board, gold winner highlight)
+  without any restart or manual refresh.
+- Two real bugs found and fixed during that verification (see NOTES.md):
+  the winner-highlight and "table open" fallback text never appeared because
+  local property values on the same XAML elements were silently overriding
+  the Style triggers meant to change them.
 
 ## v0.2 — 2026-07-06
 

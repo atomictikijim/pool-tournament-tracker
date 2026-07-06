@@ -3,6 +3,29 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-06 — DisplayWindow: local property values silently defeated Style triggers
+
+**Issue:** The read-only display window's winner-highlight (gold + bold) and "table open"
+fallback text never showed up, even though the triggers looked correct. Root cause: WPF
+dependency-property precedence - a value set directly on an element (`Foreground="White"`, or
+`<TextBlock.Text><MultiBinding .../></TextBlock.Text>`) is a **local value**, and local values
+always win over anything coming from a `Style`, including a `Style.Trigger`'s `Setter` for that
+same property. Setting `Foreground="White"` as a local attribute meant the trigger's
+`Foreground="Gold"` setter could never take effect no matter what condition it checked.
+
+**Fix:** For the winner highlight, moved the default `Foreground="White"` into the `Style`
+itself as a base `Setter` (not a local attribute), so the `DataTrigger`'s override can actually
+compete with it. For the "Now Playing" fallback text, abandoned the trigger approach entirely
+and instead computed the display string (`"Open"` vs `"{p1} vs {p2}"`) as a plain C# property
+on `TableAssignmentRow` - simpler and avoids the precedence trap altogether. Lesson for this
+codebase: prefer computing conditional display strings in the ViewModel over `DataTrigger`
+`Setter`s targeting a property that's also set as a local value anywhere on the same element.
+
+**Also:** the trigger was originally keyed off `IsComplete` (match finished) rather than which
+player actually won, which would have bolded Player1's line even when Player2 won. Added
+`IsPlayer1Winner`/`IsPlayer2Winner` to `MatchRowViewModel` so each line's trigger checks the
+right thing.
+
 ## 2026-07-06 — New Match entities created mid-tournament failed with "FOREIGN KEY constraint failed"
 
 **Issue:** Reporting a real (non-bye) match's score threw `DbUpdateException` / SQLite error 19
