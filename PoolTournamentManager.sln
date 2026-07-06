@@ -3,6 +3,22 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{65BC6AB4-4BBD-4405-93AA-C48C3DD91E57}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PoolTournamentManager.Core", "src\PoolTournamentManager.Core\PoolTournamentManager.Core.csproj", "{935E026A-95FC-43E9-9905-B9CF16C2DE22}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PoolTournamentManager.Data", "src\PoolTournamentManager.Data\PoolTournamentManager.Data.csproj", "{74955962-6659-4559-ACC8-57EAE493596E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PoolTournamentManager.App", "src\PoolTournamentManager.App\PoolTournamentManager.App.csproj", "{E267FEF3-5B93-442F-930A-209F4D206E69}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C63F9BF2-394D-43B2-9CEA-67EC00E507D7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PoolTournamentManager.Core.Tests", "tests\PoolTournamentManager.Core.Tests\PoolTournamentManager.Core.Tests.csproj", "{113D94D4-8421-4F67-976C-FE3763315772}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PoolTournamentManager.Data.Tests", "tests\PoolTournamentManager.Data.Tests\PoolTournamentManager.Data.Tests.csproj", "{6051F3CA-39E4-4DB6-BD24-0B59FB0CFBFA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PoolTournamentManager.App.Tests", "tests\PoolTournamentManager.App.Tests\PoolTournamentManager.App.Tests.csproj", "{86577273-C010-4AA2-9A7E-F65F7AB0C7AF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -10,5 +26,39 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{935E026A-95FC-43E9-9905-B9CF16C2DE22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{935E026A-95FC-43E9-9905-B9CF16C2DE22}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{935E026A-95FC-43E9-9905-B9CF16C2DE22}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{935E026A-95FC-43E9-9905-B9CF16C2DE22}.Release|Any CPU.Build.0 = Release|Any CPU
+		{74955962-6659-4559-ACC8-57EAE493596E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74955962-6659-4559-ACC8-57EAE493596E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74955962-6659-4559-ACC8-57EAE493596E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74955962-6659-4559-ACC8-57EAE493596E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E267FEF3-5B93-442F-930A-209F4D206E69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E267FEF3-5B93-442F-930A-209F4D206E69}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E267FEF3-5B93-442F-930A-209F4D206E69}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E267FEF3-5B93-442F-930A-209F4D206E69}.Release|Any CPU.Build.0 = Release|Any CPU
+		{113D94D4-8421-4F67-976C-FE3763315772}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{113D94D4-8421-4F67-976C-FE3763315772}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{113D94D4-8421-4F67-976C-FE3763315772}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{113D94D4-8421-4F67-976C-FE3763315772}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6051F3CA-39E4-4DB6-BD24-0B59FB0CFBFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6051F3CA-39E4-4DB6-BD24-0B59FB0CFBFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6051F3CA-39E4-4DB6-BD24-0B59FB0CFBFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6051F3CA-39E4-4DB6-BD24-0B59FB0CFBFA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86577273-C010-4AA2-9A7E-F65F7AB0C7AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86577273-C010-4AA2-9A7E-F65F7AB0C7AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86577273-C010-4AA2-9A7E-F65F7AB0C7AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86577273-C010-4AA2-9A7E-F65F7AB0C7AF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{935E026A-95FC-43E9-9905-B9CF16C2DE22} = {65BC6AB4-4BBD-4405-93AA-C48C3DD91E57}
+		{74955962-6659-4559-ACC8-57EAE493596E} = {65BC6AB4-4BBD-4405-93AA-C48C3DD91E57}
+		{E267FEF3-5B93-442F-930A-209F4D206E69} = {65BC6AB4-4BBD-4405-93AA-C48C3DD91E57}
+		{113D94D4-8421-4F67-976C-FE3763315772} = {C63F9BF2-394D-43B2-9CEA-67EC00E507D7}
+		{6051F3CA-39E4-4DB6-BD24-0B59FB0CFBFA} = {C63F9BF2-394D-43B2-9CEA-67EC00E507D7}
+		{86577273-C010-4AA2-9A7E-F65F7AB0C7AF} = {C63F9BF2-394D-43B2-9CEA-67EC00E507D7}
 	EndGlobalSection
 EndGlobal
