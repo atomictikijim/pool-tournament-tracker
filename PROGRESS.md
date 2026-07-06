@@ -5,15 +5,43 @@ the top of each section.
 
 ## Current status
 
-v0.4 complete: double-elimination tournaments (losers bracket + Grand Final +
-single bracket-reset rematch) are fully playable end-to-end, reusing 0.2/0.3's
-UI, live-sync, and Display window with no separate code paths for rendering.
+v0.4.1 complete: the app has a real visual identity - a swamp/gator-derived
+color scheme applied consistently across both windows, a taskbar/title-bar
+icon, and a header logo - that automatically follows (and live-tracks) the
+Windows light/dark setting.
 
 ## Next steps
 
 - [ ] 0.5 — Round robin: circle-method scheduler, standings + tiebreaks.
 
 ## Change log
+
+## v0.4.1 — 2026-07-06 (UI)
+
+- Color scheme derived from `images/SwampThingFill_square_11720.png` (deep
+  swamp greens, chartreuse highlights) and `images/You Chalkin To Me.png`
+  (the gator's teal polo shirt) - sampled to exact hex values rather than
+  eyeballed. Two palettes (`Themes/Palette.Light.xaml` /
+  `Palette.Dark.xaml`), same brush keys in both, each themed independently
+  for contrast (e.g. the chartreuse accent becomes a deeper forest green on
+  a light background).
+- `ThemeService`: reads the Windows "choose your color mode" setting
+  (`HKCU...Themes\Personalize\AppsUseLightTheme`) at startup and live-tracks
+  it via `SystemEvents.UserPreferenceChanged`, swapping the active palette
+  dictionary with no app restart needed - verified by flipping the Windows
+  setting while the app was running and watching it repaint immediately.
+- `Themes/Generic.xaml`: shared themed styles for every control type used
+  by the app. Button, TabItem, and ComboBox needed full `ControlTemplate`
+  overrides, not just Setters - their default chrome ignores `Background`
+  entirely (see NOTES.md).
+- App icon (`Assets/AppIcon.ico`, multi-resolution, transparent background)
+  and header logo (`Assets/Logo.png`, transparency-keyed) generated from
+  "You Chalkin To Me.png" - shows in the taskbar, title bar, and both
+  windows' headers.
+- Verified manually: light and dark rendering of both windows, a live
+  Windows-setting toggle in each direction, taskbar/title-bar icon
+  rendering, and that the re-templated ComboBox still opens and selects
+  correctly (not just looks right).
 
 ## v0.4 — 2026-07-06
 

@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+    Dark palette, drawn from the swamp-grass texture (deep greens, chartreuse highlights) and the
+    gator mascot's teal polo shirt. Every key here also exists in Palette.Light.xaml with the same
+    name - ThemeService swaps this whole dictionary in or out to match the Windows light/dark
+    setting, so anything bound with DynamicResource repaints instantly with no restart needed.
+    -->
+
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0B2A1A" />
+    <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="#123A24" />
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#17442C" />
+    <SolidColorBrush x:Key="AppBorderBrush" Color="#2F5B3C" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#EAF3E4" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#9FB39A" />
+
+    <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#8FCB3E" />
+    <SolidColorBrush x:Key="AccentPrimaryTextBrush" Color="#10230F" />
+    <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#3E8CA0" />
+
+    <SolidColorBrush x:Key="ControlBackgroundBrush" Color="#16371F" />
+    <SolidColorBrush x:Key="SelectionBackgroundBrush" Color="#2A5A38" />
+
+</ResourceDictionary>

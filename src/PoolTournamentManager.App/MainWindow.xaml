@@ -5,8 +5,20 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Pool Tournament Manager" Height="700" Width="1200"
+        Icon="Assets/Logo.png"
         Loaded="MainWindow_OnLoaded">
-    <TabControl Margin="10">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="14,10,14,4">
+            <Image Source="Assets/Logo.png" Width="36" Height="36" Margin="0,0,10,0" />
+            <TextBlock Text="Pool Tournament Manager" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+        </StackPanel>
+
+        <TabControl Grid.Row="1" Margin="10">
         <TabItem Header="Players">
             <Grid Margin="10">
                 <Grid.ColumnDefinitions>
@@ -106,7 +118,7 @@
                             <DataTemplate>
                                 <StackPanel>
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding Status}" FontSize="11" Foreground="Gray" />
+                                    <TextBlock Text="{Binding Status}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -158,7 +170,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="Gray" BorderThickness="1" Padding="6,2" Margin="0,0,6,0">
+                                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" Padding="6,2" Margin="0,0,6,0">
                                         <TextBlock Text="{Binding Label}" />
                                     </Border>
                                 </DataTemplate>
@@ -183,7 +195,7 @@
                                         <ItemsControl ItemsSource="{Binding Matches}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border BorderBrush="LightGray" BorderThickness="1" Padding="8" Margin="0,0,0,10">
+                                                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" Padding="8" Margin="0,0,0,10">
                                                         <StackPanel>
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions>
@@ -231,5 +243,6 @@
                            VerticalAlignment="Center" Margin="0,4,0,0" />
             </Grid>
         </TabItem>
-    </TabControl>
+        </TabControl>
+    </Grid>
 </Window>

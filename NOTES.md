@@ -3,6 +3,40 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-06 — Button/TabItem/ComboBox default chrome ignores the Background property
+
+**Issue:** Setting `Background`/`Foreground`/`BorderBrush` via a `Style` `Setter` worked fine for
+`TextBox`, `ListBox`, and `DataGrid`, but had no visible effect on `Button`, `TabItem`, or
+`ComboBox` - they kept rendering with plain system-gray chrome regardless of what the Setters
+said. Root cause: those three controls' default templates paint their main surface using
+classic-theme chrome elements (button/tab/combo "chrome" borders) that read from system theme
+colors, not from the control's own `Background` property. A `Setter` only ever changes the
+*value* of a dependency property - it can't make a template read a property it was never bound to.
+
+**Fix:** Gave all three a full `ControlTemplate` override in `Themes/Generic.xaml` that explicitly
+binds `Border.Background`/`BorderBrush` to `{TemplateBinding Background}`/`BorderBrush`. Lesson
+for this codebase: when a themed Setter has no visible effect on a standard WPF control, suspect
+the default template is ignoring that property rather than a resource-resolution bug.
+
+## 2026-07-06 — Retemplated ComboBox: nested ToggleButton read a property that was never actually set
+
+**Issue:** After adding the ComboBox `ControlTemplate` above, it still rendered as a flat
+system-gray box instead of the theme's control background - a different bug from the one above,
+in the same area. The inner `ToggleButton`'s own nested template read
+`{Binding Background, RelativeSource={RelativeSource TemplatedParent}}` (i.e. "whatever
+`Background` is set to on the `ToggleButton` element"), but the outer `ComboBox` template's
+`<ToggleButton>` element never actually had a `Background`/`BorderBrush`/`BorderThickness`
+*attribute* set on it - so that property was reading its own unset default the whole time,
+regardless of what the outer `ComboBox.Background` resolved to.
+
+**Fix:** Explicitly set `Background="{TemplateBinding Background}"` (and `BorderBrush`/
+`BorderThickness`) directly on the `<ToggleButton>` element in the *outer* template - only then
+does the *inner* template's own `{TemplateBinding Background}` have something real to read.
+General lesson: when nesting a `ControlTemplate` inside another control that itself lives inside
+a template, `TemplateBinding`/`RelativeSource TemplatedParent` on the inner template refers to the
+immediate control (here, the `ToggleButton`), not the outer templated control (the `ComboBox`) -
+a value has to be explicitly relayed onto that immediate control first, one hop at a time.
+
 ## 2026-07-06 — Double elimination: a losers-bracket "receiving" round mixes two different propagation paths into one node
 
 **Issue:** `PropagateWinner`'s existing slot-assignment rule (`PositionInRound % 2 == 0` → slot 1,

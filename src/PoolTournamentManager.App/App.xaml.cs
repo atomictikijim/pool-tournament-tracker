@@ -13,6 +13,7 @@ public partial class App : Application
 {
     private ServiceProvider? _serviceProvider;
     private IServiceScope? _appScope;
+    private Services.ThemeService? _themeService;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -29,6 +30,9 @@ public partial class App : Application
 
         base.OnStartup(e);
 
+        _themeService = _appScope.ServiceProvider.GetRequiredService<Services.ThemeService>();
+        _themeService.Start();
+
         var mainWindow = _appScope.ServiceProvider.GetRequiredService<MainWindow>();
         mainWindow.Show();
     }
@@ -44,6 +48,7 @@ public partial class App : Application
         services.AddScoped<ITournamentRepository, TournamentRepository>();
         services.AddSingleton<BracketGenerationService>();
         services.AddSingleton<Services.TournamentStateService>();
+        services.AddSingleton<Services.ThemeService>();
         services.AddTransient<ViewModels.TournamentViewModel>();
         services.AddTransient<ViewModels.MainWindowViewModel>();
         services.AddTransient<ViewModels.DisplayWindowViewModel>();
@@ -105,6 +110,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _themeService?.Stop();
         _appScope?.Dispose();
         _serviceProvider?.Dispose();
         base.OnExit(e);
