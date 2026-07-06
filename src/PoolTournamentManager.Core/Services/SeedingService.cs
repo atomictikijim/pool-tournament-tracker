@@ -40,7 +40,6 @@ public static class SeedingService
             RatingSystem.Fargo => player.FargoRate,
             RatingSystem.ApaEightBall => player.ApaEightBallSkill,
             RatingSystem.ApaNineBall => player.ApaNineBallSkill,
-            RatingSystem.Usapl => TryParseInt(player.UsaplRating),
             RatingSystem.Tap => TryParseInt(player.TapRating),
             _ => null
         };

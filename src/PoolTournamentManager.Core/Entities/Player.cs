@@ -9,7 +9,6 @@ public class Player
     public string? Phone { get; set; }
 
     public int? FargoRate { get; set; }
-    public string? UsaplRating { get; set; }
     public string? TapRating { get; set; }
     public int? ApaEightBallSkill { get; set; }
     public int? ApaNineBallSkill { get; set; }

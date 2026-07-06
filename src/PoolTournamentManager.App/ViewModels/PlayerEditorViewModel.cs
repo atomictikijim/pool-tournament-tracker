@@ -21,9 +21,6 @@ public partial class PlayerEditorViewModel : ObservableObject
     private int? _fargoRate;
 
     [ObservableProperty]
-    private string? _usaplRating;
-
-    [ObservableProperty]
     private string? _tapRating;
 
     [ObservableProperty]
@@ -42,7 +39,6 @@ public partial class PlayerEditorViewModel : ObservableObject
         Email = player.Email;
         Phone = player.Phone;
         FargoRate = player.FargoRate;
-        UsaplRating = player.UsaplRating;
         TapRating = player.TapRating;
         ApaEightBallSkill = player.ApaEightBallSkill;
         ApaNineBallSkill = player.ApaNineBallSkill;
@@ -56,7 +52,6 @@ public partial class PlayerEditorViewModel : ObservableObject
         Email = null;
         Phone = null;
         FargoRate = null;
-        UsaplRating = null;
         TapRating = null;
         ApaEightBallSkill = null;
         ApaNineBallSkill = null;
@@ -70,7 +65,6 @@ public partial class PlayerEditorViewModel : ObservableObject
         player.Email = Email;
         player.Phone = Phone;
         player.FargoRate = FargoRate;
-        player.UsaplRating = UsaplRating;
         player.TapRating = TapRating;
         player.ApaEightBallSkill = ApaEightBallSkill;
         player.ApaNineBallSkill = ApaNineBallSkill;

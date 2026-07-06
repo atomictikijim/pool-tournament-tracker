@@ -49,7 +49,7 @@ public class PlayerValidatorTests
 
         var errors = PlayerValidator.Validate(player);
 
-        Assert.Contains(errors, e => e.Contains("Fargo Rate"));
+        Assert.Contains(errors, e => e.Contains("Fargo Rating"));
     }
 
     [Theory]

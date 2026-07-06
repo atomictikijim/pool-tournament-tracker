@@ -18,7 +18,7 @@ public static class PlayerValidator
             errors.Add("Last name is required.");
 
         if (player.FargoRate is < 0)
-            errors.Add("Fargo Rate cannot be negative.");
+            errors.Add("Fargo Rating cannot be negative.");
 
         if (player.ApaEightBallSkill is int eightBall && (eightBall < MinApaSkill || eightBall > MaxApaSkill))
             errors.Add($"APA 8-Ball skill level must be between {MinApaSkill} and {MaxApaSkill}.");

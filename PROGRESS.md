@@ -5,10 +5,8 @@ the top of each section.
 
 ## Current status
 
-v0.6 complete: round robin is a selectable tournament format, with a
-circle-method schedule, live standings (wins/losses/point differential/
-games-won %), and a head-to-head → point-differential → games-won %
-tiebreak cascade.
+v0.6.1 complete: removed the redundant "USAPL Rating" player field (it
+duplicated Fargo Rate) and relabeled "Fargo Rate" to "Fargo Rating".
 
 ## Next steps
 
@@ -16,6 +14,22 @@ tiebreak cascade.
   live seat/queue view (first non-bracket format).
 
 ## Change log
+
+## v0.6.1 — 2026-07-06 (UI)
+
+- Removed `Player.UsaplRating` (and `RatingSystem.Usapl`) - flagged as a
+  duplicate of Fargo Rate, so kept only one. Removed the "USAPL" roster
+  grid column and "USAPL Rating" detail-panel field; "Seed by rating" no
+  longer offers USAPL as a choice. `RemoveUsaplRating` migration drops the
+  column - verified against the real dev database (8 existing players
+  loaded cleanly with no errors after the migration ran).
+- Relabeled "Fargo Rate" to "Fargo Rating" everywhere it's user-facing
+  (detail panel and the validator's negative-rating error message); the
+  underlying `Player.FargoRate` property/column name is unchanged.
+- Verified manually: ran the app against the existing dev database,
+  confirmed the roster grid and detail panel no longer show USAPL, the
+  Fargo field now reads "Fargo Rating", and all 8 pre-existing players
+  still loaded correctly.
 
 ## v0.6 — 2026-07-06
 
