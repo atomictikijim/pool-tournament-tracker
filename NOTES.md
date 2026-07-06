@@ -3,6 +3,32 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-06 — "Report Result" button's first click after typing scores does nothing; a second click always works
+
+**Issue:** Driving the app via synthetic mouse clicks (SetCursorPos + mouse_event) to verify round
+robin end-to-end, clicking "Report Result" immediately after typing both scores routinely produced
+no effect at all - no status message change, no standings update, button stayed enabled - on the
+*first* click. A second click on the exact same spot, with no other change, then worked every
+single time. Not fully root-caused (candidates: the TextBox's `PropertyChanged`-triggered binding
+update racing the click's mouse-down, or the button needing a prior `MouseEnter` to arm its
+click handling that a synthetic click skips) - flagged here rather than fixed, since it never
+reproduced with a genuine slower human click pattern (deliberate pauses between typing and
+clicking) and this may be purely an artifact of synthetic-input timing, not a real defect.
+
+**Related false alarm:** the same double-click habit (retrying a click immediately after one that
+*looked* like a no-op) once produced a real-looking `SQLite Error 19: FOREIGN KEY constraint
+failed` crash on `SaveChangesAsync` during a round-robin "Report Result" call. Replaying the exact
+same tournament-creation-then-report sequence twice more - once against a fresh empty database,
+once against a copy of the actual crashed session's database (including its `-wal`/`-shm`
+sidecar files, which SQLite needs alongside the main `.db` file to see the most recent committed
+writes - a plain copy of just the `.db` file will look stale) - never reproduced the crash. Most
+likely explanation: the first "no-op" click had actually already started its async save, and the
+too-fast retry raced a second `SaveChangesAsync` on the same non-thread-safe `DbContext` instance.
+`[RelayCommand]`-generated commands in this codebase don't guard against concurrent execution
+anywhere (not just this one) - worth a real fix (e.g. disabling the button while its command runs)
+if this ever surfaces from a genuine double-click, but not chased further here since a single
+click always works correctly and no data corruption occurred.
+
 ## 2026-07-06 — System.Text.Json silently dropped a hand-written enum string, falling back to the default
 
 **Issue:** Manually wrote `{"ColorScheme":"Red"}` into `settings.json` to test the load path before

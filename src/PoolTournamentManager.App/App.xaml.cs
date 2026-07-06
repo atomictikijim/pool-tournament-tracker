@@ -47,6 +47,7 @@ public partial class App : Application
         services.AddScoped<IPlayerRepository, PlayerRepository>();
         services.AddScoped<ITournamentRepository, TournamentRepository>();
         services.AddSingleton<BracketGenerationService>();
+        services.AddSingleton<RoundRobinSchedulingService>();
         services.AddSingleton<Services.TournamentStateService>();
         services.AddSingleton<Services.ThemeService>();
         services.AddTransient<ViewModels.TournamentViewModel>();

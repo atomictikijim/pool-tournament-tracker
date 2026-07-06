@@ -4,6 +4,7 @@ using PoolTournamentManager.App.ViewModels;
 using PoolTournamentManager.Core.Entities;
 using PoolTournamentManager.Core.Enums;
 using PoolTournamentManager.Core.Interfaces;
+using PoolTournamentManager.Core.Services;
 
 namespace PoolTournamentManager.App.Services;
 
@@ -29,6 +30,9 @@ public partial class TournamentStateService : ObservableObject
     [ObservableProperty]
     private ObservableCollection<Table> _tables = new();
 
+    [ObservableProperty]
+    private ObservableCollection<StandingsRowViewModel> _standings = new();
+
     public TournamentStateService(ITournamentRepository tournamentRepository)
     {
         _tournamentRepository = tournamentRepository;
@@ -51,6 +55,7 @@ public partial class TournamentStateService : ObservableObject
             ActiveTournament = null;
             Rounds = new ObservableCollection<RoundGroupViewModel>();
             Tables = new ObservableCollection<Table>();
+            Standings = new ObservableCollection<StandingsRowViewModel>();
             return;
         }
 
@@ -61,8 +66,24 @@ public partial class TournamentStateService : ObservableObject
 
     public void RebuildRounds()
     {
+        var tournament = ActiveTournament;
+        if (tournament is null)
+        {
+            Rounds = new ObservableCollection<RoundGroupViewModel>();
+            Standings = new ObservableCollection<StandingsRowViewModel>();
+            return;
+        }
+
+        if (tournament.Format == TournamentFormat.RoundRobin)
+        {
+            RebuildRoundRobinRounds(tournament);
+            return;
+        }
+
+        Standings = new ObservableCollection<StandingsRowViewModel>();
+
         var rounds = new ObservableCollection<RoundGroupViewModel>();
-        var bracket = ActiveTournament?.Bracket;
+        var bracket = tournament.Bracket;
         if (bracket is null || bracket.Nodes.Count == 0)
         {
             Rounds = rounds;
@@ -88,6 +109,26 @@ public partial class TournamentStateService : ObservableObject
         }
 
         Rounds = rounds;
+    }
+
+    private void RebuildRoundRobinRounds(Tournament tournament)
+    {
+        var rounds = new ObservableCollection<RoundGroupViewModel>();
+        var groups = tournament.Matches
+            .Where(m => m.RoundNumber is not null)
+            .GroupBy(m => m.RoundNumber!.Value)
+            .OrderBy(g => g.Key);
+
+        foreach (var group in groups)
+        {
+            var matchRows = group.Select(m => new MatchRowViewModel(m)).ToList();
+            rounds.Add(new RoundGroupViewModel(group.Key, $"Round {group.Key}", matchRows));
+        }
+
+        Rounds = rounds;
+        Standings = new ObservableCollection<StandingsRowViewModel>(
+            RoundRobinStandingsService.ComputeStandings(tournament)
+                .Select((row, index) => new StandingsRowViewModel(index + 1, row)));
     }
 
     private static string BuildRoundTitle(BracketDetail bracket, BracketSide side, int roundNumber, bool isReset)

@@ -14,6 +14,7 @@ public partial class TournamentViewModel : ObservableObject
     private readonly ITournamentRepository _tournamentRepository;
     private readonly IPlayerRepository _playerRepository;
     private readonly BracketGenerationService _bracketService;
+    private readonly RoundRobinSchedulingService _roundRobinService;
 
     public TournamentStateService State { get; }
 
@@ -45,11 +46,13 @@ public partial class TournamentViewModel : ObservableObject
         ITournamentRepository tournamentRepository,
         IPlayerRepository playerRepository,
         BracketGenerationService bracketService,
+        RoundRobinSchedulingService roundRobinService,
         TournamentStateService state)
     {
         _tournamentRepository = tournamentRepository;
         _playerRepository = playerRepository;
         _bracketService = bracketService;
+        _roundRobinService = roundRobinService;
         State = state;
     }
 
@@ -114,9 +117,11 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
-        if (NewTournamentFormat != TournamentFormat.SingleElimination && NewTournamentFormat != TournamentFormat.DoubleElimination)
+        if (NewTournamentFormat != TournamentFormat.SingleElimination &&
+            NewTournamentFormat != TournamentFormat.DoubleElimination &&
+            NewTournamentFormat != TournamentFormat.RoundRobin)
         {
-            StatusMessage = "Only single- and double-elimination are supported in this version.";
+            StatusMessage = "Only single-elimination, double-elimination, and round robin are supported in this version.";
             return;
         }
 
@@ -158,6 +163,10 @@ public partial class TournamentViewModel : ObservableObject
         {
             _bracketService.GenerateDoubleElimination(tournament);
         }
+        else if (NewTournamentFormat == TournamentFormat.RoundRobin)
+        {
+            _roundRobinService.GenerateSchedule(tournament);
+        }
         else
         {
             _bracketService.GenerateSingleElimination(tournament);
@@ -187,6 +196,7 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
+        var tournament = State.ActiveTournament;
         var match = row.Match;
         if (match.Player1Score is null || match.Player2Score is null)
         {
@@ -196,19 +206,26 @@ public partial class TournamentViewModel : ObservableObject
 
         try
         {
-            var newMatches = _bracketService.RecordMatchResult(State.ActiveTournament, match, match.Player1Score.Value, match.Player2Score.Value);
+            var newMatches = _bracketService.RecordMatchResult(tournament, match, match.Player1Score.Value, match.Player2Score.Value);
             foreach (var newMatch in newMatches)
             {
                 _tournamentRepository.TrackNew(newMatch);
             }
+
+            if (tournament.Format == TournamentFormat.RoundRobin && tournament.Matches.All(m => m.Status == MatchStatus.Completed))
+            {
+                tournament.Status = TournamentStatus.Completed;
+            }
+
             await _tournamentRepository.SaveChangesAsync();
             State.RebuildRounds();
             await RefreshTournamentSummaryAsync();
 
-            if (State.ActiveTournament.Status == TournamentStatus.Completed)
+            if (tournament.Status == TournamentStatus.Completed)
             {
-                var championName = State.ActiveTournament.Entrants
-                    .FirstOrDefault(e => e.Id == match.WinnerEntrantId)?.Player?.FullName ?? "Unknown player";
+                var championName = tournament.Format == TournamentFormat.RoundRobin
+                    ? RoundRobinStandingsService.ComputeStandings(tournament).FirstOrDefault()?.Entrant.Player?.FullName ?? "Unknown player"
+                    : tournament.Entrants.FirstOrDefault(e => e.Id == match.WinnerEntrantId)?.Player?.FullName ?? "Unknown player";
                 StatusMessage = $"{championName} wins the tournament!";
             }
             else

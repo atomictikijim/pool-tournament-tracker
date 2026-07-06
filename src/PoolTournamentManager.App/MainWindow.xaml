@@ -161,6 +161,7 @@
                 <Grid Grid.Column="2" Grid.Row="0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -185,7 +186,28 @@
                         <Button x:Name="OpenDisplayWindowButton" Content="Open Display Window" Click="OpenDisplayWindowButton_OnClick" Padding="6,2" Margin="16,0,0,0" />
                     </StackPanel>
 
-                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <Border Grid.Row="1" Margin="0,0,0,10" Padding="8"
+                            Background="{DynamicResource CardBackgroundBrush}"
+                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                            Visibility="{Binding State.Standings.Count, Converter={StaticResource CountToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock Text="Standings" FontWeight="Bold" FontSize="13" Margin="0,0,0,6" />
+                            <DataGrid ItemsSource="{Binding State.Standings}"
+                                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                      HeadersVisibility="Column" MaxHeight="220">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="#" Binding="{Binding Rank}" Width="30" />
+                                    <DataGridTextColumn Header="Player" Binding="{Binding PlayerName}" Width="160" />
+                                    <DataGridTextColumn Header="W" Binding="{Binding Wins}" Width="30" />
+                                    <DataGridTextColumn Header="L" Binding="{Binding Losses}" Width="30" />
+                                    <DataGridTextColumn Header="Diff" Binding="{Binding PointDifferential}" Width="45" />
+                                    <DataGridTextColumn Header="Games %" Binding="{Binding GamesWonPercentageDisplay}" Width="70" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding State.Rounds}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>

@@ -9,6 +9,10 @@ public class Match
     public Guid? BracketNodeId { get; set; }
     public Guid? TableId { get; set; }
 
+    /// <summary>Round-robin round number this match belongs to. Unused by bracket formats, which
+    /// track round via BracketNode.RoundNumber instead.</summary>
+    public int? RoundNumber { get; set; }
+
     public Guid Player1EntrantId { get; set; }
     public Guid? Player2EntrantId { get; set; }
     public int? Player1Score { get; set; }

@@ -5,15 +5,62 @@ the top of each section.
 
 ## Current status
 
-v0.5 complete: the app has 4 selectable color schemes (Green/Red/Blue/Grey,
-Green the out-of-box default), each with its own light+dark variant, picked
-from a new Settings tab and persisted across restarts.
+v0.6 complete: round robin is a selectable tournament format, with a
+circle-method schedule, live standings (wins/losses/point differential/
+games-won %), and a head-to-head → point-differential → games-won %
+tiebreak cascade.
 
 ## Next steps
 
-- [ ] 0.6 — Round robin: circle-method scheduler, standings + tiebreaks.
+- [ ] 0.7 — Ring game: seat/queue/ledger state machine, buy-in/out UI,
+  live seat/queue view (first non-bracket format).
 
 ## Change log
+
+## v0.6 — 2026-07-06
+
+- `RoundRobinSchedulingService.GenerateSchedule`: circle-method scheduler -
+  fixes one entrant, rotates the rest each round, padding with a ghost bye
+  slot for odd entrant counts (no Match is created for whoever draws the
+  bye that round). Produces N rounds for odd N and N-1 for even N, with
+  every entrant playing every other entrant exactly once. `Match` gained a
+  `RoundNumber` column (`AddRoundRobinRoundNumber` migration) since round
+  robin has no bracket/`BracketNode` to hang a round number off of.
+- `RoundRobinStandingsService.ComputeStandings`: ranks entrants by wins
+  descending; entrants still tied on wins are ordered by head-to-head
+  record within just that tied group, then (still tied) by point
+  differential, then (still tied) by games-won % - each rule only breaks
+  ties the previous rule couldn't. Computed on demand from completed
+  `Match` rows every time, never persisted separately.
+- Tournament creation now supports Round Robin as a format choice (no
+  entrant-count restriction, unlike double elimination's power-of-2
+  requirement). Reporting a result now also completes the tournament and
+  announces a champion (the #1 standings row) once every round-robin match
+  is done, alongside the existing bracket-final-match completion path.
+- New "Standings" panel next to the bracket/round view, visible only for
+  round-robin tournaments (rank/wins/losses/diff/games % columns), live-
+  updating on every reported result.
+- 16 new `Core.Tests` (53 total): schedule round-count and every-pair-once
+  checks for both odd and even entrant counts, no-repeat-within-a-round
+  check, and standings tests for the wins-ranking, incomplete-match
+  exclusion, head-to-head-before-point-differential, and point-
+  differential-fallback-on-a-head-to-head-cycle cases.
+- Verified manually end-to-end: created a 4-entrant round robin, confirmed
+  the 3-round schedule (each player appearing exactly once per round),
+  reported all 6 results through the UI, watched the Standings panel
+  update live after each one (including a real point-differential-over-
+  games-% tiebreak resolving live between two 2-0 entrants), and confirmed
+  the tournament completed with the correct champion announced.
+- Bug caught during that verification (see NOTES.md): the in-app "Report
+  Result" button's *first* click after typing scores routinely did nothing
+  (no error, no state change) - a second click always then worked. Root
+  cause not identified; documented as a UI quirk to watch for, not
+  fixed, since retrying resolves it and no data corruption was observed.
+  A separate false alarm during the same session (an apparent FOREIGN KEY
+  crash) turned out to be caused by clicking that same button twice in
+  quick succession while automating the UI, not a real defect - confirmed
+  by replaying the exact same sequence twice against copies of the real
+  database with no failure.
 
 ## v0.5 — 2026-07-06
 
