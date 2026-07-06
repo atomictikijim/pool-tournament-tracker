@@ -131,7 +131,7 @@ public partial class TournamentStateService : ObservableObject
                 .ToList();
 
             var title = BuildRoundTitle(bracket, group.Key.Side, group.Key.RoundNumber, group.Any(n => n.IsGrandFinalReset));
-            rounds.Add(new RoundGroupViewModel(group.Key.RoundNumber, title, matchRows));
+            rounds.Add(new RoundGroupViewModel(group.Key.RoundNumber, title, matchRows, group.Key.Side));
         }
 
         Rounds = rounds;

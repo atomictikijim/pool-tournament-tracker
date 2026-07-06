@@ -21,6 +21,10 @@ public class MatchRowViewModel
     public bool IsPlayer1Winner => Match.WinnerEntrantId is not null && Match.WinnerEntrantId == Match.Player1EntrantId;
     public bool IsPlayer2Winner => Match.WinnerEntrantId is not null && Match.WinnerEntrantId == Match.Player2EntrantId;
 
+    /// <summary>Per-line projections used by the read-only bracket-tree display.</summary>
+    public PlayerLineViewModel Player1Line => new(Player1Name, Match.Player1Score, IsPlayer1Winner);
+    public PlayerLineViewModel Player2Line => new(Player2Name, Match.Player2Score, IsPlayer2Winner);
+
     public MatchRowViewModel(Match match)
     {
         Match = match;

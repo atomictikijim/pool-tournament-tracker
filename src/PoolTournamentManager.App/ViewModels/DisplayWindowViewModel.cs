@@ -18,6 +18,7 @@ public class DisplayWindowViewModel : ObservableObject
     {
         State = state;
         State.PropertyChanged += OnStateChanged;
+        RebuildBracket();
     }
 
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
@@ -27,7 +28,29 @@ public class DisplayWindowViewModel : ObservableObject
             or nameof(TournamentStateService.Rounds))
         {
             OnPropertyChanged(nameof(TableAssignments));
+            RebuildBracket();
         }
+    }
+
+    /// <summary>The positioned bracket tree for elimination formats (empty otherwise).</summary>
+    public BracketLayout Bracket { get; private set; } = new();
+
+    /// <summary>True when the active tournament is a single/double-elimination bracket.</summary>
+    public bool IsEliminationBracket { get; private set; }
+
+    /// <summary>True for round-robin, which falls back to the simple round-column list.</summary>
+    public bool ShowFlatRounds { get; private set; }
+
+    private void RebuildBracket()
+    {
+        var format = State.ActiveTournament?.Format;
+        IsEliminationBracket = format is TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination;
+        ShowFlatRounds = format is TournamentFormat.RoundRobin;
+        Bracket = IsEliminationBracket ? BracketLayoutBuilder.Build(State.Rounds) : new BracketLayout();
+
+        OnPropertyChanged(nameof(Bracket));
+        OnPropertyChanged(nameof(IsEliminationBracket));
+        OnPropertyChanged(nameof(ShowFlatRounds));
     }
 
     public IEnumerable<TableAssignmentRow> TableAssignments =>

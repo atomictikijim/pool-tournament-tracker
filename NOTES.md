@@ -3,6 +3,31 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-06 — Verified a WPF window's look by rendering it to PNG from a tiny harness, not by driving the live app
+
+**Issue:** The v0.8 bracket-tree Display redesign is a purely visual feature - the only way to
+know it's right is to *see* it. Driving the real app to get there (create tournament, add
+players, generate bracket, select it, open the Display window) means many coordinate clicks
+through the exact surface this app is hostile to (UI Automation can't see tab-page content;
+synthetic "Report Result" clicks no-op/race - both documented below), and the app also starts
+with an empty DB and no auto-selected tournament.
+
+**Fix:** Two throwaway console projects in the scratchpad (not added to the solution):
+(1) a **seeder** that `ProjectReference`s Core+Data and builds a real 8-player single- and
+double-elimination tournament through the actual services (`SeedingService`,
+`BracketGenerationService`, `TournamentRepository`) into a scratch copy of the app's SQLite DB,
+playing out all but the final matches; (2) a **render harness** (`WinExe`, `UseWPF`,
+`ProjectReference`s the App) that creates its own `Application`, merges the App assembly's theme
+dictionaries via `pack://application:,,,/PoolTournamentManager.App;component/Themes/...`, defines
+the same converter resource keys App.xaml does, loads the seeded tournament through a real
+`TournamentStateService`, constructs the **real** `DisplayWindow` + `DisplayWindowViewModel`
+(+ a `new ThemeService()`), and on `ContentRendered` captures the window with
+`RenderTargetBitmap` to a PNG, then `Shutdown()`s. This renders the true XAML + palette with zero
+clicks and is deterministic. General lesson for this codebase: to verify how a WPF window *looks*,
+render it to a bitmap from a harness that reuses the real window/VM/themes - it sidesteps every
+UI-automation and synthetic-click trap and is repeatable. (Back up the dev DB's `.db`+`-wal`+`-shm`
+before seeding and restore after, so the user's environment is left as it was.)
+
 ## 2026-07-06 — The .NET SDK vanished (only the runtime remained), blocking every build
 
 **Issue:** At the start of the v0.7 work, `dotnet build`/`test`/`ef`/`run` all failed with "No

@@ -5,18 +5,66 @@ the top of each section.
 
 ## Current status
 
-v0.7 complete: ring game - the first non-bracket, money-tracking format.
-Players shoot in a fixed drawn rotation order; the 5 and 9 pay out from a
-pot funded by buy-ins, with a live rotation/pot/ledger view and cash-out.
+v0.8 complete: the read-only Display window now renders a proper live
+bracket tree (styled after digitalpool.com) instead of flat round columns -
+round columns left-to-right, each match centred between its two feeder
+matches, elbow connectors, winner rows highlighted, and winners/losers/
+grand-final sections for double elimination.
 
 ## Next steps
 
-- [ ] 0.8 — Chip tournament (the remaining unimplemented format).
+- [ ] 0.9 — Chip tournament (the remaining unimplemented format).
 - [ ] Ring game follow-ups: rebuys / adding a waiting player into a vacated
   spot mid-session (deferred from 0.7; rotation is fixed for now), and
   optional per-rack pot-distribution rules (pay-the-breaker, etc.).
+- [ ] Bracket-display follow-ups: connectors converging into the grand final
+  render as long verticals from the LB final (works, but could be prettier);
+  irregular losers-bracket fan-in rounds fall back to even spacing with no
+  connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.8 — 2026-07-06
+
+- Redesigned the read-only Display window's bracket into a real bracket tree,
+  using digitalpool.com's bracket as the visual blueprint. Previously both
+  windows showed each round as a flat vertical stack of cards in a column,
+  with no tree structure. The Display window now lays matches out as a
+  classic elimination bracket: round columns marching left-to-right, each
+  match positioned at the vertical midpoint of the two feeder matches that
+  flow into it, three-segment elbow connectors joining them, and the winner's
+  line in each finished match highlighted (accent fill, dark bold text, its
+  score cell knocked out to let the accent show).
+- Double elimination stacks a "Winners Bracket" band above a "Losers Bracket"
+  band (each its own left-to-right tree with a section label and per-column
+  round headers), with grand-final match(es) in a trailing column aligned to
+  the winners final and both finals feeding in. Round robin keeps the simple
+  round-column list (now using the same match-card look); ring game is
+  unchanged.
+- New `BracketLayoutBuilder` (pure, in App) computes the pixel layout - box
+  positions, connector segments, headers, section labels, total extent -
+  purely from each round's (Side, RoundNumber, ordered matches), using the
+  standard pairing rules (a round with twice the next round's matches feeds
+  pairwise; an equal-count losers "receiving" round feeds straight across) so
+  no bracket-node graph is needed. Rendered on a Canvas via four overlaid
+  layers (connectors, section labels, headers, boxes). `RoundGroupViewModel`
+  now carries the `BracketSide`; `MatchRowViewModel` exposes `Player1Line`/
+  `Player2Line` projections so the winner highlight is a DataTrigger on named
+  template parts (avoids the local-value-beats-trigger trap in NOTES.md).
+- 4 new `App.Tests` (the first tests in that project): empty input, single-
+  elimination column/box counts and even column spacing, each match centred
+  between its feeders with the right connector count, and double-elimination
+  winners-above-losers banding with section labels. Core.Tests unchanged at
+  64; total 68.
+- Verified end-to-end by seeding a real 8-player single- and double-
+  elimination tournament through the actual services into a scratch copy of
+  the app's database, then rendering the real `DisplayWindow` (real XAML +
+  Green/Dark palette) to PNG via a small harness - confirmed the tree shape,
+  winner highlights, pending-match boxes, connectors, and the winners/losers
+  banding all render correctly. (Went the render-to-PNG route rather than
+  driving the live UI because UI Automation can't see this app's tab content
+  and synthetic clicks are unreliable here - see NOTES.md. The user's dev DB
+  was empty before and was restored to empty afterward.)
 
 ## v0.7 — 2026-07-06
 

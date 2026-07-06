@@ -7,6 +7,67 @@
         Title="Pool Tournament Manager - Display" Height="700" Width="1200"
         Icon="Assets/Logo.png"
         Background="{DynamicResource AppBackgroundBrush}">
+    <Window.Resources>
+        <!-- One player's line inside a match box. Winner highlight is driven purely by the
+             DataTrigger on IsWinner against named parts (defaults live in Styles, never as local
+             values) so the trigger can win - see NOTES.md precedence traps. -->
+        <DataTemplate x:Key="PlayerLineTemplate">
+            <Border x:Name="LineRoot" CornerRadius="3" Margin="2,1">
+                <Grid Height="26">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="38" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="NameText" Grid.Column="0" Text="{Binding Name}"
+                               VerticalAlignment="Center" Margin="10,0,6,0" FontSize="14"
+                               TextTrimming="CharacterEllipsis" />
+                    <Border x:Name="ScoreCell" Grid.Column="1" CornerRadius="0,3,3,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBackgroundBrush}" />
+                            </Style>
+                        </Border.Style>
+                        <TextBlock x:Name="ScoreText" Text="{Binding ScoreDisplay}" FontSize="14"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsWinner}" Value="True">
+                    <Setter TargetName="LineRoot" Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+                    <Setter TargetName="ScoreCell" Property="Background" Value="Transparent" />
+                    <Setter TargetName="NameText" Property="Foreground" Value="{DynamicResource AccentPrimaryTextBrush}" />
+                    <Setter TargetName="NameText" Property="FontWeight" Value="Bold" />
+                    <Setter TargetName="ScoreText" Property="Foreground" Value="{DynamicResource AccentPrimaryTextBrush}" />
+                    <Setter TargetName="ScoreText" Property="FontWeight" Value="Bold" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- The card body for a MatchRowViewModel: two player lines + divider. -->
+        <DataTemplate x:Key="MatchCardTemplate">
+            <Border Background="{DynamicResource CardBackgroundBrush}"
+                    BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="5">
+                <StackPanel VerticalAlignment="Center">
+                    <ContentControl Content="{Binding Player1Line}" ContentTemplate="{StaticResource PlayerLineTemplate}" />
+                    <Border Height="1" Margin="8,0" Background="{DynamicResource AppBorderBrush}" />
+                    <ContentControl Content="{Binding Player2Line}" ContentTemplate="{StaticResource PlayerLineTemplate}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- A positioned match box on the bracket canvas: sizes the card to its computed extent. -->
+        <DataTemplate x:Key="BracketBoxTemplate">
+            <ContentControl Width="{Binding Width}" Height="{Binding Height}"
+                            Content="{Binding Match}" ContentTemplate="{StaticResource MatchCardTemplate}" />
+        </DataTemplate>
+
+        <!-- Places each canvas item at its computed (X, Y). -->
+        <Style x:Key="CanvasPlacementStyle" TargetType="ContentPresenter">
+            <Setter Property="Canvas.Left" Value="{Binding X}" />
+            <Setter Property="Canvas.Top" Value="{Binding Y}" />
+        </Style>
+    </Window.Resources>
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -47,7 +108,66 @@
             </ItemsControl>
         </StackPanel>
 
-        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <!-- Live bracket tree (single/double elimination), styled after digitalpool.com: round
+             columns left-to-right, each match centred between its two feeders, elbow connectors,
+             winner rows highlighted. Four overlaid Canvas layers share one coordinate space. -->
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding IsEliminationBracket, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid Width="{Binding Bracket.Width}" Height="{Binding Bracket.Height}" HorizontalAlignment="Left" VerticalAlignment="Top">
+                <!-- Layer 1: connector lines -->
+                <ItemsControl ItemsSource="{Binding Bracket.Connectors}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Line X1="{Binding X1}" Y1="{Binding Y1}" X2="{Binding X2}" Y2="{Binding Y2}"
+                                  Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="1.5" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Layer 2: section labels (Winners/Losers Bracket) -->
+                <ItemsControl ItemsSource="{Binding Bracket.SectionLabels}" ItemContainerStyle="{StaticResource CanvasPlacementStyle}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Text}" Width="{Binding Width}"
+                                       Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="17" FontWeight="Bold" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Layer 3: round headers -->
+                <ItemsControl ItemsSource="{Binding Bracket.Headers}" ItemContainerStyle="{StaticResource CanvasPlacementStyle}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Text}" Width="{Binding Width}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" FontWeight="SemiBold"
+                                       TextAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Layer 4: match boxes -->
+                <ItemsControl ItemsSource="{Binding Bracket.Boxes}"
+                              ItemContainerStyle="{StaticResource CanvasPlacementStyle}"
+                              ItemTemplate="{StaticResource BracketBoxTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Round-robin fallback: simple round-column list -->
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding ShowFlatRounds, Converter={StaticResource BoolToVisibilityConverter}}">
             <ItemsControl ItemsSource="{Binding State.Rounds}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -58,53 +178,12 @@
                     <DataTemplate>
                         <StackPanel Margin="0,0,28,0" Width="280">
                             <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold" FontSize="18" Margin="0,0,0,10" />
-                            <ItemsControl ItemsSource="{Binding Matches}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" Padding="10" Margin="0,0,0,12" Background="{DynamicResource CardBackgroundBrush}">
-                                            <StackPanel>
-                                                <TextBlock FontSize="15">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsPlayer1Winner}" Value="True">
-                                                                    <Setter Property="FontWeight" Value="Bold" />
-                                                                    <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                    <TextBlock.Text>
-                                                        <MultiBinding StringFormat="{}{0}  {1}">
-                                                            <Binding Path="Player1Name" />
-                                                            <Binding Path="Match.Player1Score" />
-                                                        </MultiBinding>
-                                                    </TextBlock.Text>
-                                                </TextBlock>
-                                                <TextBlock FontSize="15" Margin="0,4,0,0">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsPlayer2Winner}" Value="True">
-                                                                    <Setter Property="FontWeight" Value="Bold" />
-                                                                    <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                    <TextBlock.Text>
-                                                        <MultiBinding StringFormat="{}{0}  {1}">
-                                                            <Binding Path="Player2Name" />
-                                                            <Binding Path="Match.Player2Score" />
-                                                        </MultiBinding>
-                                                    </TextBlock.Text>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
+                            <ItemsControl ItemsSource="{Binding Matches}" ItemTemplate="{StaticResource MatchCardTemplate}">
+                                <ItemsControl.ItemContainerStyle>
+                                    <Style TargetType="ContentPresenter">
+                                        <Setter Property="Margin" Value="0,0,0,12" />
+                                    </Style>
+                                </ItemsControl.ItemContainerStyle>
                             </ItemsControl>
                         </StackPanel>
                     </DataTemplate>
