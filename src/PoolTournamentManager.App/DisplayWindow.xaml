@@ -158,5 +158,44 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </StackPanel>
+
+        <!-- Chip tournament: read-only live standings board -->
+        <StackPanel Grid.Row="2" Visibility="{Binding State.IsChipTournament, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="{Binding State.ChipStatusLine}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="22" FontWeight="Bold" Margin="0,0,0,14" />
+            <ItemsControl ItemsSource="{Binding State.ChipStandings}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="14,10" Margin="0,0,14,14" Width="240">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Setter Property="Opacity" Value="1" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Place}" Value="1">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}" />
+                                            <Setter Property="BorderThickness" Value="3" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsEliminated}" Value="True">
+                                            <Setter Property="Opacity" Value="0.45" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock Text="{Binding PlayerName}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="18" FontWeight="Bold" />
+                                <TextBlock Text="{Binding SummaryLine}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="15" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
     </Grid>
 </Window>

@@ -30,6 +30,7 @@ public class TournamentRepository : ITournamentRepository
             .Include(t => t.Matches).ThenInclude(m => m.Table)
             .Include(t => t.Bracket).ThenInclude(b => b!.Nodes).ThenInclude(n => n.Match)
             .Include(t => t.RingGame).ThenInclude(r => r!.LedgerEntries).ThenInclude(l => l.Entrant).ThenInclude(e => e!.Player)
+            .Include(t => t.ChipGame).ThenInclude(c => c!.Entries)
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 

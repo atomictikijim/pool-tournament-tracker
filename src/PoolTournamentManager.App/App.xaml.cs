@@ -49,6 +49,7 @@ public partial class App : Application
         services.AddSingleton<BracketGenerationService>();
         services.AddSingleton<RoundRobinSchedulingService>();
         services.AddSingleton<RingGameService>();
+        services.AddSingleton<ChipGameService>();
         services.AddSingleton<Services.TournamentStateService>();
         services.AddSingleton<Services.ThemeService>();
         services.AddTransient<ViewModels.TournamentViewModel>();

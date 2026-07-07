@@ -14,6 +14,8 @@ public class PoolTournamentDbContext : DbContext
     public DbSet<BracketNode> BracketNodes => Set<BracketNode>();
     public DbSet<RingGameDetail> RingGameDetails => Set<RingGameDetail>();
     public DbSet<RingLedgerEntry> RingLedgerEntries => Set<RingLedgerEntry>();
+    public DbSet<ChipGameDetail> ChipGameDetails => Set<ChipGameDetail>();
+    public DbSet<ChipGameEntry> ChipGameEntries => Set<ChipGameEntry>();
 
     public PoolTournamentDbContext(DbContextOptions<PoolTournamentDbContext> options) : base(options)
     {
@@ -38,6 +40,7 @@ public class PoolTournamentDbContext : DbContext
             entity.HasMany(t => t.Matches).WithOne().HasForeignKey(m => m.TournamentId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(t => t.Bracket).WithOne().HasForeignKey<BracketDetail>(b => b.TournamentId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(t => t.RingGame).WithOne().HasForeignKey<RingGameDetail>(r => r.TournamentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(t => t.ChipGame).WithOne().HasForeignKey<ChipGameDetail>(c => c.TournamentId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TournamentEntrant>(entity =>
@@ -83,6 +86,19 @@ public class PoolTournamentDbContext : DbContext
         {
             entity.HasKey(l => l.Id);
             entity.HasOne(l => l.Entrant).WithMany().HasForeignKey(l => l.EntrantId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ChipGameDetail>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.HasMany(c => c.Entries).WithOne().HasForeignKey(e => e.ChipGameDetailId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ChipGameEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.WinnerEntrant).WithMany().HasForeignKey(e => e.WinnerEntrantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.LoserEntrant).WithMany().HasForeignKey(e => e.LoserEntrantId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

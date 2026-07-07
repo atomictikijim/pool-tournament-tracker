@@ -17,6 +17,7 @@ public partial class TournamentViewModel : ObservableObject
     private readonly BracketGenerationService _bracketService;
     private readonly RoundRobinSchedulingService _roundRobinService;
     private readonly RingGameService _ringGameService;
+    private readonly ChipGameService _chipGameService;
 
     public TournamentStateService State { get; }
 
@@ -51,12 +52,41 @@ public partial class TournamentViewModel : ObservableObject
     private decimal _newRingNinePayout = 10m;
 
     [ObservableProperty]
+    private int _newChipStartingChips = 3;
+
+    [ObservableProperty]
+    private decimal _newChipBuyIn = 20m;
+
+    [ObservableProperty]
+    private decimal _newChipFirstPayout = 100m;
+
+    [ObservableProperty]
+    private decimal _newChipSecondPayout = 40m;
+
+    [ObservableProperty]
+    private decimal _newChipThirdPayout = 0m;
+
+    [ObservableProperty]
     private string? _statusMessage;
+
+    /// <summary>Winner/loser selected in the "record a game" pickers (entrant ids).</summary>
+    [ObservableProperty]
+    private Guid? _selectedChipWinnerId;
+
+    [ObservableProperty]
+    private Guid? _selectedChipLoserId;
 
     /// <summary>True while the create form has Ring Game selected, so ring-only fields can show.</summary>
     public bool IsCreatingRingGame => NewTournamentFormat == TournamentFormat.RingGame;
 
-    partial void OnNewTournamentFormatChanged(TournamentFormat value) => OnPropertyChanged(nameof(IsCreatingRingGame));
+    /// <summary>True while the create form has Chip Tournament selected, so chip-only fields can show.</summary>
+    public bool IsCreatingChipTournament => NewTournamentFormat == TournamentFormat.ChipTournament;
+
+    partial void OnNewTournamentFormatChanged(TournamentFormat value)
+    {
+        OnPropertyChanged(nameof(IsCreatingRingGame));
+        OnPropertyChanged(nameof(IsCreatingChipTournament));
+    }
 
     public TournamentViewModel(
         ITournamentRepository tournamentRepository,
@@ -64,6 +94,7 @@ public partial class TournamentViewModel : ObservableObject
         BracketGenerationService bracketService,
         RoundRobinSchedulingService roundRobinService,
         RingGameService ringGameService,
+        ChipGameService chipGameService,
         TournamentStateService state)
     {
         _tournamentRepository = tournamentRepository;
@@ -71,6 +102,7 @@ public partial class TournamentViewModel : ObservableObject
         _bracketService = bracketService;
         _roundRobinService = roundRobinService;
         _ringGameService = ringGameService;
+        _chipGameService = chipGameService;
         State = state;
         State.PropertyChanged += OnStateChanged;
         RebuildBracket();
@@ -176,12 +208,6 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
-        if (NewTournamentFormat == TournamentFormat.ChipTournament)
-        {
-            StatusMessage = "Chip tournaments aren't supported yet.";
-            return;
-        }
-
         var selected = EntrantCandidates.Where(c => c.IsSelected).ToList();
         if (selected.Count < 2)
         {
@@ -218,6 +244,12 @@ public partial class TournamentViewModel : ObservableObject
         {
             // Rotation order is a draw (the entrant selection order), not a rating seed.
             _ringGameService.StartRingGame(tournament, NewRingBuyIn, NewRingFivePayout, NewRingNinePayout);
+        }
+        else if (NewTournamentFormat == TournamentFormat.ChipTournament)
+        {
+            // Ad-hoc "loser loses a life" play; no seeding or pairings.
+            _chipGameService.StartChipTournament(
+                tournament, NewChipStartingChips, NewChipBuyIn, NewChipFirstPayout, NewChipSecondPayout, NewChipThirdPayout);
         }
         else
         {
@@ -409,6 +441,49 @@ public partial class TournamentViewModel : ObservableObject
             else
             {
                 StatusMessage = $"{seat.PlayerName} cashed out at {seat.NetDisplay}.";
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            StatusMessage = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task RecordChipGameAsync()
+    {
+        var tournament = State.ActiveTournament;
+        if (tournament?.ChipGame is null)
+        {
+            return;
+        }
+        if (SelectedChipWinnerId is null || SelectedChipLoserId is null)
+        {
+            StatusMessage = "Pick both a winner and a loser.";
+            return;
+        }
+
+        try
+        {
+            var loserName = tournament.Entrants.FirstOrDefault(e => e.Id == SelectedChipLoserId)?.Player?.FullName ?? "Player";
+            var entry = _chipGameService.RecordGame(tournament, SelectedChipWinnerId.Value, SelectedChipLoserId.Value);
+            _tournamentRepository.TrackNew(entry);
+            await _tournamentRepository.SaveChangesAsync();
+
+            SelectedChipWinnerId = null;
+            SelectedChipLoserId = null;
+
+            State.RebuildRounds();
+            await RefreshTournamentSummaryAsync();
+
+            if (tournament.Status == TournamentStatus.Completed)
+            {
+                var champion = ChipGameService.ComputeStandings(tournament).FirstOrDefault(r => r.Place == 1)?.Entrant.Player?.FullName ?? "Unknown player";
+                StatusMessage = $"Chip tournament over - {champion} wins!";
+            }
+            else
+            {
+                StatusMessage = $"{loserName} loses a chip.";
             }
         }
         catch (InvalidOperationException ex)

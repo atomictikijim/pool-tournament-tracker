@@ -233,6 +233,20 @@
                         <TextBox Text="{Binding NewRingNinePayout}" Margin="0,0,0,6" />
                     </StackPanel>
 
+                    <!-- Chip-tournament-only setup: starting chips, buy-in, and place payouts -->
+                    <StackPanel Visibility="{Binding IsCreatingChipTournament, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="Starting chips per player" />
+                        <TextBox Text="{Binding NewChipStartingChips}" Margin="0,0,0,6" />
+                        <TextBlock Text="Buy-in ($)" />
+                        <TextBox Text="{Binding NewChipBuyIn}" Margin="0,0,0,6" />
+                        <TextBlock Text="1st place payout ($)" />
+                        <TextBox Text="{Binding NewChipFirstPayout}" Margin="0,0,0,6" />
+                        <TextBlock Text="2nd place payout ($)" />
+                        <TextBox Text="{Binding NewChipSecondPayout}" Margin="0,0,0,6" />
+                        <TextBlock Text="3rd place payout ($)" />
+                        <TextBox Text="{Binding NewChipThirdPayout}" Margin="0,0,0,6" />
+                    </StackPanel>
+
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,2">
                         <TextBlock Text="Entrants" VerticalAlignment="Center" />
                         <Button Content="Refresh" Command="{Binding LoadEntrantCandidatesCommand}" Padding="6,0" Margin="8,0,0,0" />
@@ -434,6 +448,40 @@
                                 </DataGrid.Columns>
                             </DataGrid>
                         </StackPanel>
+                    </Grid>
+
+                    <!-- Chip tournament: ad-hoc game entry + live standings -->
+                    <Grid Grid.Row="2" Visibility="{Binding State.IsChipTournament, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="{Binding State.ChipStatusLine}" FontWeight="Bold" FontSize="15" Margin="0,0,0,10" />
+
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+                            <TextBlock Text="Winner:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <ComboBox Width="160" ItemsSource="{Binding State.ChipActiveEntrants}"
+                                      DisplayMemberPath="PlayerName" SelectedValuePath="EntrantId"
+                                      SelectedValue="{Binding SelectedChipWinnerId}" />
+                            <TextBlock Text="beat" VerticalAlignment="Center" Margin="10,0,10,0" />
+                            <ComboBox Width="160" ItemsSource="{Binding State.ChipActiveEntrants}"
+                                      DisplayMemberPath="PlayerName" SelectedValuePath="EntrantId"
+                                      SelectedValue="{Binding SelectedChipLoserId}" />
+                            <Button Content="Record Game" Command="{Binding RecordChipGameCommand}" Padding="10,4" Margin="12,0,0,0" />
+                        </StackPanel>
+
+                        <DataGrid Grid.Row="2" ItemsSource="{Binding State.ChipStandings}"
+                                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                  HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Place" Binding="{Binding PlaceDisplay}" Width="55" />
+                                <DataGridTextColumn Header="Player" Binding="{Binding PlayerName}" Width="180" />
+                                <DataGridTextColumn Header="Chips" Binding="{Binding ChipsDisplay}" Width="80" />
+                                <DataGridTextColumn Header="Payout" Binding="{Binding PayoutDisplay}" Width="90" />
+                            </DataGrid.Columns>
+                        </DataGrid>
                     </Grid>
                 </Grid>
 

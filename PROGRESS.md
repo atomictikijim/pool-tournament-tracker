@@ -5,7 +5,15 @@ the top of each section.
 
 ## Current status
 
-v0.8.1 complete: seed numbers now show on every bracket box, and the
+v0.9 complete: the chip tournament - the last unimplemented format. Every
+player buys in (funding a pot) and starts with a set number of chips; the
+operator logs ad-hoc "winner beat loser" games and the loser drops a chip
+(lives rule - the winner is unchanged). A player at 0 chips is out; the last
+player holding a chip wins. Live standings show chips, finishing places (as
+players are knocked out), and the configured 1st/2nd/3rd payouts. The
+read-only Display window mirrors the standings board.
+
+v0.8.1: seed numbers now show on every bracket box, and the
 operator's Tournament tab uses the same live bracket tree as the Display
 window (with editable boxes - inline score inputs + table picker + Report
 on the live match). Shared bracket templates now live in
@@ -19,7 +27,11 @@ sections for double elimination.
 
 ## Next steps
 
-- [ ] 0.9 — Chip tournament (the remaining unimplemented format).
+- [ ] All five formats are now implemented (single/double elim, round robin,
+  ring game, chip tournament). No unimplemented format remains.
+- [ ] Chip-tournament follow-ups: an undo/correction control for a mis-recorded
+  game (the ledger already supports it - only the UI is missing); optionally
+  enforce that payouts don't exceed the pot; a game-history/log view.
 - [ ] Ring game follow-ups: rebuys / adding a waiting player into a vacated
   spot mid-session (deferred from 0.7; rotation is fixed for now), and
   optional per-rack pot-distribution rules (pay-the-breaker, etc.).
@@ -29,6 +41,50 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.9 — 2026-07-07
+
+- Chip tournament, the last unimplemented format. Confirmed the ruleset with
+  the user: a "lives" chip game (loser drops a chip, winner unchanged; out at
+  0; last player holding a chip wins), games logged ad-hoc between any two
+  active players (no fixed rounds/pairings), with a dollar buy-in funding a
+  pot and configurable 1st/2nd/3rd payouts.
+- `ChipGameService` (pure/testable): `StartChipTournament` (gives everyone the
+  same starting chips, records buy-in/payout settings, marks InProgress),
+  `RecordGame` (validates both players are active and distinct, drops the
+  loser a chip, eliminates at 0, completes at one player left),
+  `ComputeStandings` (replays the game log to chip counts + finishing places -
+  first out finishes last, champion is 1st - orders active-by-chips then
+  eliminated-by-reverse-elimination, maps places to payouts), and `Pot`
+  (buy-in times entrant count). Nothing about chips/places is stored - always
+  recomputed from the log.
+- New entities `ChipGameDetail` (1:1 with Tournament, like BracketDetail /
+  RingGameDetail - starting chips, buy-in, 1st/2nd/3rd payouts) and
+  `ChipGameEntry` (a winner/loser/sequence game-log row). Reused
+  `TournamentEntrant.IsEliminated` as "out of chips". EF migration
+  `AddChipTournament` (two new tables, no changes to existing ones).
+- Tournament creation now offers Chip Tournament (starting-chips, buy-in, and
+  1st/2nd/3rd payout fields, shown only for that format). The admin Tournament
+  tab gains a chip panel - a one-line "N of M left · C chips each · Pot $X"
+  status, a Winner/Loser picker + "Record Game" over the still-active players,
+  and a live standings grid (place, player, chips, payout). The read-only
+  Display window mirrors the standings as a card board (leader highlighted,
+  eliminated players dimmed with their finishing place). The
+  "chip tournaments aren't supported yet" guard is gone.
+- 7 new `Core.Tests` (71 total): start validation, loser-drops-a-chip /
+  winner-unchanged, elimination at 0 and completion with champion first,
+  reject same-player / eliminated-player games, first-out-finishes-last with
+  payouts following place, and eliminated places locking while others play.
+- 1 new `Data.Tests` integration test against real SQLite (2 total): the full
+  create -> reload -> record-game (persisted via `TrackNew`) -> reload ->
+  eliminate -> complete flow, asserting chip counts, eliminations, places, and
+  the game log all survive each reload.
+- Verified end-to-end by seeding a real 6-player chip tournament through the
+  actual services and rendering the real `MainWindow` (operator panel) and
+  `DisplayWindow` (standings board) to PNG - the status line, record-game
+  pickers, standings grid, locked eliminated places, and dimmed-card display
+  all render correctly. Persistence (the risky already-tracked-aggregate
+  `TrackNew` insert) is covered by the integration test above.
 
 ## v0.8.1 — 2026-07-06
 

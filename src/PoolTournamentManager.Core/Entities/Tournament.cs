@@ -16,4 +16,5 @@ public class Tournament
     public List<Match> Matches { get; set; } = new();
     public BracketDetail? Bracket { get; set; }
     public RingGameDetail? RingGame { get; set; }
+    public ChipGameDetail? ChipGame { get; set; }
 }

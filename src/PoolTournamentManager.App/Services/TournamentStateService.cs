@@ -43,6 +43,21 @@ public partial class TournamentStateService : ObservableObject
     [ObservableProperty]
     private string _ringStatusLine = string.Empty;
 
+    [ObservableProperty]
+    private bool _isChipTournament;
+
+    /// <summary>Every player's chip standing row (for the grid), leaders first.</summary>
+    [ObservableProperty]
+    private ObservableCollection<ChipStandingRowViewModel> _chipStandings = new();
+
+    /// <summary>Only the still-active players, for the winner/loser pickers.</summary>
+    [ObservableProperty]
+    private ObservableCollection<ChipStandingRowViewModel> _chipActiveEntrants = new();
+
+    /// <summary>One-line chip-tournament status, e.g. "5 of 7 left  ·  3 chips each  ·  Pot $140".</summary>
+    [ObservableProperty]
+    private string _chipStatusLine = string.Empty;
+
     public TournamentStateService(ITournamentRepository tournamentRepository)
     {
         _tournamentRepository = tournamentRepository;
@@ -87,6 +102,7 @@ public partial class TournamentStateService : ObservableObject
             RingSeats = new ObservableCollection<RingSeatViewModel>();
             IsRingGame = false;
             RingStatusLine = string.Empty;
+            ClearChipState();
             return;
         }
 
@@ -96,9 +112,16 @@ public partial class TournamentStateService : ObservableObject
             return;
         }
 
+        if (tournament.Format == TournamentFormat.ChipTournament)
+        {
+            RebuildChipTournament(tournament);
+            return;
+        }
+
         IsRingGame = false;
         RingSeats = new ObservableCollection<RingSeatViewModel>();
         RingStatusLine = string.Empty;
+        ClearChipState();
 
         if (tournament.Format == TournamentFormat.RoundRobin)
         {
@@ -140,6 +163,7 @@ public partial class TournamentStateService : ObservableObject
     private void RebuildRingGame(Tournament tournament)
     {
         IsRingGame = true;
+        ClearChipState();
         Rounds = new ObservableCollection<RoundGroupViewModel>();
         Standings = new ObservableCollection<StandingsRowViewModel>();
 
@@ -168,6 +192,45 @@ public partial class TournamentStateService : ObservableObject
             var shooter = tournament.Entrants.FirstOrDefault(e => e.Id == shooterId)?.Player?.FullName ?? "-";
             RingStatusLine = $"Rack {detail.CurrentRackNumber}  ·  Pot {pot}  ·  Up: {shooter}";
         }
+    }
+
+    private void RebuildChipTournament(Tournament tournament)
+    {
+        IsRingGame = false;
+        RingSeats = new ObservableCollection<RingSeatViewModel>();
+        RingStatusLine = string.Empty;
+        Rounds = new ObservableCollection<RoundGroupViewModel>();
+        Standings = new ObservableCollection<StandingsRowViewModel>();
+
+        IsChipTournament = true;
+
+        var rows = ChipGameService.ComputeStandings(tournament);
+        ChipStandings = new ObservableCollection<ChipStandingRowViewModel>(rows.Select(r => new ChipStandingRowViewModel(r)));
+        ChipActiveEntrants = new ObservableCollection<ChipStandingRowViewModel>(
+            ChipStandings.Where(r => !r.IsEliminated));
+
+        var pot = ChipGameService.Pot(tournament).ToString("C0");
+        var total = tournament.Entrants.Count;
+        var active = rows.Count(r => !r.IsEliminated);
+
+        if (tournament.Status == TournamentStatus.Completed)
+        {
+            var champion = rows.FirstOrDefault(r => r.Place == 1)?.Entrant.Player?.FullName ?? "-";
+            ChipStatusLine = $"Finished  ·  Pot {pot}  ·  Winner: {champion}";
+        }
+        else
+        {
+            var chips = tournament.ChipGame?.StartingChips ?? 0;
+            ChipStatusLine = $"{active} of {total} left  ·  {chips} chips each  ·  Pot {pot}";
+        }
+    }
+
+    private void ClearChipState()
+    {
+        IsChipTournament = false;
+        ChipStandings = new ObservableCollection<ChipStandingRowViewModel>();
+        ChipActiveEntrants = new ObservableCollection<ChipStandingRowViewModel>();
+        ChipStatusLine = string.Empty;
     }
 
     private void RebuildRoundRobinRounds(Tournament tournament)
