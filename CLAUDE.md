@@ -31,6 +31,20 @@ and commit policy below takes effect.
 - Keep secrets/connection strings out of source; use user secrets or a local
   untracked config file for anything environment-specific.
 
+## User-Facing Documentation
+
+`README.md` (project overview) and `FUNCTIONS.md` (end-user instruction manual)
+live at the solution root and must be kept in sync with the app's actual
+functionality:
+
+- Whenever a change adds, removes, or alters user-visible functionality (a new
+  tournament format, a new tab/control, a changed workflow, etc.), update the
+  relevant section(s) of `README.md` and `FUNCTIONS.md` in the same commit as the
+  change.
+- These updates are covered by the same auto-commit-and-push authorization as
+  `PROGRESS.md`/`NOTES.md` below — no need to ask before committing/pushing doc
+  updates bundled with a version-bump commit.
+
 ## Versioning & Commit Policy
 
 Version format while pre-1.0: **`0.<major>.<ui>`**
