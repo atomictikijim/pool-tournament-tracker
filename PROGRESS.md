@@ -5,6 +5,11 @@ the top of each section.
 
 ## Current status
 
+v0.10 complete: removed the in-app color schemes (Green/Red/Blue/Grey) - the
+app now has a single neutral palette and simply inherits the Windows light/dark
+mode, tracked live. The Settings tab's color swatches are gone, replaced by a
+short note that appearance follows Windows.
+
 v0.9.1 complete: every main tab now scrolls, so nothing is unreachable at
 smaller window sizes - the Players editor column, the Tournament create-form
 panel, and the Settings pane scroll vertically; the players grid and the
@@ -47,6 +52,25 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.10 — 2026-07-07
+
+- Removed all in-app color schemes. Previously the Settings tab let the user
+  pick one of four color schemes (Green/Red/Blue/Grey), each with its own
+  light/dark palette, persisted to settings.json. Now the app has a single
+  neutral palette (Windows 11-style greys + the standard system accent blue)
+  and only inherits the Windows "choose your color mode" light/dark setting,
+  tracked live. Deleted the 8 `Palette.{Scheme}.{Light,Dark}.xaml` files, the
+  `AppColorScheme` enum, and the `AppSettingsStore` (nothing to persist now);
+  added `Palette.Light.xaml` / `Palette.Dark.xaml`. `ThemeService` no longer
+  has a color-scheme axis - it just swaps the light/dark palette on the Windows
+  setting. The dark-mode native title bar now uses the neutral chrome color
+  instead of a scheme accent. Settings tab's swatch buttons replaced by an
+  "Appearance" note. Tests: unchanged (77 pass). Verified end-to-end: launched
+  the app in dark mode (neutral graphite + blue accent, dark title bar), toggled
+  Windows to light mode live and confirmed the app repainted instantly to the
+  neutral light palette (white surfaces, light title bar), and confirmed the
+  Settings tab shows the new note with no swatches.
 
 ## v0.9.1 — 2026-07-07
 

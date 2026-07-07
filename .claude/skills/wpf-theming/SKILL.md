@@ -1,30 +1,31 @@
 ---
 name: wpf-theming
-description: Reference for PoolTournamentManager's WPF theming — the color-scheme/palette structure and the dependency-property precedence traps that have repeatedly caused "the brush silently didn't apply" bugs. Read BEFORE touching anything in Themes/, adding a color scheme, restyling a control, editing a palette brush key, or changing a DataTrigger/Style that sets Foreground/Background/Visibility.
+description: Reference for PoolTournamentManager's WPF theming — the light/dark palette structure and the dependency-property precedence traps that have repeatedly caused "the brush silently didn't apply" bugs. Read BEFORE touching anything in Themes/, restyling a control, editing a palette brush key, or changing a DataTrigger/Style that sets Foreground/Background/Visibility.
 ---
 
 # WPF theming in PoolTournamentManager
 
-Theming has two independent axes, both handled by
+Theming has ONE axis, handled by
 [ThemeService.cs](src/PoolTournamentManager.App/Services/ThemeService.cs):
 
 - **Light/Dark** — tracks the Windows "choose your color mode" setting live
-  (`HKCU\...\Themes\Personalize\AppsUseLightTheme` + `SystemEvents.UserPreferenceChanged`).
-- **Color scheme** — `AppColorScheme` enum (Green/Red/Blue/Grey), user-picked on the Settings
-  tab, persisted to `%LOCALAPPDATA%\PoolTournamentManager\settings.json` via `AppSettingsStore`.
+  (`HKCU\...\Themes\Personalize\AppsUseLightTheme` + `SystemEvents.UserPreferenceChanged`) and
+  swaps the palette to match. There are no in-app color schemes — the app just inherits the OS
+  mode. Nothing is persisted; the OS owns the setting.
 
-The active palette dictionary is `Themes/Palette.{Scheme}.{Light,Dark}.xaml`, chosen from both
-axes. Shared themed control styles live in `Themes/Generic.xaml`. All palettes define the SAME
-brush keys so any scheme×mode combination resolves every key.
+The active palette dictionary is `Themes/Palette.{Light,Dark}.xaml`. Shared themed control styles
+live in `Themes/Generic.xaml`. Both palettes define the SAME brush keys so either mode resolves
+every key. The palettes are neutral Windows 11-style greys with the standard system accent blue.
 
-## Adding a color scheme
+## Editing the palette
 
-1. Create `Themes/Palette.{Scheme}.Light.xaml` and `.Dark.xaml`, defining every brush key the
-   existing palettes define (copy Green's and rotate the hue; theme light/dark independently for
-   contrast — a bright accent usually needs to darken on a light background).
-2. Add the enum value and wire the Settings-tab swatch.
-3. Verify BOTH modes for the new scheme, including the native title bar, and that switching to
-   it live repaints open windows and survives a restart.
+1. Edit `Themes/Palette.Light.xaml` / `Themes/Palette.Dark.xaml`. Keep the key sets identical
+   between the two files — `ThemeService` swaps the whole dictionary as a unit, so a key present
+   in one mode but missing in the other resolves empty in that mode.
+2. Theme light/dark independently for contrast — a bright accent usually needs to darken on a
+   light background.
+3. Verify BOTH modes, including the native title bar, and that a live Windows light/dark toggle
+   repaints open windows.
 
 ## The precedence traps (each cost real debugging time — see NOTES.md)
 
@@ -69,7 +70,7 @@ inherited > default**. Almost every theming bug here is a violation of that orde
 
 ## Verifying theming changes
 
-Don't trust that a Setter applied — visually confirm. Check both light and dark, at least one
-non-default color scheme, a live Windows light/dark toggle, and (for re-templated controls like
-ComboBox) that the control still *functions*, not just that it looks right. UI Automation can't
-see tab-page content in this app — verify via screenshots.
+Don't trust that a Setter applied — visually confirm. Check both light and dark, a live Windows
+light/dark toggle, and (for re-templated controls like ComboBox) that the control still
+*functions*, not just that it looks right. UI Automation can't see tab-page content in this app —
+verify via screenshots.

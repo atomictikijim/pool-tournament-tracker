@@ -7,10 +7,9 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <!-- Index 0: the active palette - ThemeService replaces this entry at runtime to
-                     match the selected color scheme (default: Green) and the Windows light/dark
-                     setting (live-tracked). Green/Light here is just the placeholder shown before
-                     ThemeService.Start() runs. -->
-                <ResourceDictionary Source="Themes/Palette.Green.Light.xaml" />
+                     match the Windows light/dark setting (live-tracked). Light here is just the
+                     placeholder shown before ThemeService.Start() runs. -->
+                <ResourceDictionary Source="Themes/Palette.Light.xaml" />
                 <ResourceDictionary Source="Themes/Generic.xaml" />
                 <ResourceDictionary Source="Themes/BracketTemplates.xaml" />
             </ResourceDictionary.MergedDictionaries>
