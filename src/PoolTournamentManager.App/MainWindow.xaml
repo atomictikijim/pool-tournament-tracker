@@ -194,13 +194,18 @@
                     <RowDefinition Height="28" />
                 </Grid.RowDefinitions>
 
-                <!-- Left: tournament list + create form -->
-                <ScrollViewer Grid.Column="0" Grid.Row="0" VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-                    <TextBlock Text="Tournaments" FontWeight="Bold" FontSize="14" Margin="0,0,0,6" />
-                    <ListBox ItemsSource="{Binding State.Tournaments}"
-                             SelectedItem="{Binding SelectedTournamentSummary}"
-                             Height="130" Margin="0,0,0,10">
+                <!-- Left: tournament picker. Creating/configuring tournaments lives on the
+                     Tournament Settings tab; this tab operates the tournament selected here. -->
+                <Grid Grid.Column="0" Grid.Row="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Tournaments" FontWeight="Bold" FontSize="14" Margin="0,0,0,6" />
+                    <ListBox Grid.Row="1" ItemsSource="{Binding State.Tournaments}"
+                             SelectedItem="{Binding SelectedTournamentSummary}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel>
@@ -211,59 +216,10 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <TextBlock Text="Create Tournament" FontWeight="Bold" FontSize="14" Margin="0,0,0,6" />
-
-                    <TextBlock Text="Name" />
-                    <TextBox Text="{Binding NewTournamentName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
-
-                    <TextBlock Text="Game" />
-                    <ComboBox ItemsSource="{Binding GameTypes}" SelectedItem="{Binding NewTournamentGameType}" Margin="0,0,0,6" />
-
-                    <TextBlock Text="Format" />
-                    <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding NewTournamentFormat}" Margin="0,0,0,6" />
-
-                    <TextBlock Text="Seed by rating" />
-                    <ComboBox ItemsSource="{Binding RatingSystems}" SelectedItem="{Binding NewTournamentRatingSystem}" Margin="0,0,0,6" />
-
-                    <!-- Ring-game-only setup: buy-in and money-ball payouts -->
-                    <StackPanel Visibility="{Binding IsCreatingRingGame, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="Buy-in ($)" />
-                        <TextBox Text="{Binding NewRingBuyIn}" Margin="0,0,0,6" />
-                        <TextBlock Text="5-ball payout ($)" />
-                        <TextBox Text="{Binding NewRingFivePayout}" Margin="0,0,0,6" />
-                        <TextBlock Text="9-ball payout ($)" />
-                        <TextBox Text="{Binding NewRingNinePayout}" Margin="0,0,0,6" />
-                    </StackPanel>
-
-                    <!-- Chip-tournament-only setup: starting chips, buy-in, and place payouts -->
-                    <StackPanel Visibility="{Binding IsCreatingChipTournament, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="Starting chips per player" />
-                        <TextBox Text="{Binding NewChipStartingChips}" Margin="0,0,0,6" />
-                        <TextBlock Text="Buy-in ($)" />
-                        <TextBox Text="{Binding NewChipBuyIn}" Margin="0,0,0,6" />
-                        <TextBlock Text="1st place payout ($)" />
-                        <TextBox Text="{Binding NewChipFirstPayout}" Margin="0,0,0,6" />
-                        <TextBlock Text="2nd place payout ($)" />
-                        <TextBox Text="{Binding NewChipSecondPayout}" Margin="0,0,0,6" />
-                        <TextBlock Text="3rd place payout ($)" />
-                        <TextBox Text="{Binding NewChipThirdPayout}" Margin="0,0,0,6" />
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Margin="0,4,0,2">
-                        <TextBlock Text="Entrants" VerticalAlignment="Center" />
-                        <Button Content="Refresh" Command="{Binding LoadEntrantCandidatesCommand}" Padding="6,0" Margin="8,0,0,0" />
-                    </StackPanel>
-                    <ListBox ItemsSource="{Binding EntrantCandidates}" Height="150" Margin="0,0,0,8">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <CheckBox Content="{Binding Player.FullName}" IsChecked="{Binding IsSelected}" />
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-
-                    <Button Content="Create Tournament" Command="{Binding CreateTournamentCommand}" Padding="8,4" HorizontalAlignment="Left" />
-                </StackPanel>
-                </ScrollViewer>
+                    <TextBlock Grid.Row="2" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="11"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="Create and configure tournaments on the Tournament Settings tab." />
+                </Grid>
 
                 <!-- Right: tables + bracket -->
                 <Grid Grid.Column="2" Grid.Row="0">
@@ -496,11 +452,72 @@
             </Grid>
         </TabItem>
 
-        <TabItem Header="Settings">
+        <TabItem Header="Tournament Settings">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-            <StackPanel Margin="20">
+            <StackPanel Margin="20" DataContext="{Binding Tournament}">
+                <!-- The create/configure form lives here (moved off the Tournament tab, which now
+                     just operates the selected tournament). DataContext is the shared
+                     TournamentViewModel, so a tournament created here appears in the Tournament
+                     tab's picker. -->
+                <TextBlock Text="Create Tournament" FontWeight="Bold" FontSize="14" Margin="0,0,0,10" />
+
+                <StackPanel Width="340" HorizontalAlignment="Left">
+                    <TextBlock Text="Name" />
+                    <TextBox Text="{Binding NewTournamentName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+
+                    <TextBlock Text="Game" />
+                    <ComboBox ItemsSource="{Binding GameTypes}" SelectedItem="{Binding NewTournamentGameType}" Margin="0,0,0,6" />
+
+                    <TextBlock Text="Format" />
+                    <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding NewTournamentFormat}" Margin="0,0,0,6" />
+
+                    <TextBlock Text="Seed by rating" />
+                    <ComboBox ItemsSource="{Binding RatingSystems}" SelectedItem="{Binding NewTournamentRatingSystem}" Margin="0,0,0,6" />
+
+                    <!-- Ring-game-only setup: buy-in and money-ball payouts -->
+                    <StackPanel Visibility="{Binding IsCreatingRingGame, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="Buy-in ($)" />
+                        <TextBox Text="{Binding NewRingBuyIn}" Margin="0,0,0,6" />
+                        <TextBlock Text="5-ball payout ($)" />
+                        <TextBox Text="{Binding NewRingFivePayout}" Margin="0,0,0,6" />
+                        <TextBlock Text="9-ball payout ($)" />
+                        <TextBox Text="{Binding NewRingNinePayout}" Margin="0,0,0,6" />
+                    </StackPanel>
+
+                    <!-- Chip-tournament-only setup: starting chips, buy-in, and place payouts -->
+                    <StackPanel Visibility="{Binding IsCreatingChipTournament, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="Starting chips per player" />
+                        <TextBox Text="{Binding NewChipStartingChips}" Margin="0,0,0,6" />
+                        <TextBlock Text="Buy-in ($)" />
+                        <TextBox Text="{Binding NewChipBuyIn}" Margin="0,0,0,6" />
+                        <TextBlock Text="1st place payout ($)" />
+                        <TextBox Text="{Binding NewChipFirstPayout}" Margin="0,0,0,6" />
+                        <TextBlock Text="2nd place payout ($)" />
+                        <TextBox Text="{Binding NewChipSecondPayout}" Margin="0,0,0,6" />
+                        <TextBlock Text="3rd place payout ($)" />
+                        <TextBox Text="{Binding NewChipThirdPayout}" Margin="0,0,0,6" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,2">
+                        <TextBlock Text="Entrants" VerticalAlignment="Center" />
+                        <Button Content="Refresh" Command="{Binding LoadEntrantCandidatesCommand}" Padding="6,0" Margin="8,0,0,0" />
+                    </StackPanel>
+                    <ListBox ItemsSource="{Binding EntrantCandidates}" Height="200" Margin="0,0,0,8">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox Content="{Binding Player.FullName}" IsChecked="{Binding IsSelected}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Button Content="Create Tournament" Command="{Binding CreateTournamentCommand}" Padding="8,4" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <Border Height="1" Width="340" Margin="0,20" HorizontalAlignment="Left"
+                        Background="{DynamicResource AppBorderBrush}" />
+
                 <TextBlock Text="Appearance" FontWeight="Bold" FontSize="14" Margin="0,0,0,10" />
-                <TextBlock TextWrapping="Wrap" Width="460"
+                <TextBlock TextWrapping="Wrap" Width="460" HorizontalAlignment="Left"
                            Foreground="{DynamicResource TextSecondaryBrush}"
                            Text="The app follows your Windows theme automatically. It switches between light and dark mode to match your Windows &quot;Choose your mode&quot; setting, updating live whenever you change it - there's nothing to configure here." />
             </StackPanel>

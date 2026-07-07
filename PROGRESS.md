@@ -5,6 +5,15 @@ the top of each section.
 
 ## Current status
 
+v0.10.1 complete: reorganized the tournament tabs. The "Settings" tab is
+renamed "Tournament Settings" and now hosts the whole create-tournament form
+(name, game, format, seed-by-rating, ring/chip options, entrant selection, and
+Create) that used to sit in the Tournament tab's left column. The Tournament
+tab's left column is now just the tournament picker (with a hint pointing to
+Tournament Settings for creation); its right side still operates the selected
+tournament (tables, bracket, standings, ring/chip controls). App Appearance
+note stays at the bottom of Tournament Settings.
+
 v0.10 complete: removed the in-app color schemes (Green/Red/Blue/Grey) - the
 app now has a single neutral palette and simply inherits the Windows light/dark
 mode, tracked live. The Settings tab's color swatches are gone, replaced by a
@@ -52,6 +61,29 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.10.1 — 2026-07-07
+
+- Reorganized the tournament UI. Renamed the "Settings" tab to "Tournament
+  Settings" and moved the entire create-tournament form there - the game type
+  (8/9/10-ball) picker, the format (single/double-elim, round robin, ring,
+  chip) picker, seed-by-rating, the format-specific ring/chip setup fields, the
+  entrant checklist + Refresh, and the Create button. The Tournament tab's left
+  column now holds only the tournament picker list (fills the column) plus a
+  hint that creation lives on Tournament Settings; the right side is unchanged
+  (tables, bracket tree, standings, ring/chip operator controls). The moved
+  form binds to the same shared TournamentViewModel (its tab content sets
+  DataContext="{Binding Tournament}"), so a tournament created on Tournament
+  Settings shows up in the Tournament tab's picker. The app Appearance note now
+  sits below the create form on Tournament Settings. XAML-only relocation - no
+  view-model or logic changes; the create command and all bindings are the
+  byte-identical, already-verified ones from before the move. Tests unchanged
+  (77 pass). Verified end-to-end in the running app: the Tournament Settings
+  tab renders the full form with Game/Format/Seed combos populated from the VM
+  enums and the entrant list loaded (proving the relocated DataContext resolves
+  every binding), entrant checkboxes toggle, and the Tournament tab shows the
+  picker (listing existing tournaments) with the hint and the tables/operator
+  area.
 
 ## v0.10 — 2026-07-07
 
