@@ -46,14 +46,18 @@ Version format while pre-1.0: **`0.<major>.<ui>`**
   a UI change do not get their own version bump — fold them into the next
   functionality or UI commit.
 
-**Auto-commit authorization:** completing and verifying a major functionality
-change or a UI-only change is pre-authorized to be committed automatically —
-do not stop to ask for confirmation on these version-bump commits specifically.
-This authorization is scoped to routine version-bump commits only; it does not
-cover force-pushes, history rewrites, or any other git operation.
+**Auto-commit-and-push authorization:** completing and verifying a major
+functionality change or a UI-only change is pre-authorized to be committed,
+tagged, AND pushed automatically — do not stop to ask for confirmation on these
+version-bump commits specifically. After every successful update, commit and
+push (including tags) as the final step; do not leave verified work unpushed.
+This authorization covers the routine `git push` / `git push --tags` of
+version-bump commits to the normal upstream branch only; it does NOT cover
+force-pushes, history rewrites, or any other git operation.
 
 Workflow for every version bump:
 
 1. Build the solution (and run tests, once they exist) and confirm it's green.
 2. Commit with a message in the form `v0.X[.Y]: <short description>`.
 3. Tag the commit with the same version string (e.g. `git tag v0.2`).
+4. Push the commit and the tag (`git push && git push --tags`).

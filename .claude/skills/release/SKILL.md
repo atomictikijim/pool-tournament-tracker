@@ -36,16 +36,18 @@ manual end-to-end verification, and the commit message should be able to honestl
 - **NOTES.md** — if any real bug or non-obvious gotcha was found/fixed, add an entry at the top
   (`## YYYY-MM-DD — title`, then `**Issue:**` / `**Fix:**`). Use today's date from context.
 
-## 4. Commit and tag
+## 4. Commit, tag, and push
 
-Version-bump commits (routine feature or UI-only) are pre-authorized in CLAUDE.md — commit
-automatically, no need to ask. This authorization covers ONLY the routine commit+tag below; it
-does NOT extend to force-push, history rewrites, or pushing to the remote.
+Version-bump commits (routine feature or UI-only) are pre-authorized in CLAUDE.md — commit, tag,
+AND push automatically, no need to ask. This authorization covers the routine commit + tag +
+`git push`/`git push --tags` below; it does NOT extend to force-push or history rewrites.
 
 ```powershell
 git add -A
 git commit   # message form:  v0.X[.Y]: <short description>
 git tag v0.X[.Y]
+git push
+git push --tags
 ```
 
 End the commit message body with the required trailer:
@@ -54,5 +56,5 @@ End the commit message body with the required trailer:
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 ```
 
-Pushing (`git push && git push --tags`) is a separate, outward-facing step — only do it when the
-user asks.
+Pushing is now part of the routine: after every successful version bump, push the commit and the
+tag as the final step — don't leave verified work unpushed.
