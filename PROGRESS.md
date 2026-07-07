@@ -5,7 +5,12 @@ the top of each section.
 
 ## Current status
 
-v0.9 complete: the chip tournament - the last unimplemented format. Every
+v0.9.1 complete: every main tab now scrolls, so nothing is unreachable at
+smaller window sizes - the Players editor column, the Tournament create-form
+panel, and the Settings pane scroll vertically; the players grid and the
+tables row scroll horizontally.
+
+v0.9: the chip tournament - the last unimplemented format. Every
 player buys in (funding a pot) and starts with a set number of chips; the
 operator logs ad-hoc "winner beat loser" games and the loser drops a chip
 (lives rule - the winner is unchanged). A player at 0 chips is out; the last
@@ -27,14 +32,7 @@ sections for double elimination.
 
 ## Next steps
 
-- [ ] Scrollbars on every main tab (usability): some tabs show content that
-  runs past the edge of the screen with no way to scroll to it - e.g. long
-  standings/ledger grids, the create-tournament form (taller now with the
-  chip fields), and wide bracket trees. Audit each tab (Players, Tournament,
-  Settings) and its panels; wrap anything that can overflow in a ScrollViewer
-  (vertical, and horizontal where content is wide) so nothing is unreachable
-  at smaller window sizes. Verify at a reduced/lower-resolution window size,
-  not just maximized.
+- [x] Scrollbars on every main tab (done in v0.9.1).
 - [ ] All five formats are now implemented (single/double elim, round robin,
   ring game, chip tournament). No unimplemented format remains.
 - [ ] Chip-tournament follow-ups: an undo/correction control for a mis-recorded
@@ -49,6 +47,21 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.9.1 — 2026-07-07
+
+- Scrollbars on every main tab so content is never clipped off-screen at
+  smaller window sizes (previously the create-tournament form's lower fields
+  and Create button, the player editor's lower fields, and off-screen table
+  buttons could all be unreachable on a short/narrow window). Wrapped the
+  Players editor column and the Tournament left create-form panel in vertical
+  ScrollViewers, the tables row in a horizontal ScrollViewer, and the Settings
+  pane in a ScrollViewer; the players grid, standings/ledger grids, and the
+  bracket tree already scrolled on their own. XAML-only, no behavior change.
+- Verified by rendering all three tabs (Players, Tournament, Settings) at a
+  cramped 900x520 window and confirming the scrollbars appear and every
+  control (Create Tournament button, Save button, off-screen table buttons)
+  is reachable. Tests unchanged at 77.
 
 ## v0.9 — 2026-07-07
 
