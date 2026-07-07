@@ -27,6 +27,14 @@ sections for double elimination.
 
 ## Next steps
 
+- [ ] Scrollbars on every main tab (usability): some tabs show content that
+  runs past the edge of the screen with no way to scroll to it - e.g. long
+  standings/ledger grids, the create-tournament form (taller now with the
+  chip fields), and wide bracket trees. Audit each tab (Players, Tournament,
+  Settings) and its panels; wrap anything that can overflow in a ScrollViewer
+  (vertical, and horizontal where content is wide) so nothing is unreachable
+  at smaller window sizes. Verify at a reduced/lower-resolution window size,
+  not just maximized.
 - [ ] All five formats are now implemented (single/double elim, round robin,
   ring game, chip tournament). No unimplemented format remains.
 - [ ] Chip-tournament follow-ups: an undo/correction control for a mis-recorded
