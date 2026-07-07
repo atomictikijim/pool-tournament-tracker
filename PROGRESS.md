@@ -70,6 +70,12 @@ sections for double elimination.
 
 ## Next steps
 
+- [ ] **Manual UI testing of v0.14** (entry fees/host cut/prize payouts) - no
+  UI-automation tool was available when it shipped, so the create-tournament
+  flow, live total/percentage hints, and the Prize Payouts panel were never
+  click-tested end-to-end. Create a tournament with an entry fee and a few
+  payout places, confirm the live hints behave, and check the Prize Payouts
+  panel on a completed bracket with a tied place.
 - [x] Entry fee, host cut, and place-based prize payouts (done in v0.14).
 - [ ] Elimination-bracket payouts beyond 1st/2nd (champion/runner-up, always
   exact) use a win/loss-record heuristic to group tied places (e.g. two
