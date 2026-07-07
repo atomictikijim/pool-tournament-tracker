@@ -4,5 +4,6 @@ public enum BracketSide
 {
     Winners,
     Losers,
-    GrandFinal
+    GrandFinal,
+    Final
 }

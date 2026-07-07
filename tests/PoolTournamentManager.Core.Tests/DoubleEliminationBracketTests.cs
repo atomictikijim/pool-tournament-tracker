@@ -64,7 +64,7 @@ public class DoubleEliminationBracketTests
 
         var bracket = _service.GenerateDoubleElimination(tournament);
 
-        Assert.True(bracket.IsDoubleElimination);
+        Assert.Equal(BracketKind.DoubleElimination, bracket.Kind);
         Assert.Equal(3, bracket.Nodes.Count(n => n.Side == BracketSide.Winners)); // round1 (2) + WB final (1)
         Assert.Equal(2, bracket.Nodes.Count(n => n.Side == BracketSide.Losers));
         Assert.Equal(1, bracket.Nodes.Count(n => n.Side == BracketSide.GrandFinal));

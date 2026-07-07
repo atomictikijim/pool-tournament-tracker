@@ -27,7 +27,7 @@ public class BracketGenerationService
         var bracket = new BracketDetail
         {
             TournamentId = tournament.Id,
-            IsDoubleElimination = false
+            Kind = BracketKind.SingleElimination
         };
         tournament.Bracket = bracket;
 
@@ -79,7 +79,7 @@ public class BracketGenerationService
         var bracket = new BracketDetail
         {
             TournamentId = tournament.Id,
-            IsDoubleElimination = true
+            Kind = BracketKind.DoubleElimination
         };
         tournament.Bracket = bracket;
 
@@ -175,6 +175,192 @@ public class BracketGenerationService
 
         tournament.Status = TournamentStatus.InProgress;
         return bracket;
+    }
+
+    private const int PodSize = 8;
+
+    /// <summary>
+    /// True for entrant counts this format currently supports: a multiple of 8 that's also a
+    /// power of 2 (8, 16, 32, 64...), so pods are always full-size and the rep count feeding the
+    /// final single-elimination stage is always a clean power of 2. Partial pods / byes are a
+    /// known gap for later, same as double elimination's power-of-2-only restriction.
+    /// </summary>
+    public static bool IsValidModifiedSingleEliminationCount(int entrantCount) =>
+        entrantCount >= PodSize && (entrantCount & (entrantCount - 1)) == 0;
+
+    /// <summary>
+    /// Builds an APA-style Modified Single Elimination bracket: entrants are split into pods of
+    /// 8, each pod running a shortened ladder where round-1 losers get exactly one consolation
+    /// match (a second loss there eliminates them) and round-2 losers get one more chance against
+    /// those consolation survivors - producing exactly 2 "reps" per pod. Every pod's reps then
+    /// feed one ordinary single-elimination bracket with no further consolation chances. Round 1
+    /// is a random draw (not a rating seed) - SeedNumber is assigned from that draw order.
+    /// </summary>
+    public BracketDetail GenerateModifiedSingleElimination(Tournament tournament)
+    {
+        var entrantCount = tournament.Entrants.Count;
+        if (!IsValidModifiedSingleEliminationCount(entrantCount))
+        {
+            throw new InvalidOperationException(
+                "Modified Single Elimination currently requires an entrant count that's a multiple of 8 and a power of 2 (8, 16, 32, 64...).");
+        }
+
+        var drawn = RandomDraw(tournament.Entrants);
+
+        var bracket = new BracketDetail
+        {
+            TournamentId = tournament.Id,
+            Kind = BracketKind.ModifiedSingleElimination
+        };
+        tournament.Bracket = bracket;
+
+        var podCount = entrantCount / PodSize;
+        var podReps = new List<BracketNode>();
+        for (var p = 0; p < podCount; p++)
+        {
+            var podEntrants = drawn.GetRange(p * PodSize, PodSize);
+            var (rep0, rep1) = BuildModifiedEliminationPod(tournament, bracket, podEntrants, p);
+            podReps.Add(rep0);
+            podReps.Add(rep1);
+        }
+
+        // Interleave so the very first cross-pod round doesn't immediately rematch two reps
+        // from the same pod: [pod0.rep0, pod1.rep0, ..., pod0.rep1, pod1.rep1, ...].
+        var interleaved = new List<BracketNode>();
+        for (var i = 0; i < 2; i++)
+        {
+            for (var p = 0; p < podCount; p++)
+            {
+                interleaved.Add(podReps[p * 2 + i]);
+            }
+        }
+
+        BuildWinnersRounds2AndUp(bracket, interleaved, BracketSide.Final);
+
+        // BuildWinnersRounds2AndUp's target-slot inference falls back to the completed node's own
+        // PositionInRound parity, which is only unambiguous within a single freshly-built round
+        // (0, 1, 2...). The interleaved list's nodes each carry their pod-relative PositionInRound
+        // instead (e.g. two different pods' "lane 0" reps can both be even), so their slot must be
+        // set explicitly here from the interleaved list's own index.
+        for (var i = 0; i < interleaved.Count; i++)
+        {
+            interleaved[i].FeedsIntoWinnerSlot = i % 2 == 0 ? 1 : 2;
+        }
+
+        tournament.Status = TournamentStatus.InProgress;
+        return bracket;
+    }
+
+    private static List<TournamentEntrant> RandomDraw(List<TournamentEntrant> entrants)
+    {
+        var shuffled = entrants.OrderBy(_ => Random.Shared.Next()).ToList();
+        for (var i = 0; i < shuffled.Count; i++)
+        {
+            shuffled[i].SeedNumber = i + 1;
+        }
+        return shuffled;
+    }
+
+    /// <summary>
+    /// Builds one 8-entrant pod's Round 1 -> Losers Round 1 (eliminates) -> Winners Round 2 ->
+    /// Losers Round 2 (receiving) -> Final Four, and returns the pod's 2 Final-Four nodes (its
+    /// "reps" once their winners are known). PositionInRound is offset by podIndex so every pod's
+    /// same-named round shares one rendered column instead of colliding at position 0/1.
+    /// </summary>
+    private (BracketNode Rep0, BracketNode Rep1) BuildModifiedEliminationPod(
+        Tournament tournament, BracketDetail bracket, List<TournamentEntrant> podEntrants, int podIndex)
+    {
+        const int lanesPerPod = PodSize / 4; // 2 matches per pod at every post-round-1 stage
+
+        var round1 = new List<BracketNode>();
+        for (var i = 0; i < PodSize / 2; i++)
+        {
+            var node = new BracketNode
+            {
+                BracketDetailId = bracket.Id,
+                Side = BracketSide.Winners,
+                RoundNumber = 1,
+                PositionInRound = podIndex * (PodSize / 2) + i,
+                Slot1EntrantId = podEntrants[2 * i].Id,
+                Slot2EntrantId = podEntrants[2 * i + 1].Id
+            };
+            bracket.Nodes.Add(node);
+            round1.Add(node);
+            MaterializeRound1Match(tournament, node);
+        }
+
+        // Losers Round 1: pairs Round 1's losers. No FeedsIntoLoserNodeId is wired on these
+        // Losers-side nodes, so RecordMatchResult's existing logic (which only drops a loser
+        // further when node.Side == Winners) correctly eliminates their losers outright.
+        var lbRound1 = new List<BracketNode>();
+        for (var i = 0; i < lanesPerPod; i++)
+        {
+            var node = new BracketNode
+            {
+                BracketDetailId = bracket.Id,
+                Side = BracketSide.Losers,
+                RoundNumber = 1,
+                PositionInRound = podIndex * lanesPerPod + i
+            };
+            bracket.Nodes.Add(node);
+            lbRound1.Add(node);
+
+            round1[2 * i].FeedsIntoLoserNodeId = node.Id;
+            round1[2 * i].FeedsIntoLoserSlot = 1;
+            round1[2 * i + 1].FeedsIntoLoserNodeId = node.Id;
+            round1[2 * i + 1].FeedsIntoLoserSlot = 2;
+        }
+
+        // Winners Round 2: pairs Round 1's winners (still undefeated).
+        var wbRound2 = new List<BracketNode>();
+        for (var i = 0; i < lanesPerPod; i++)
+        {
+            var node = new BracketNode
+            {
+                BracketDetailId = bracket.Id,
+                Side = BracketSide.Winners,
+                RoundNumber = 2,
+                PositionInRound = podIndex * lanesPerPod + i
+            };
+            bracket.Nodes.Add(node);
+            wbRound2.Add(node);
+
+            round1[2 * i].FeedsIntoWinnerNodeId = node.Id;
+            round1[2 * i + 1].FeedsIntoWinnerNodeId = node.Id;
+        }
+
+        // Losers Round 2 ("receiving"): pairs Losers-Round-1 survivors with Winners-Round-2
+        // losers - reuses the double-elimination "receiving round" wiring as-is, then fixes up
+        // PositionInRound (the helper numbers from 0, which would collide across pods).
+        var lbRoundNumber = 2;
+        var lbRound2 = BuildLosersReceivingRound(bracket, ref lbRoundNumber, lbRound1, wbRound2);
+        for (var i = 0; i < lbRound2.Count; i++)
+        {
+            lbRound2[i].PositionInRound = podIndex * lanesPerPod + i;
+        }
+
+        // Final Four: pairs each Winners-Round-2 winner (undefeated) with the Losers-Round-2
+        // survivor from the same lane (one loss). From here on it's single elimination.
+        var finalFour = new List<BracketNode>();
+        for (var i = 0; i < lanesPerPod; i++)
+        {
+            var node = new BracketNode
+            {
+                BracketDetailId = bracket.Id,
+                Side = BracketSide.Final,
+                RoundNumber = 1,
+                PositionInRound = podIndex * lanesPerPod + i
+            };
+            bracket.Nodes.Add(node);
+            finalFour.Add(node);
+
+            wbRound2[i].FeedsIntoWinnerNodeId = node.Id;
+            wbRound2[i].FeedsIntoWinnerSlot = 1;
+            lbRound2[i].FeedsIntoWinnerNodeId = node.Id;
+            lbRound2[i].FeedsIntoWinnerSlot = 2;
+        }
+
+        return (finalFour[0], finalFour[1]);
     }
 
     /// <summary>
@@ -284,7 +470,7 @@ public class BracketGenerationService
         return round1;
     }
 
-    private static void BuildWinnersRounds2AndUp(BracketDetail bracket, List<BracketNode> round1)
+    private static void BuildWinnersRounds2AndUp(BracketDetail bracket, List<BracketNode> round1, BracketSide side = BracketSide.Winners)
     {
         var roundNodes = round1;
         var roundNumber = 1;
@@ -296,7 +482,7 @@ public class BracketGenerationService
                 var nextNode = new BracketNode
                 {
                     BracketDetailId = bracket.Id,
-                    Side = BracketSide.Winners,
+                    Side = side,
                     RoundNumber = roundNumber + 1,
                     PositionInRound = i
                 };

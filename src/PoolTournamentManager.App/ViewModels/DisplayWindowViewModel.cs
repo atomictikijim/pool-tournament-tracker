@@ -44,7 +44,8 @@ public class DisplayWindowViewModel : ObservableObject
     private void RebuildBracket()
     {
         var format = State.ActiveTournament?.Format;
-        IsEliminationBracket = format is TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination;
+        IsEliminationBracket = format is TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination
+            or TournamentFormat.ModifiedSingleElimination;
         ShowFlatRounds = format is TournamentFormat.RoundRobin;
         Bracket = IsEliminationBracket ? BracketLayoutBuilder.Build(State.Rounds) : new BracketLayout();
 

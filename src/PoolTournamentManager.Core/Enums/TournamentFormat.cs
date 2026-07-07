@@ -6,5 +6,6 @@ public enum TournamentFormat
     DoubleElimination,
     RoundRobin,
     RingGame,
-    ChipTournament
+    ChipTournament,
+    ModifiedSingleElimination
 }

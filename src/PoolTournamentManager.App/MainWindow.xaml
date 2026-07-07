@@ -559,7 +559,7 @@
                     <CheckBox Content="Use Teams" IsChecked="{Binding UseTeams}" Margin="0,0,0,6"
                               Visibility="{Binding IsTeamEligibleFormat, Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                    <StackPanel Visibility="{Binding ShowPlayerEntrants, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel Visibility="{Binding ShowSeedByRating, Converter={StaticResource BoolToVisibilityConverter}}">
                         <TextBlock Text="Seed by rating" />
                         <ComboBox ItemsSource="{Binding RatingSystems}" SelectedItem="{Binding NewTournamentRatingSystem}" Margin="0,0,0,6" />
                     </StackPanel>

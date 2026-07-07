@@ -115,12 +115,20 @@ public partial class TournamentViewModel : ObservableObject
     /// <summary>Every format except Ring Game requires a table count before creating.</summary>
     public bool RequiresTableCount => NewTournamentFormat != TournamentFormat.RingGame;
 
-    /// <summary>Only Single/Double Elimination can be run with Team entrants.</summary>
-    public bool IsTeamEligibleFormat => NewTournamentFormat is TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination;
+    /// <summary>Only Single/Double/Modified Single Elimination can be run with Team entrants.</summary>
+    public bool IsTeamEligibleFormat => NewTournamentFormat is TournamentFormat.SingleElimination
+        or TournamentFormat.DoubleElimination or TournamentFormat.ModifiedSingleElimination;
 
     /// <summary>True while the create form should show the Player checklist/rating controls
     /// instead of the Team checklist (i.e. UseTeams is off).</summary>
     public bool ShowPlayerEntrants => !UseTeams;
+
+    /// <summary>Modified Single Elimination draws round 1 at random - the "seed by rating"
+    /// control doesn't apply and is hidden for this format.</summary>
+    public bool UsesRandomDraw => NewTournamentFormat == TournamentFormat.ModifiedSingleElimination;
+
+    /// <summary>True while the "seed by rating" control should show.</summary>
+    public bool ShowSeedByRating => ShowPlayerEntrants && !UsesRandomDraw;
 
     partial void OnNewTournamentFormatChanged(TournamentFormat value)
     {
@@ -128,6 +136,8 @@ public partial class TournamentViewModel : ObservableObject
         OnPropertyChanged(nameof(IsCreatingChipTournament));
         OnPropertyChanged(nameof(RequiresTableCount));
         OnPropertyChanged(nameof(IsTeamEligibleFormat));
+        OnPropertyChanged(nameof(UsesRandomDraw));
+        OnPropertyChanged(nameof(ShowSeedByRating));
         if (!IsTeamEligibleFormat)
         {
             UseTeams = false;
@@ -137,6 +147,7 @@ public partial class TournamentViewModel : ObservableObject
     partial void OnUseTeamsChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowPlayerEntrants));
+        OnPropertyChanged(nameof(ShowSeedByRating));
     }
 
     public TournamentViewModel(
@@ -189,7 +200,8 @@ public partial class TournamentViewModel : ObservableObject
     private void RebuildBracket()
     {
         var format = State.ActiveTournament?.Format;
-        IsEliminationBracket = format is TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination;
+        IsEliminationBracket = format is TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination
+            or TournamentFormat.ModifiedSingleElimination;
         ShowFlatRounds = format is TournamentFormat.RoundRobin;
         Bracket = IsEliminationBracket
             ? BracketLayoutBuilder.Build(State.Rounds, EditableBoxWidth, EditableBoxHeight, EditableRowGap)
@@ -370,6 +382,12 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
+        if (tournament.Format == TournamentFormat.ModifiedSingleElimination && !BracketGenerationService.IsValidModifiedSingleEliminationCount(newTotal))
+        {
+            StatusMessage = "Modified Single Elimination currently requires a multiple-of-8 power-of-2 entrant count (8, 16, 32, 64...).";
+            return;
+        }
+
         try
         {
             tournament.Entrants.Add(newEntrant);
@@ -385,6 +403,9 @@ public partial class TournamentViewModel : ObservableObject
                     break;
                 case TournamentFormat.DoubleElimination:
                     RegenerateBracket(tournament, _bracketService.GenerateDoubleElimination);
+                    break;
+                case TournamentFormat.ModifiedSingleElimination:
+                    RegenerateBracket(tournament, _bracketService.GenerateModifiedSingleElimination);
                     break;
                 case TournamentFormat.RingGame:
                     AddRingEntrant(tournament, newEntrant);
@@ -507,6 +528,12 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
+        if (NewTournamentFormat == TournamentFormat.ModifiedSingleElimination && !BracketGenerationService.IsValidModifiedSingleEliminationCount(entrantCount))
+        {
+            StatusMessage = "Modified Single Elimination currently requires a multiple-of-8 power-of-2 entrant count (8, 16, 32, 64...).";
+            return;
+        }
+
         if (NewTournamentFormat != TournamentFormat.RingGame && NewTournamentTableCount < 1)
         {
             StatusMessage = "Enter the number of available tables.";
@@ -566,6 +593,11 @@ public partial class TournamentViewModel : ObservableObject
             // Ad-hoc "loser loses a life" play; no seeding or pairings.
             _chipGameService.StartChipTournament(
                 tournament, NewChipStartingChips, NewChipBuyIn, NewChipFirstPayout, NewChipSecondPayout, NewChipThirdPayout);
+        }
+        else if (NewTournamentFormat == TournamentFormat.ModifiedSingleElimination)
+        {
+            // Round 1 is a random draw, not a rating seed - the generator does its own draw.
+            _bracketService.GenerateModifiedSingleElimination(tournament);
         }
         else
         {

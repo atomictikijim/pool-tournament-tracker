@@ -154,7 +154,13 @@ public partial class TournamentStateService : ObservableObject
             return;
         }
 
-        var sideRank = new Dictionary<BracketSide, int> { [BracketSide.Winners] = 0, [BracketSide.Losers] = 1, [BracketSide.GrandFinal] = 2 };
+        var sideRank = new Dictionary<BracketSide, int>
+        {
+            [BracketSide.Winners] = 0,
+            [BracketSide.Losers] = 1,
+            [BracketSide.GrandFinal] = 2,
+            [BracketSide.Final] = 3
+        };
         var groups = bracket.Nodes
             .Where(n => n.MatchId is not null)
             .GroupBy(n => (n.Side, n.RoundNumber))
@@ -277,7 +283,20 @@ public partial class TournamentStateService : ObservableObject
 
         var maxRoundForSide = bracket.Nodes.Where(n => n.Side == side).Max(n => n.RoundNumber);
 
-        if (!bracket.IsDoubleElimination)
+        if (bracket.Kind == BracketKind.ModifiedSingleElimination)
+        {
+            if (side == BracketSide.Final)
+            {
+                if (roundNumber == maxRoundForSide) return "Final";
+                if (roundNumber == maxRoundForSide - 1) return "Semifinals";
+                return $"Round {roundNumber}";
+            }
+
+            var podPrefix = side == BracketSide.Winners ? "Winners" : "Losers";
+            return $"{podPrefix} Round {roundNumber}";
+        }
+
+        if (bracket.Kind == BracketKind.SingleElimination)
         {
             if (roundNumber == maxRoundForSide) return "Final";
             if (roundNumber == maxRoundForSide - 1) return "Semifinals";

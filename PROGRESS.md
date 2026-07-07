@@ -5,6 +5,12 @@ the top of each section.
 
 ## Current status
 
+v0.13 complete: a new Modified Single Elimination format (APA's format:
+entrants are split into 8-entrant pods, each running a shortened
+double-elimination-style ladder down to 2 "reps," which then feed a plain
+single-elimination stage with no further consolation chances). Available to
+both Players and Teams, like Single/Double Elimination.
+
 v0.12 complete: a new Teams tab (name-only roster) and a per-tournament "Use
 Teams" toggle so Single Elimination and Double Elimination can be run with
 Team entrants instead of individual Players. Round Robin, Ring Game, and
@@ -56,6 +62,11 @@ sections for double elimination.
 
 ## Next steps
 
+- [x] Modified Single Elimination format (done in v0.13).
+- [ ] Modified Single Elimination currently requires an entrant count that's a
+  multiple of 8 and a power of 2 (8, 16, 32, 64...) - partial pods and byes
+  within a pod are not supported yet, same kind of scope-cut Double
+  Elimination shipped with.
 - [x] Teams tab + Team entrants for Single/Double Elimination (done in v0.12).
 - [ ] Teams are name-only by design (no player roster/membership) - there is
   no way to see which players make up a team, and no per-player stats roll
@@ -85,6 +96,54 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.13 — 2026-07-07
+
+- **Modified Single Elimination**, a new `TournamentFormat` modeled on APA's
+  official format (confirmed against APA's own reference diagram and directly
+  with the user): entrants are randomly drawn (not rating-seeded) into pods of
+  8. Each pod runs Round 1 -> Losers Round 1 (a loss here eliminates outright)
+  -> Winners Round 2 -> Losers Round 2 ("receiving": pairs a Losers-Round-1
+  survivor with a Winners-Round-2 loser) -> a Final Four, whose 2 winners
+  become that pod's "reps." Every pod's reps then feed one ordinary
+  single-elimination bracket (semifinal/final for 2 pods, quarterfinal onward
+  for 4+) with no further consolation chances - "once it enters the
+  semifinal/final it's single elimination." Available to both Players and
+  Teams, like Single/Double Elimination; requires an entrant count that's a
+  multiple of 8 and a power of 2 (8, 16, 32, 64...) for now.
+- `BracketGenerationService.GenerateModifiedSingleElimination` reuses the
+  double-elimination "receiving round" helper as-is for each pod's Losers
+  Round 2, and reuses the existing round-building recursion (parameterized
+  with a new `BracketSide.Final`) for the cross-pod single-elimination stage -
+  `RecordMatchResult` needed **zero changes**, since it already only drops a
+  loser further when the completed node is on the Winners side with a wired
+  `FeedsIntoLoserNodeId`, which is exactly how this format's Losers-Round-1/2
+  nodes are (deliberately) left unwired.
+- `BracketDetail.IsDoubleElimination` (bool) became a `BracketKind` enum
+  (`SingleElimination`/`DoubleElimination`/`ModifiedSingleElimination`),
+  explicitly numbered to match the old bool's stored ints - the migration was
+  a plain column rename with no data conversion needed.
+- Two real bugs found and fixed while building this (see NOTES.md): (1) the
+  cross-pod round's winner-propagation silently used the completed node's own
+  `PositionInRound` for slot inference, which is ambiguous once nodes come
+  from different pods with independent numbering - a 16-entrant playthrough
+  test caught the semifinal never materializing, fixed by setting
+  `FeedsIntoWinnerSlot` explicitly from the interleaved list's own index. (2)
+  `IsEliminationBracket` in both `TournamentViewModel` and
+  `DisplayWindowViewModel` still only listed Single/Double Elimination, so the
+  new format's bracket silently failed to render in the UI despite generating
+  correctly - caught by the manual run-through, not by the (format-agnostic)
+  Core tests.
+- Tests: 89 pass (82 Core + 2 Data + 5 App, up from 81 total - added
+  `ModifiedSingleEliminationBracketTests` covering the invalid-entrant-count
+  rejection, the exact 13-match shape/sequence for a standalone 8-entrant pod,
+  and a 16-entrant playthrough proving 2 pods each contribute exactly 2 reps
+  into a real semifinal/final). Verified end-to-end in the running app:
+  created an 8-player Modified Single Elimination tournament, confirmed "Use
+  Teams" appears and "Seed by rating" is hidden, confirmed the draw order is
+  genuinely random (not alphabetical/rating-based), played through Round 1 and
+  watched Winners Round 2 and Losers Round 1 populate correctly with the right
+  winners/losers.
 
 ## v0.12 — 2026-07-07
 

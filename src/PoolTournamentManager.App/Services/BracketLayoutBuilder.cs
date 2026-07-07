@@ -49,6 +49,8 @@ public static class BracketLayoutBuilder
             .OrderBy(r => r.RoundNumber).ToList();
         var grandFinals = rounds.Where(r => r.Side == BracketSide.GrandFinal)
             .OrderBy(r => r.RoundNumber).ToList();
+        var finals = rounds.Where(r => r.Side == BracketSide.Final)
+            .OrderBy(r => r.RoundNumber).ToList();
 
         var isDouble = losers.Count > 0 || grandFinals.Count > 0;
 
@@ -68,6 +70,7 @@ public static class BracketLayoutBuilder
         // ---- Losers band --------------------------------------------------------------------
         Dictionary<string, PositionedMatchViewModel> losersBoxes = new();
         PositionedMatchViewModel? losersFinal = null;
+        var losersBottom = winnersBottom;
         if (losers.Count > 0)
         {
             var losersLabelY = winnersBottom + SectionGap;
@@ -76,6 +79,17 @@ public static class BracketLayoutBuilder
             layout.SectionLabels.Add(new BracketLabelViewModel("Losers Bracket", LeftPad, losersLabelY, m.BoxWidth * 2));
             losersBoxes = LayoutSide(layout, m, losers, columnBase: 0, bandTop: losersBandTop, headerY: losersHeaderY);
             losersFinal = losersBoxes.GetValueOrDefault(Key(losers[^1], 0));
+            losersBottom = losersBoxes.Count > 0 ? losersBoxes.Values.Max(b => b.Y + b.Height) : losersBandTop;
+        }
+
+        // ---- Final-rounds band (Modified Single Elimination's cross-pod stage) --------------
+        if (finals.Count > 0)
+        {
+            var finalsLabelY = losersBottom + SectionGap;
+            var finalsHeaderY = finalsLabelY + SectionLabelHeight;
+            var finalsBandTop = finalsHeaderY + HeaderHeight;
+            layout.SectionLabels.Add(new BracketLabelViewModel("Final Rounds", LeftPad, finalsLabelY, m.BoxWidth * 2));
+            LayoutSide(layout, m, finals, columnBase: 0, bandTop: finalsBandTop, headerY: finalsHeaderY);
         }
 
         // ---- Grand final(s) -----------------------------------------------------------------

@@ -3,6 +3,43 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-07 — Modified Single Elimination: two bugs, one from a test, one only visible in the UI
+
+**Issue 1:** `BracketGenerationService.GenerateModifiedSingleElimination` feeds every pod's 2
+"Final Four" winners into a shared cross-pod single-elimination stage via the existing
+`BuildWinnersRounds2AndUp` helper. That helper's target-slot inference falls back to the
+*completed* node's own `PositionInRound % 2` when no explicit `FeedsIntoWinnerSlot` is set - a
+convention that's only unambiguous when the round being fed from was built with clean, freshly
+assigned 0-based positions (true for every other caller of this helper). The interleaved
+cross-pod list instead carries each node's *pod-relative* `PositionInRound` (e.g. two different
+pods' "lane 0" rep can both be even), so two reps from different pods could both resolve to slot
+1, and slot 2 of the target semifinal node never got filled - it silently never materialized. A
+16-entrant playthrough test (`PlayThrough16Entrants_...`) caught this immediately as a match-count
+assertion off by exactly 2 (the missing semifinal matches); an 8-entrant (single-pod) test could
+never have caught it, since a single pod's 2 reps happen to fall on parity-compatible positions by
+coincidence.
+
+**Fix:** After wiring the cross-pod rounds, explicitly set
+`interleaved[i].FeedsIntoWinnerSlot = i % 2 == 0 ? 1 : 2` from the interleaved list's own index,
+overriding the ambiguous parity fallback. General lesson: `BracketNode`'s own doc comment already
+warns that the slot-parity fallback requires both inputs to arrive via "the same path" with
+naturally alternating positions - any time a round is built by merging nodes from otherwise
+independent numbering schemes (not just double elimination's winner/loser merge), assume the
+fallback is wrong and set the slot explicitly.
+
+**Issue 2:** After the generator was fully correct (and covered by 82 passing Core tests), the
+bracket still didn't render at all when creating a Modified Single Elimination tournament in the
+real app - `TournamentViewModel.RebuildBracket()` and `DisplayWindowViewModel`'s equivalent both
+compute `IsEliminationBracket` from a hardcoded `format is TournamentFormat.SingleElimination or
+TournamentFormat.DoubleElimination` check that predates this format and was never extended, so the
+new format's `Bracket` was always built as empty. No Core test could have caught this - the bug is
+entirely in App-project format-eligibility lists that mirror each other without a shared source of
+truth. Fix: added `or TournamentFormat.ModifiedSingleElimination` to both. General lesson: grep for
+every `TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination`-shaped check
+across the App project (not just Core) whenever a bracket-based format is added - Core's tests
+cover generation/wiring correctness but nothing exercises the UI's own parallel "which formats
+show a bracket" lists.
+
 ## 2026-07-07 — Singleton `TournamentStateService` + Scoped `ITournamentRepository` silently split the DbContext in two
 
 **Issue:** Finishing a match showed "Result recorded" - score frozen, winner bolded, bracket
