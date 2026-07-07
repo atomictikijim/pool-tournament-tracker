@@ -290,6 +290,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <ScrollViewer Grid.Row="0" Margin="0,0,0,10" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
@@ -524,10 +525,32 @@
                                 <DataGridTextColumn Header="Place" Binding="{Binding PlaceDisplay}" Width="55" />
                                 <DataGridTextColumn Header="Player" Binding="{Binding PlayerName}" Width="180" />
                                 <DataGridTextColumn Header="Chips" Binding="{Binding ChipsDisplay}" Width="80" />
-                                <DataGridTextColumn Header="Payout" Binding="{Binding PayoutDisplay}" Width="90" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
+
+                    <!-- Prize payouts: entry-fee totals + per-place payouts, shared across every
+                         format except Ring Game (see PrizePayoutService/TournamentStateService). -->
+                    <Border Grid.Row="4" Margin="0,10,0,0" Padding="8"
+                            Background="{DynamicResource CardBackgroundBrush}"
+                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                            Visibility="{Binding State.ShowPrizePayouts, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock Text="Prize Payouts" FontWeight="Bold" FontSize="13" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding State.PrizePoolSummaryLine}" Margin="0,0,0,6" />
+                            <ItemsControl ItemsSource="{Binding State.PrizePayouts}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                            <TextBlock Text="{Binding PlaceDisplay}" Width="90" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding EntrantName}" Width="180" />
+                                            <TextBlock Text="{Binding Payout}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
                 </Grid>
 
                 <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1"
@@ -581,18 +604,48 @@
                         <TextBox Text="{Binding NewRingNinePayout}" Margin="0,0,0,6" />
                     </StackPanel>
 
-                    <!-- Chip-tournament-only setup: starting chips, buy-in, and place payouts -->
+                    <!-- Chip-tournament-only setup: starting chips -->
                     <StackPanel Visibility="{Binding IsCreatingChipTournament, Converter={StaticResource BoolToVisibilityConverter}}">
                         <TextBlock Text="Starting chips per player" />
                         <TextBox Text="{Binding NewChipStartingChips}" Margin="0,0,0,6" />
-                        <TextBlock Text="Buy-in ($)" />
-                        <TextBox Text="{Binding NewChipBuyIn}" Margin="0,0,0,6" />
-                        <TextBlock Text="1st place payout ($)" />
-                        <TextBox Text="{Binding NewChipFirstPayout}" Margin="0,0,0,6" />
-                        <TextBlock Text="2nd place payout ($)" />
-                        <TextBox Text="{Binding NewChipSecondPayout}" Margin="0,0,0,6" />
-                        <TextBlock Text="3rd place payout ($)" />
-                        <TextBox Text="{Binding NewChipThirdPayout}" Margin="0,0,0,6" />
+                    </StackPanel>
+
+                    <!-- Entry fee, host cut, and place-based prize payouts - every format except
+                         Ring Game, which has its own separate buy-in/payout model. -->
+                    <StackPanel Visibility="{Binding ShowEntryFeeSection, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="Entry fee per entrant ($)" />
+                        <TextBox Text="{Binding NewEntryFee, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding TotalEntryFeesDisplay, StringFormat='Total entry fees collected: {0}'}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                        <TextBlock Text="Tournament host fee (%)" />
+                        <TextBox Text="{Binding NewHostFeePercentage, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+                        <TextBlock Text="Number of payout places" />
+                        <TextBox Text="{Binding NewPayoutPlaceCount, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+
+                        <ItemsControl ItemsSource="{Binding NewPrizePlaceInputs}" Margin="0,0,0,4">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Text="{Binding PlaceLabel}" Width="90" VerticalAlignment="Center" />
+                                        <TextBox Text="{Binding Percentage, UpdateSourceTrigger=PropertyChanged}" Width="60" />
+                                        <TextBlock Text="%" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Visibility="{Binding NewPayoutPlaceCount, Converter={StaticResource CountToVisibilityConverter}}" Margin="0,0,0,6">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPrizePlacePercentageValid}" Value="False">
+                                            <Setter Property="Foreground" Value="Red" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                            <Run Text="Total: " /><Run Text="{Binding PrizePlacePercentageTotal, Mode=OneWay}" /><Run Text="% (must equal 100%)" />
+                        </TextBlock>
                     </StackPanel>
 
                     <StackPanel Visibility="{Binding ShowPlayerEntrants, Converter={StaticResource BoolToVisibilityConverter}}">

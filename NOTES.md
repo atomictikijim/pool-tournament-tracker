@@ -3,6 +3,32 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-07 — Elimination-bracket prize payouts beyond 1st/2nd are a deliberate approximation, not exact placement
+
+**Issue:** Building `PrizePayoutService` for the new entry-fee/prize-payout feature needs a
+"finishing place" for every entrant. Round Robin and Chip Tournament already compute one exactly
+(a full strict order / an elimination-sequence number - see `RoundRobinStandingsService`/
+`ChipGameService.ComputeStandings`). Elimination brackets (Single/Double/Modified) have **no such
+concept anywhere in the codebase** beyond the champion (the final's winner) - grepping for
+"RunnerUp"/"Placement" turns up nothing. A bracket only ever *decides* a strict order for 1st and
+2nd; every earlier round eliminates multiple entrants with no inherent ranking between them (e.g.
+both semifinal losers are simply "eliminated in the semifinals"). Building exact bracket-depth
+placement would require bespoke graph traversal per `BracketKind` - and, for Modified Single
+Elimination specifically, per-pod traversal too, since pod-eliminated entrants never enter the
+shared Final-side bracket at all - with no existing precedent to build on.
+
+**Fix (a scope decision, not a bug fix):** 1st/2nd are computed exactly (find the deciding match
+per `BracketKind` - the top Winners/Final-side node, or the Grand Final preferring its reset match
+if one was played). Everyone else is ranked by match win/loss record (wins desc, losses asc, name),
+**excluding bye matches** from the count so a round-1 bye doesn't inflate one semifinalist's win
+count relative to another who played every round. Entrants with an identical record tie and split
+the combined payout for the place range they occupy evenly. This is a defensible, well-tested
+approximation (see `PrizePayoutServiceTests` - it produces exact results for every case that has
+one, e.g. Double Elimination's N=4 bracket has zero ties since each round eliminates exactly one
+person), but it is *not* the same thing as true bracket-depth seeding placement. Anyone tempted to
+"fix" a payout split that looks slightly off for a large/irregular bracket should know this is
+working as designed, not a latent bug - see PROGRESS.md's Next Steps for the same call-out.
+
 ## 2026-07-07 — Modified Single Elimination: two bugs, one from a test, one only visible in the UI
 
 **Issue 1:** `BracketGenerationService.GenerateModifiedSingleElimination` feeds every pod's 2

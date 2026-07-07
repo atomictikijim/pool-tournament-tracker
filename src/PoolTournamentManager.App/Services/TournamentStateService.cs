@@ -59,6 +59,20 @@ public partial class TournamentStateService : ObservableObject
     [ObservableProperty]
     private string _chipStatusLine = string.Empty;
 
+    /// <summary>Shown for every format except Ring Game once at least one payout place is
+    /// configured - see PrizePayoutService.</summary>
+    [ObservableProperty]
+    private bool _showPrizePayouts;
+
+    /// <summary>"Entry fees $200  ·  Host cut (10%) $20  ·  Prize pool $180".</summary>
+    [ObservableProperty]
+    private string _prizePoolSummaryLine = string.Empty;
+
+    /// <summary>Per-entrant payout rows, sorted by finishing place. Empty for elimination
+    /// brackets until the tournament completes.</summary>
+    [ObservableProperty]
+    private ObservableCollection<PrizePayoutRowViewModel> _prizePayouts = new();
+
     private readonly DispatcherTimer _matchTickTimer = new() { Interval = TimeSpan.FromSeconds(1) };
 
     public TournamentStateService(ITournamentRepository tournamentRepository)
@@ -118,6 +132,7 @@ public partial class TournamentStateService : ObservableObject
             IsRingGame = false;
             RingStatusLine = string.Empty;
             ClearChipState();
+            ClearPrizePayouts();
             return;
         }
 
@@ -145,6 +160,7 @@ public partial class TournamentStateService : ObservableObject
         }
 
         Standings = new ObservableCollection<StandingsRowViewModel>();
+        RebuildPrizePayouts(tournament);
 
         var rounds = new ObservableCollection<RoundGroupViewModel>();
         var bracket = tournament.Bracket;
@@ -185,6 +201,7 @@ public partial class TournamentStateService : ObservableObject
     {
         IsRingGame = true;
         ClearChipState();
+        ClearPrizePayouts();
         Rounds = new ObservableCollection<RoundGroupViewModel>();
         Standings = new ObservableCollection<StandingsRowViewModel>();
 
@@ -230,7 +247,7 @@ public partial class TournamentStateService : ObservableObject
         ChipActiveEntrants = new ObservableCollection<ChipStandingRowViewModel>(
             ChipStandings.Where(r => !r.IsEliminated));
 
-        var pot = ChipGameService.Pot(tournament).ToString("C0");
+        var pot = PrizePayoutService.TotalEntryFees(tournament).ToString("C0");
         var total = tournament.Entrants.Count;
         var active = rows.Count(r => !r.IsEliminated);
 
@@ -244,6 +261,8 @@ public partial class TournamentStateService : ObservableObject
             var chips = tournament.ChipGame?.StartingChips ?? 0;
             ChipStatusLine = $"{active} of {total} left  ·  {chips} chips each  ·  Pot {pot}";
         }
+
+        RebuildPrizePayouts(tournament);
     }
 
     private void ClearChipState()
@@ -252,6 +271,42 @@ public partial class TournamentStateService : ObservableObject
         ChipStandings = new ObservableCollection<ChipStandingRowViewModel>();
         ChipActiveEntrants = new ObservableCollection<ChipStandingRowViewModel>();
         ChipStatusLine = string.Empty;
+    }
+
+    private void ClearPrizePayouts()
+    {
+        ShowPrizePayouts = false;
+        PrizePoolSummaryLine = string.Empty;
+        PrizePayouts = new ObservableCollection<PrizePayoutRowViewModel>();
+    }
+
+    /// <summary>
+    /// Rebuilds the shared "Prize Payouts" panel (Tournament tab and Display window) for any
+    /// format except Ring Game, which has its own separate money model. Shows the entry-fee
+    /// totals as soon as a payout is configured, even before placements are known; per-entrant
+    /// payout rows populate once PrizePayoutService can determine them (immediately for Round
+    /// Robin/Chip Tournament, only once completed for elimination brackets).
+    /// </summary>
+    private void RebuildPrizePayouts(Tournament tournament)
+    {
+        ShowPrizePayouts = tournament.Format != TournamentFormat.RingGame && tournament.PrizePlaces.Count > 0;
+        if (!ShowPrizePayouts)
+        {
+            PrizePoolSummaryLine = string.Empty;
+            PrizePayouts = new ObservableCollection<PrizePayoutRowViewModel>();
+            return;
+        }
+
+        var totalFees = PrizePayoutService.TotalEntryFees(tournament).ToString("C0");
+        var pool = PrizePayoutService.PrizePool(tournament).ToString("C0");
+        PrizePoolSummaryLine = tournament.HostFeePercentage > 0
+            ? $"Entry fees {totalFees}  ·  Host cut ({tournament.HostFeePercentage:0.##}%) {PrizePayoutService.HostCut(tournament):C0}  ·  Prize pool {pool}"
+            : $"Entry fees {totalFees}  ·  Prize pool {pool}";
+
+        PrizePayouts = new ObservableCollection<PrizePayoutRowViewModel>(
+            PrizePayoutService.ComputePayouts(tournament)
+                .OrderBy(r => r.PlaceRangeStart)
+                .Select(r => new PrizePayoutRowViewModel(r)));
     }
 
     private void RebuildRoundRobinRounds(Tournament tournament)
@@ -272,6 +327,7 @@ public partial class TournamentStateService : ObservableObject
         Standings = new ObservableCollection<StandingsRowViewModel>(
             RoundRobinStandingsService.ComputeStandings(tournament)
                 .Select((row, index) => new StandingsRowViewModel(index + 1, row)));
+        RebuildPrizePayouts(tournament);
     }
 
     private static string BuildRoundTitle(BracketDetail bracket, BracketSide side, int roundNumber, bool isReset)

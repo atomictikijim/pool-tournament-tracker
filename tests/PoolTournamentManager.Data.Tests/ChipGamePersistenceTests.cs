@@ -59,7 +59,8 @@ public class ChipGamePersistenceTests : IDisposable
 
             foreach (var e in t.Entrants) { ctx.Add(e.Player!); }
 
-            svc.StartChipTournament(t, startingChips: 2, buyIn: 10m, firstPayout: 20m, secondPayout: 10m, thirdPayout: 0m);
+            t.EntryFee = 10m;
+            svc.StartChipTournament(t, startingChips: 2);
             await repo.AddAsync(t);
         }
 
@@ -71,7 +72,7 @@ public class ChipGamePersistenceTests : IDisposable
             Assert.Equal(TournamentStatus.InProgress, t!.Status);
             Assert.NotNull(t.ChipGame);
             Assert.Equal(2, t.ChipGame!.StartingChips);
-            Assert.Equal(30m, ChipGameService.Pot(t)); // 10 * 3
+            Assert.Equal(30m, PrizePayoutService.TotalEntryFees(t)); // 10 * 3
             Assert.All(ChipGameService.ComputeStandings(t), r => Assert.Equal(2, r.ChipsRemaining));
         }
 
@@ -128,7 +129,6 @@ public class ChipGamePersistenceTests : IDisposable
             var standings = ChipGameService.ComputeStandings(t);
             Assert.Equal(aId, standings[0].Entrant.Id);         // champion on top
             Assert.Equal(1, standings[0].Place);
-            Assert.Equal(20m, standings[0].Payout);             // 1st place payout
             Assert.Equal(4, t.ChipGame!.Entries.Count);         // all four games persisted
         }
     }

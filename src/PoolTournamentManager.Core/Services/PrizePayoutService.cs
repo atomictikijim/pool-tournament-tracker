@@ -1,0 +1,217 @@
+using PoolTournamentManager.Core.Entities;
+using PoolTournamentManager.Core.Enums;
+
+namespace PoolTournamentManager.Core.Services;
+
+/// <summary>One entrant's share of the prize pool, computed from Tournament.PrizePlaces.</summary>
+public class PrizePayoutRow
+{
+    public required TournamentEntrant Entrant { get; init; }
+
+    /// <summary>1-based finishing place. Equal to <see cref="PlaceRangeEnd"/> unless this
+    /// entrant is tied with others for a shared range of places (e.g. two semifinal losers
+    /// tied for 3rd-4th), in which case they split that range's combined payout evenly.</summary>
+    public int PlaceRangeStart { get; init; }
+    public int PlaceRangeEnd { get; init; }
+
+    public decimal Payout { get; init; }
+}
+
+/// <summary>
+/// Computes "who gets paid what" from a Tournament's EntryFee/HostFeePercentage/PrizePlaces.
+/// Not used for Ring Game, which has its own continuous buy-in/per-ball-payout model with no
+/// discrete finishing order.
+///
+/// Round Robin and Chip Tournament already have an exact, never-tied placement (see
+/// RoundRobinStandingsService/ChipGameService) reused as-is. Elimination brackets have no
+/// placement concept at all beyond the champion/runner-up (the deciding match), so 3rd place
+/// and below are approximated by match win/loss record: entrants with identical records tie
+/// and split the combined payout for the place range they occupy. This is a deliberate
+/// simplification, not exact bracket-depth traversal - see NOTES.md.
+/// </summary>
+public static class PrizePayoutService
+{
+    /// <summary>Gross money collected: entry fee times entrant count.</summary>
+    public static decimal TotalEntryFees(Tournament tournament) => tournament.EntryFee * tournament.Entrants.Count;
+
+    /// <summary>The portion of total entry fees kept by the tournament host.</summary>
+    public static decimal HostCut(Tournament tournament) => TotalEntryFees(tournament) * (tournament.HostFeePercentage / 100m);
+
+    /// <summary>What's left to award across the configured prize places.</summary>
+    public static decimal PrizePool(Tournament tournament) => TotalEntryFees(tournament) - HostCut(tournament);
+
+    public static List<PrizePayoutRow> ComputePayouts(Tournament tournament)
+    {
+        if (tournament.Format == TournamentFormat.RingGame || tournament.PrizePlaces.Count == 0)
+        {
+            return new List<PrizePayoutRow>();
+        }
+
+        var placements = ComputePlacements(tournament);
+        if (placements.Count == 0)
+        {
+            return new List<PrizePayoutRow>();
+        }
+
+        var pool = PrizePool(tournament);
+        var percentageByPlace = tournament.PrizePlaces.ToDictionary(p => p.Place, p => p.Percentage);
+
+        var rows = new List<PrizePayoutRow>();
+        foreach (var group in placements)
+        {
+            var groupPercentage = 0m;
+            for (var place = group.RangeStart; place <= group.RangeEnd; place++)
+            {
+                groupPercentage += percentageByPlace.GetValueOrDefault(place);
+            }
+
+            var perEntrant = pool * groupPercentage / 100m / group.Entrants.Count;
+            rows.AddRange(group.Entrants.Select(entrant => new PrizePayoutRow
+            {
+                Entrant = entrant,
+                PlaceRangeStart = group.RangeStart,
+                PlaceRangeEnd = group.RangeEnd,
+                Payout = perEntrant
+            }));
+        }
+
+        return rows;
+    }
+
+    private sealed record PlacementGroup(List<TournamentEntrant> Entrants, int RangeStart, int RangeEnd);
+
+    private static List<PlacementGroup> ComputePlacements(Tournament tournament) => tournament.Format switch
+    {
+        TournamentFormat.RoundRobin => RoundRobinPlacements(tournament),
+        TournamentFormat.ChipTournament => ChipPlacements(tournament),
+        TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination or TournamentFormat.ModifiedSingleElimination
+            => BracketPlacements(tournament),
+        _ => new List<PlacementGroup>()
+    };
+
+    private static List<PlacementGroup> RoundRobinPlacements(Tournament tournament) =>
+        RoundRobinStandingsService.ComputeStandings(tournament)
+            .Select((row, index) => new PlacementGroup(new List<TournamentEntrant> { row.Entrant }, index + 1, index + 1))
+            .ToList();
+
+    private static List<PlacementGroup> ChipPlacements(Tournament tournament) =>
+        ChipGameService.ComputeStandings(tournament)
+            .Where(row => row.Place is not null)
+            .Select(row => new PlacementGroup(new List<TournamentEntrant> { row.Entrant }, row.Place!.Value, row.Place!.Value))
+            .ToList();
+
+    private static List<PlacementGroup> BracketPlacements(Tournament tournament)
+    {
+        if (tournament.Status != TournamentStatus.Completed || tournament.Bracket is null)
+        {
+            return new List<PlacementGroup>();
+        }
+
+        var (championId, runnerUpId) = FindFinalists(tournament.Bracket);
+        if (championId is null)
+        {
+            return new List<PlacementGroup>();
+        }
+
+        var groups = new List<PlacementGroup>
+        {
+            new(new List<TournamentEntrant> { tournament.Entrants.First(e => e.Id == championId.Value) }, 1, 1)
+        };
+
+        var remaining = tournament.Entrants.Where(e => e.Id != championId.Value).ToList();
+        var nextPlace = 2;
+
+        if (runnerUpId is not null)
+        {
+            groups.Add(new PlacementGroup(new List<TournamentEntrant> { tournament.Entrants.First(e => e.Id == runnerUpId.Value) }, 2, 2));
+            remaining = remaining.Where(e => e.Id != runnerUpId.Value).ToList();
+            nextPlace = 3;
+        }
+
+        var record = remaining.ToDictionary(e => e.Id, e => MatchRecord(tournament, e.Id));
+        var ranked = remaining
+            .OrderByDescending(e => record[e.Id].Wins)
+            .ThenBy(e => record[e.Id].Losses)
+            .ThenBy(e => e.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var i = 0;
+        while (i < ranked.Count)
+        {
+            var currentRecord = record[ranked[i].Id];
+            var tieGroup = new List<TournamentEntrant> { ranked[i] };
+            var j = i + 1;
+            while (j < ranked.Count && record[ranked[j].Id] == currentRecord)
+            {
+                tieGroup.Add(ranked[j]);
+                j++;
+            }
+
+            groups.Add(new PlacementGroup(tieGroup, nextPlace, nextPlace + tieGroup.Count - 1));
+            nextPlace += tieGroup.Count;
+            i = j;
+        }
+
+        return groups;
+    }
+
+    /// <summary>Match wins/losses for one entrant, excluding byes (a bye isn't a played match).</summary>
+    private static (int Wins, int Losses) MatchRecord(Tournament tournament, Guid entrantId)
+    {
+        var wins = 0;
+        var losses = 0;
+        foreach (var match in tournament.Matches)
+        {
+            if (match.IsBye || match.Status != MatchStatus.Completed || match.WinnerEntrantId is null)
+            {
+                continue;
+            }
+            if (match.Player1EntrantId != entrantId && match.Player2EntrantId != entrantId)
+            {
+                continue;
+            }
+
+            if (match.WinnerEntrantId == entrantId)
+            {
+                wins++;
+            }
+            else
+            {
+                losses++;
+            }
+        }
+
+        return (wins, losses);
+    }
+
+    /// <summary>
+    /// Finds the tournament-deciding match's winner/loser, per BracketKind: the top Winners-side
+    /// node for Single Elimination, the top Final-side node for Modified Single Elimination, or
+    /// the Grand Final (preferring its bracket-reset rematch if one was played) for Double
+    /// Elimination. Returns (null, null) if the deciding match hasn't completed yet.
+    /// </summary>
+    private static (Guid? Champion, Guid? RunnerUp) FindFinalists(BracketDetail bracket)
+    {
+        var finalNode = bracket.Kind switch
+        {
+            BracketKind.SingleElimination =>
+                bracket.Nodes.FirstOrDefault(n => n.Side == BracketSide.Winners && n.FeedsIntoWinnerNodeId is null),
+            BracketKind.ModifiedSingleElimination =>
+                bracket.Nodes.FirstOrDefault(n => n.Side == BracketSide.Final && n.FeedsIntoWinnerNodeId is null),
+            BracketKind.DoubleElimination => bracket.Nodes
+                .Where(n => n.Side == BracketSide.GrandFinal && n.Match is { Status: MatchStatus.Completed })
+                .OrderByDescending(n => n.IsGrandFinalReset)
+                .FirstOrDefault(),
+            _ => null
+        };
+
+        if (finalNode?.Match is not { Status: MatchStatus.Completed, WinnerEntrantId: not null } match)
+        {
+            return (null, null);
+        }
+
+        var championId = match.WinnerEntrantId!.Value;
+        var runnerUpId = championId == match.Player1EntrantId ? match.Player2EntrantId : match.Player1EntrantId;
+        return (championId, runnerUpId);
+    }
+}

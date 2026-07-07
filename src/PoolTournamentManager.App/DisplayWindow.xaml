@@ -12,6 +12,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Background="{DynamicResource WindowChromeBrush}" Margin="-20,-20,-20,16" Padding="20,16">
@@ -191,6 +192,33 @@
                             <StackPanel>
                                 <TextBlock Text="{Binding PlayerName}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="18" FontWeight="Bold" />
                                 <TextBlock Text="{Binding SummaryLine}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="15" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+        <!-- Prize payouts: entry-fee totals + per-place payouts, shared across every format
+             except Ring Game (see PrizePayoutService/TournamentStateService). -->
+        <StackPanel Grid.Row="3" Margin="0,20,0,0" Visibility="{Binding State.ShowPrizePayouts, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="Prize Payouts" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="20" FontWeight="Bold" Margin="0,0,0,8" />
+            <TextBlock Text="{Binding State.PrizePoolSummaryLine}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="15" Margin="0,0,0,8" />
+            <ItemsControl ItemsSource="{Binding State.PrizePayouts}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="14,10" Margin="0,0,14,14" Width="220"
+                                Background="{DynamicResource CardBackgroundBrush}"
+                                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="{Binding PlaceDisplay}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="16" FontWeight="Bold" />
+                                <TextBlock Text="{Binding EntrantName}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="16" Margin="0,2,0,0" />
+                                <TextBlock Text="{Binding Payout}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="15" />
                             </StackPanel>
                         </Border>
                     </DataTemplate>

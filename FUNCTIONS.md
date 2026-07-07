@@ -10,9 +10,10 @@ covering every tab, button, and format the app supports.
 3. [Managing teams (Teams tab)](#3-managing-teams-teams-tab)
 4. [Creating a tournament (Tournament Settings tab)](#4-creating-a-tournament-tournament-settings-tab)
 5. [Running a tournament (Tournament tab)](#5-running-a-tournament-tournament-tab)
-6. [The tournament formats explained](#6-the-tournament-formats-explained)
-7. [The Display window](#7-the-display-window)
-8. [Appearance](#8-appearance)
+6. [Entry fees and prize payouts](#6-entry-fees-and-prize-payouts)
+7. [The tournament formats explained](#7-the-tournament-formats-explained)
+8. [The Display window](#8-the-display-window)
+9. [Appearance](#9-appearance)
 
 ---
 
@@ -70,7 +71,7 @@ This tab holds the entire "create a new tournament" form.
 1. **Name** — whatever you want to call the event.
 2. **Game** — 8-Ball, 9-Ball, or 10-Ball. This is a label only; it doesn't change any
    scoring or bracket logic.
-3. **Format** — pick one of the five formats (see [Section 6](#6-the-tournament-formats-explained) for full rules on
+3. **Format** — pick one of the five formats (see [Section 7](#7-the-tournament-formats-explained) for full rules on
    each):
    - Single Elimination
    - Double Elimination
@@ -94,12 +95,15 @@ This tab holds the entire "create a new tournament" form.
    Tournament tab).
 7. Format-specific setup fields appear automatically:
    - **Ring Game**: Buy-in ($), 5-ball payout ($), 9-ball payout ($).
-   - **Chip Tournament**: Starting chips per player, Buy-in ($), and 1st/2nd/3rd
-     place payouts ($).
-8. **Entrants** — a checklist of your Players (or Teams, if Use Teams is checked)
+   - **Chip Tournament**: Starting chips per player.
+8. **Entry fee and prize payouts** — appears for every format except Ring Game.
+   See [Section 6](#6-entry-fees-and-prize-payouts) for the full explanation; this is
+   where you set the entry fee, the tournament host's cut, and how the remaining
+   prize pool is split across finishing places.
+9. **Entrants** — a checklist of your Players (or Teams, if Use Teams is checked)
    to include. Check everyone who's playing. Click **Refresh** if you added a
    player/team on another tab and don't see them yet.
-9. Click **Create Tournament**.
+10. Click **Create Tournament**.
 
 Entrant count requirements:
 
@@ -163,8 +167,12 @@ beats the Winners-side champion in the Grand Final, there's one more rematch (a
 "bracket reset") to decide the tournament, since the Winners-side champion hasn't
 lost yet.
 
-Modified Single Elimination: see [Section 6](#6-the-tournament-formats-explained) for the exact structure — every
+Modified Single Elimination: see [Section 7](#7-the-tournament-formats-explained) for the exact structure — every
 entrant gets at least two matches, but it moves faster than full Double Elimination.
+
+If the tournament has prize payouts configured, a **Prize Payouts** panel appears
+below the bracket once the champion and runner-up are decided (see
+[Section 6](#6-entry-fees-and-prize-payouts)).
 
 ### Playing a Round Robin
 
@@ -206,12 +214,57 @@ how many chips everyone started with, and the pot. Below that:
 3. The loser drops one chip; the winner's chip count doesn't change. A player who
    hits zero chips is eliminated and locks in a finishing place.
 
-The **standings grid** updates live after every game: finishing place, player,
-current chip count, and payout (based on the 1st/2nd/3rd payouts you set at
-creation). The tournament completes automatically once one player is left holding
+The **standings grid** updates live after every game: finishing place, player, and
+current chip count. If prize payouts are configured, a separate **Prize Payouts**
+panel below shows what each finishing place wins (see
+[Section 6](#6-entry-fees-and-prize-payouts)). The tournament completes automatically once one player is left holding
 chips — they're the champion.
 
-## 6. The tournament formats explained
+## 6. Entry fees and prize payouts
+
+Every format except Ring Game (which has its own separate buy-in and
+5-ball/9-ball payouts — see below) can charge an entry fee and pay out a prize
+pool by finishing place. This is all configured on the Tournament Settings
+tab when you create the tournament:
+
+- **Entry fee ($)** — how much each entrant pays. Next to it, a live **Total
+  entry fees collected** readout shows the entry fee times however many
+  entrants you currently have checked in the Entrants list below — it updates
+  as you check/uncheck entrants.
+- **Tournament host fee (%)** — the percentage of that total the tournament
+  organizer/host keeps before anything is paid out. Leave at 0 if the entire
+  entry fee goes to prizes.
+- **Number of payout places** — how many finishing places get paid (e.g. 3 for
+  1st/2nd/3rd). Leave at 0 for no configured payouts at all (you can still
+  charge an entry fee purely to fund a house cut, with no prizes).
+- One **Place N: __%** row per payout place — what percentage of the *prize
+  pool* (the total entry fees minus the host's cut) that place receives. A
+  live "Total: XX%" hint shows the running sum; the percentages across all
+  configured places must add up to exactly 100% before the tournament can be
+  created.
+
+Example: 8 entrants pay a $10 entry fee ($80 total). A 10% host fee takes $8,
+leaving a $72 prize pool. If 1st/2nd/3rd are set to 60%/30%/10%, 1st place
+wins $43.20, 2nd wins $21.60, and 3rd wins $7.20.
+
+Once the tournament is running, a **Prize Payouts** panel (on the Tournament
+tab, and mirrored on the [Display window](#8-the-display-window)) shows the
+entry-fee/host-cut/prize-pool totals and, once finishing places are known,
+each place's payout:
+
+- **Round Robin and Chip Tournament** show live, updating payouts throughout
+  the event, since every entrant's finishing place is always known (Round
+  Robin from the Standings ranking, Chip Tournament from elimination order).
+- **Single/Double/Modified Single Elimination** only show payouts once the
+  tournament is complete. The champion (1st) and runner-up (2nd) are always
+  exact. For 3rd place and below, a bracket doesn't actually decide a strict
+  order among everyone eliminated earlier — for example, both players who
+  lose in the semifinals are simply "out in the semifinals," with nothing
+  ranking one above the other. In that situation, the app groups tied
+  entrants together (shown as e.g. "3rd-4th (tied)") and splits their
+  combined payout evenly between them.
+
+## 7. The tournament formats explained
 
 ### Single Elimination
 
@@ -280,10 +333,10 @@ A "lives" tournament, not a bracket. Every player buys in and starts with the sa
 number of chips. Games are logged one at a time between any two still-active
 players — the loser drops a chip, the winner is unaffected. A player at zero chips
 is eliminated (their finishing place is locked in at that moment). The last player
-still holding chips wins the tournament; payouts follow the configured 1st/2nd/3rd
-amounts.
+still holding chips wins the tournament; see
+[Section 6](#6-entry-fees-and-prize-payouts) for how payouts are configured.
 
-## 7. The Display window
+## 8. The Display window
 
 Click **Open Display Window** (on the Tournament tab) to open a second, read-only
 window meant for a projector or a second monitor facing the room. It automatically
@@ -295,11 +348,13 @@ needed:
 - The live bracket (for elimination formats), Standings (Round Robin), rotation and
   money board (Ring Game), or standings board (Chip Tournament) — completed matches'
   winners are highlighted.
+- The **Prize Payouts** panel, if the tournament has payouts configured (see
+  [Section 6](#6-entry-fees-and-prize-payouts)) — not shown for Ring Game.
 
 Nothing in the Display window is clickable/editable — it's purely for the audience
 to watch. All control stays on the main Tournament tab.
 
-## 8. Appearance
+## 9. Appearance
 
 The app automatically matches your Windows light/dark mode setting and updates
 instantly if you change it in Windows — there is nothing to configure in the app

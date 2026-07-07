@@ -84,17 +84,22 @@ public partial class TournamentViewModel : ObservableObject
     [ObservableProperty]
     private int _newChipStartingChips = 3;
 
+    /// <summary>Per-entrant entry fee. Shown for every format except Ring Game, which has its
+    /// own separate buy-in - see <see cref="ShowEntryFeeSection"/>.</summary>
     [ObservableProperty]
-    private decimal _newChipBuyIn = 20m;
+    private decimal _newEntryFee;
 
+    /// <summary>Percentage of total entry fees the tournament host keeps.</summary>
     [ObservableProperty]
-    private decimal _newChipFirstPayout = 100m;
+    private decimal _newHostFeePercentage;
 
+    /// <summary>Number of finishing places that receive a prize-pool payout. 0 = no payouts
+    /// configured. Resizes <see cref="NewPrizePlaceInputs"/> when changed.</summary>
     [ObservableProperty]
-    private decimal _newChipSecondPayout = 40m;
+    private int _newPayoutPlaceCount;
 
-    [ObservableProperty]
-    private decimal _newChipThirdPayout = 0m;
+    /// <summary>One "Place N: __ %" row per configured payout place.</summary>
+    public ObservableCollection<PrizePlaceInputViewModel> NewPrizePlaceInputs { get; } = new();
 
     [ObservableProperty]
     private string? _statusMessage;
@@ -130,6 +135,30 @@ public partial class TournamentViewModel : ObservableObject
     /// <summary>True while the "seed by rating" control should show.</summary>
     public bool ShowSeedByRating => ShowPlayerEntrants && !UsesRandomDraw;
 
+    /// <summary>True for every format except Ring Game, which has its own separate buy-in/payout
+    /// model with no discrete finishing order - see PrizePayoutService.</summary>
+    public bool ShowEntryFeeSection => NewTournamentFormat != TournamentFormat.RingGame;
+
+    /// <summary>Live "money that has come in" preview: entry fee times the currently-selected
+    /// entrant count (Players or Teams, whichever checklist is active).</summary>
+    public string TotalEntryFeesDisplay
+    {
+        get
+        {
+            var count = UseTeams
+                ? TeamCandidates.Count(c => c.IsSelected)
+                : EntrantCandidates.Count(c => c.IsSelected);
+            return (NewEntryFee * count).ToString("C0");
+        }
+    }
+
+    /// <summary>Live sum of the configured prize-place percentages, for the "Total: XX%" hint.</summary>
+    public decimal PrizePlacePercentageTotal => NewPrizePlaceInputs.Sum(p => p.Percentage);
+
+    /// <summary>True when no payout places are configured, or their percentages sum to 100.</summary>
+    public bool IsPrizePlacePercentageValid =>
+        NewPayoutPlaceCount == 0 || Math.Abs(PrizePlacePercentageTotal - 100m) < 0.01m;
+
     partial void OnNewTournamentFormatChanged(TournamentFormat value)
     {
         OnPropertyChanged(nameof(IsCreatingRingGame));
@@ -138,6 +167,7 @@ public partial class TournamentViewModel : ObservableObject
         OnPropertyChanged(nameof(IsTeamEligibleFormat));
         OnPropertyChanged(nameof(UsesRandomDraw));
         OnPropertyChanged(nameof(ShowSeedByRating));
+        OnPropertyChanged(nameof(ShowEntryFeeSection));
         if (!IsTeamEligibleFormat)
         {
             UseTeams = false;
@@ -148,6 +178,38 @@ public partial class TournamentViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(ShowPlayerEntrants));
         OnPropertyChanged(nameof(ShowSeedByRating));
+        OnPropertyChanged(nameof(TotalEntryFeesDisplay));
+    }
+
+    partial void OnNewEntryFeeChanged(decimal value) => OnPropertyChanged(nameof(TotalEntryFeesDisplay));
+
+    partial void OnNewPayoutPlaceCountChanged(int value)
+    {
+        var target = Math.Max(0, value);
+        while (NewPrizePlaceInputs.Count < target)
+        {
+            var row = new PrizePlaceInputViewModel(NewPrizePlaceInputs.Count + 1);
+            row.PropertyChanged += OnPrizePlaceInputChanged;
+            NewPrizePlaceInputs.Add(row);
+        }
+        while (NewPrizePlaceInputs.Count > target)
+        {
+            var last = NewPrizePlaceInputs[^1];
+            last.PropertyChanged -= OnPrizePlaceInputChanged;
+            NewPrizePlaceInputs.RemoveAt(NewPrizePlaceInputs.Count - 1);
+        }
+
+        OnPropertyChanged(nameof(PrizePlacePercentageTotal));
+        OnPropertyChanged(nameof(IsPrizePlacePercentageValid));
+    }
+
+    private void OnPrizePlaceInputChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PrizePlaceInputViewModel.Percentage))
+        {
+            OnPropertyChanged(nameof(PrizePlacePercentageTotal));
+            OnPropertyChanged(nameof(IsPrizePlacePercentageValid));
+        }
     }
 
     public TournamentViewModel(
@@ -244,7 +306,9 @@ public partial class TournamentViewModel : ObservableObject
         EntrantCandidates.Clear();
         foreach (var player in players)
         {
-            EntrantCandidates.Add(new PlayerSelectionItem(player));
+            var item = new PlayerSelectionItem(player);
+            item.PropertyChanged += OnEntrantCandidateSelectionChanged;
+            EntrantCandidates.Add(item);
         }
     }
 
@@ -255,7 +319,17 @@ public partial class TournamentViewModel : ObservableObject
         TeamCandidates.Clear();
         foreach (var team in teams)
         {
-            TeamCandidates.Add(new TeamSelectionItem(team));
+            var item = new TeamSelectionItem(team);
+            item.PropertyChanged += OnEntrantCandidateSelectionChanged;
+            TeamCandidates.Add(item);
+        }
+    }
+
+    private void OnEntrantCandidateSelectionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PlayerSelectionItem.IsSelected))
+        {
+            OnPropertyChanged(nameof(TotalEntryFeesDisplay));
         }
     }
 
@@ -540,6 +614,25 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
+        if (ShowEntryFeeSection)
+        {
+            if (NewEntryFee < 0)
+            {
+                StatusMessage = "Entry fee can't be negative.";
+                return;
+            }
+            if (NewHostFeePercentage < 0 || NewHostFeePercentage > 100)
+            {
+                StatusMessage = "Host fee percentage must be between 0 and 100.";
+                return;
+            }
+            if (!IsPrizePlacePercentageValid)
+            {
+                StatusMessage = $"Prize place percentages must add up to 100% (currently {PrizePlacePercentageTotal:0.##}%).";
+                return;
+            }
+        }
+
         var tournament = new Tournament
         {
             Name = NewTournamentName,
@@ -548,6 +641,21 @@ public partial class TournamentViewModel : ObservableObject
             SeedingRatingSystem = NewTournamentRatingSystem,
             UsesTeams = useTeams
         };
+
+        if (ShowEntryFeeSection)
+        {
+            tournament.EntryFee = NewEntryFee;
+            tournament.HostFeePercentage = NewHostFeePercentage;
+            foreach (var place in NewPrizePlaceInputs)
+            {
+                tournament.PrizePlaces.Add(new TournamentPrizePlace
+                {
+                    TournamentId = tournament.Id,
+                    Place = place.Place,
+                    Percentage = place.Percentage
+                });
+            }
+        }
 
         if (useTeams)
         {
@@ -591,8 +699,7 @@ public partial class TournamentViewModel : ObservableObject
         else if (NewTournamentFormat == TournamentFormat.ChipTournament)
         {
             // Ad-hoc "loser loses a life" play; no seeding or pairings.
-            _chipGameService.StartChipTournament(
-                tournament, NewChipStartingChips, NewChipBuyIn, NewChipFirstPayout, NewChipSecondPayout, NewChipThirdPayout);
+            _chipGameService.StartChipTournament(tournament, NewChipStartingChips);
         }
         else if (NewTournamentFormat == TournamentFormat.ModifiedSingleElimination)
         {
@@ -628,6 +735,9 @@ public partial class TournamentViewModel : ObservableObject
             : $"Created '{tournament.Name}' with {tournament.Entrants.Count} entrants.";
 
         NewTournamentName = string.Empty;
+        NewEntryFee = 0m;
+        NewHostFeePercentage = 0m;
+        NewPayoutPlaceCount = 0;
         foreach (var candidate in EntrantCandidates)
         {
             candidate.IsSelected = false;

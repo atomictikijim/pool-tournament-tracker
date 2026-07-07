@@ -12,9 +12,6 @@ public class ChipStandingRow
 
     /// <summary>Finishing place (1 = champion) once decided; null while still in contention.</summary>
     public int? Place { get; init; }
-
-    /// <summary>Prize for this finishing place (0 if unplaced or out of the money).</summary>
-    public decimal Payout { get; init; }
 }
 
 /// <summary>
@@ -28,10 +25,10 @@ public class ChipGameService
 {
     /// <summary>
     /// Sets up a chip tournament on an already-populated tournament: gives every entrant the same
-    /// starting chip count, records the buy-in/payout settings, and marks the tournament InProgress.
+    /// starting chip count and marks the tournament InProgress. Entry fee/host cut/prize payouts
+    /// are the generic Tournament fields (EntryFee etc.), already set by the caller.
     /// </summary>
-    public ChipGameDetail StartChipTournament(
-        Tournament tournament, int startingChips, decimal buyIn, decimal firstPayout, decimal secondPayout, decimal thirdPayout)
+    public ChipGameDetail StartChipTournament(Tournament tournament, int startingChips)
     {
         if (tournament.Entrants.Count < 2)
         {
@@ -45,11 +42,7 @@ public class ChipGameService
         var detail = new ChipGameDetail
         {
             TournamentId = tournament.Id,
-            StartingChips = startingChips,
-            BuyInAmount = buyIn,
-            FirstPlacePayout = firstPayout,
-            SecondPlacePayout = secondPayout,
-            ThirdPlacePayout = thirdPayout
+            StartingChips = startingChips
         };
 
         foreach (var entrant in tournament.Entrants)
@@ -117,7 +110,7 @@ public class ChipGameService
     /// Per-player standings computed from the game log: active players first (most chips on top),
     /// then eliminated players in reverse elimination order (last one out finishes highest).
     /// Finishing places are locked for eliminated players and for the champion once the tournament
-    /// is complete; the payout column reflects the configured 1st/2nd/3rd prizes.
+    /// is complete. Payouts for each place are computed separately by PrizePayoutService.
     /// </summary>
     public static List<ChipStandingRow> ComputeStandings(Tournament tournament)
     {
@@ -167,21 +160,12 @@ public class ChipGameService
                 place = 1;
             }
 
-            var payout = place switch
-            {
-                1 => detail?.FirstPlacePayout ?? 0m,
-                2 => detail?.SecondPlacePayout ?? 0m,
-                3 => detail?.ThirdPlacePayout ?? 0m,
-                _ => 0m
-            };
-
             return new ChipStandingRow
             {
                 Entrant = entrant,
                 ChipsRemaining = remaining,
                 IsEliminated = isEliminated,
-                Place = place,
-                Payout = payout
+                Place = place
             };
         });
 
@@ -193,10 +177,6 @@ public class ChipGameService
             .ThenBy(r => r.Entrant.Player?.FirstName)
             .ToList();
     }
-
-    /// <summary>Total prize pool: the buy-in times the number of entrants.</summary>
-    public static decimal Pot(Tournament tournament) =>
-        (tournament.ChipGame?.BuyInAmount ?? 0m) * tournament.Entrants.Count;
 
     private static Dictionary<Guid, int> ChipCounts(Tournament tournament)
     {

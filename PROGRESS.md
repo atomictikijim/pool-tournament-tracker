@@ -5,6 +5,14 @@ the top of each section.
 
 ## Current status
 
+v0.14 complete: entry fees, a host cut, and place-based prize payouts.
+Single/Double/Modified Elimination, Round Robin, and Chip Tournament all get
+a per-entrant entry fee, a host fee percentage, and any number of payout
+places with percentages of the prize pool (must sum to 100%). Chip
+Tournament's old fixed-dollar buy-in/1st/2nd/3rd payouts are gone, replaced
+by this generic system. Ring Game is unchanged (its own buy-in/per-ball-payout
+model, no discrete finishing order).
+
 v0.13 complete: a new Modified Single Elimination format (APA's format:
 entrants are split into 8-entrant pods, each running a shortened
 double-elimination-style ladder down to 2 "reps," which then feed a plain
@@ -62,6 +70,17 @@ sections for double elimination.
 
 ## Next steps
 
+- [x] Entry fee, host cut, and place-based prize payouts (done in v0.14).
+- [ ] Elimination-bracket payouts beyond 1st/2nd (champion/runner-up, always
+  exact) use a win/loss-record heuristic to group tied places (e.g. two
+  semifinal losers tied for 3rd-4th) rather than exact bracket-depth
+  traversal - documented simplification, see NOTES.md.
+- [ ] Ring Game intentionally has no entry-fee/prize-payout UI - it keeps its
+  own buy-in + 5-ball/9-ball payout fields, since it has no discrete
+  finishing order to pay places against.
+- [ ] No way to edit a tournament's entry fee/host fee/prize places after
+  creation, same as Ring/Chip Tournament's existing buy-in fields - it's a
+  create-time-only configuration.
 - [x] Modified Single Elimination format (done in v0.13).
 - [ ] Modified Single Elimination currently requires an entrant count that's a
   multiple of 8 and a power of 2 (8, 16, 32, 64...) - partial pods and byes
@@ -96,6 +115,72 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.14 — 2026-07-07
+
+- **Entry fees, host cut, and place-based prize payouts.** New generic
+  `Tournament.EntryFee`/`HostFeePercentage`/`PrizePlaces` (a new
+  `TournamentPrizePlace` entity: `Place` + `Percentage`, one row per paid
+  place) apply to Single/Double/Modified Elimination, Round Robin, and Chip
+  Tournament. `PrizePool = (EntryFee * entrant count) * (1 - HostFeePercentage)`,
+  split across the configured places by percentage (must sum to 100%). Ring
+  Game is deliberately excluded - it's a continuous cash game with no discrete
+  finishing order, so it keeps its own buy-in/5-ball/9-ball payout fields
+  untouched.
+- **Chip Tournament's old fixed-dollar buy-in/1st/2nd/3rd payout fields are
+  gone**, replaced by the generic system above - its place data (`ChipGameService
+  .ComputeStandings`'s `Place`) already mapped cleanly onto it.
+  `ChipGameService.StartChipTournament` dropped its `buyIn`/`firstPayout`/
+  `secondPayout`/`thirdPayout` params (down to just `startingChips` -
+  `tournament.EntryFee` etc. are set by the caller beforehand, same pattern as
+  `SeedingRatingSystem`). `ChipGameService.Pot`/`ChipStandingRow.Payout` are
+  gone too - callers use the new `PrizePayoutService` instead.
+- **New `PrizePayoutService` (Core)** computes placements + payouts for every
+  covered format. Round Robin and Chip Tournament already have an exact, never-
+  tied placement, reused as-is. Elimination brackets have no placement concept
+  beyond the champion/runner-up (the deciding match, found per `BracketKind`:
+  the top Winners/Final-side node, or the Grand Final preferring its reset
+  match) - 1st/2nd are always exact. 3rd place and below are a **deliberate
+  simplification**: remaining entrants are ranked by match win/loss record
+  (excluding byes), and entrants with identical records tie, splitting the
+  combined payout for the place range they occupy evenly. This is not exact
+  bracket-depth traversal (which would need bespoke per-`BracketKind`, per-pod
+  graph walking with no existing precedent) - see NOTES.md.
+- Migration `AddEntryFeeAndPrizePayouts`: adds `Tournaments.EntryFee`/
+  `HostFeePercentage`, new `TournamentPrizePlaces` table, drops
+  `ChipGameDetails.BuyInAmount`/`FirstPlacePayout`/`SecondPlacePayout`/
+  `ThirdPlacePayout`. Carries over each existing chip tournament's
+  `BuyInAmount` into the new `EntryFee` (a clean 1:1 copy) before dropping it;
+  the old fixed-dollar payouts have no safe equivalent conversion into
+  percentages (can't know if they summed to the full pot), so no
+  `TournamentPrizePlaces` rows are synthesized for pre-existing chip
+  tournaments - a one-time, low-risk loss since chip payouts shipped the same
+  day as this change in the dev DB.
+- Tournament Settings' create form: chip-tournament setup shrinks to just
+  "Starting chips per player"; a new shared "Entry fee ($) / Total collected
+  (live) / Host fee (%) / Number of payout places / Place N: __%" section
+  appears for every format except Ring Game, with a live "Total: XX%" hint
+  and validation (`CreateTournamentAsync` rejects a non-100% sum, a negative
+  fee, or an out-of-range host percentage). The Tournament tab and Display
+  window both gained a shared "Prize Payouts" panel (entry fees / host cut /
+  prize pool summary + a per-place payout list), populated live for Round
+  Robin/Chip Tournament and only once completed for elimination brackets.
+- Tests: 98 pass (91 Core + 2 Data + 5 App, up from 89 total) - new
+  `PrizePayoutServiceTests` covers the money math, empty-payout edge cases
+  (no places configured, Ring Game, an incomplete bracket), exact Round
+  Robin/Chip Tournament payouts, exact Single Elimination 1st/2nd with tied
+  3rd-4th, exact Double Elimination with no ties at all (every place is
+  unambiguous for N=4), and a Modified Single Elimination 8-entrant pod
+  producing three separate tied-pair tiers (3rd-4th/5th-6th/7th-8th).
+  `ChipGameServiceTests`/`ChipGamePersistenceTests` updated for the trimmed
+  `StartChipTournament` signature.
+- Verification note: no UI-automation tool was available this session, so the
+  create-tournament flow, live total/percentage hints, and the new Prize
+  Payouts panel were not click-tested end-to-end. Verified instead: a clean
+  build, all 98 tests green, the migration applying successfully against the
+  real dev database, and the built exe launching and rendering both windows
+  without error. The user opted to ship on this basis and spot-check manually
+  afterward rather than block the release on it.
 
 ## v0.13 — 2026-07-07
 

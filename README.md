@@ -26,6 +26,10 @@ live results on a second screen.
     standing wins, with configurable 1st/2nd/3rd payouts.
 - **Teams as entrants.** Single, Double, and Modified Single Elimination can be run
   with Teams instead of individual Players.
+- **Entry fees and prize payouts.** Every format except Ring Game can charge a
+  per-entrant entry fee, take a percentage host cut, and split the remaining prize
+  pool across any number of finishing places by percentage - shown live on the
+  Tournament tab and Display window as entrants are decided.
 - **Live match operation.** Assign tables, start/finish matches with a live elapsed
   timer, and report scores — the bracket, standings, or ledger update immediately.
 - **Second-screen Display window.** A read-only, projector-friendly window mirroring

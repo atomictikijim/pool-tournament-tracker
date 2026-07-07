@@ -12,9 +12,17 @@ public class Tournament
     public RatingSystem? SeedingRatingSystem { get; set; }
     public bool UsesTeams { get; set; }
 
+    /// <summary>Per-entrant entry fee. Not used by Ring Game, which has its own buy-in.</summary>
+    public decimal EntryFee { get; set; }
+
+    /// <summary>Percentage of total entry fees kept by the tournament host, taken off the top
+    /// before the remaining prize pool is split across <see cref="PrizePlaces"/>.</summary>
+    public decimal HostFeePercentage { get; set; }
+
     public List<TournamentEntrant> Entrants { get; set; } = new();
     public List<Table> Tables { get; set; } = new();
     public List<Match> Matches { get; set; } = new();
+    public List<TournamentPrizePlace> PrizePlaces { get; set; } = new();
     public BracketDetail? Bracket { get; set; }
     public RingGameDetail? RingGame { get; set; }
     public ChipGameDetail? ChipGame { get; set; }

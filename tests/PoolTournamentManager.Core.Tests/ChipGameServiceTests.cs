@@ -27,23 +27,22 @@ public class ChipGameServiceTests
         ChipGameService.ComputeStandings(t).First(r => r.Entrant.Id == e.Id);
 
     [Fact]
-    public void Start_SetsInProgress_GivesEveryoneChips_AndComputesPot()
+    public void Start_SetsInProgress_GivesEveryoneChips()
     {
         var t = MakeChip("A", "B", "C");
-        var detail = Service().StartChipTournament(t, startingChips: 3, buyIn: 20m, 60m, 0m, 0m);
+        var detail = Service().StartChipTournament(t, startingChips: 3);
 
         Assert.Equal(TournamentStatus.InProgress, t.Status);
         Assert.Equal(3, detail.StartingChips);
         Assert.All(t.Entrants, e => Assert.False(e.IsEliminated));
         Assert.All(t.Entrants, e => Assert.Equal(3, Row(t, e).ChipsRemaining));
-        Assert.Equal(60m, ChipGameService.Pot(t)); // 20 * 3
     }
 
     [Fact]
     public void Start_RejectsFewerThanTwoPlayers_AndZeroChips()
     {
-        Assert.Throws<InvalidOperationException>(() => Service().StartChipTournament(MakeChip("Solo"), 3, 0m, 0m, 0m, 0m));
-        Assert.Throws<InvalidOperationException>(() => Service().StartChipTournament(MakeChip("A", "B"), 0, 0m, 0m, 0m, 0m));
+        Assert.Throws<InvalidOperationException>(() => Service().StartChipTournament(MakeChip("Solo"), 3));
+        Assert.Throws<InvalidOperationException>(() => Service().StartChipTournament(MakeChip("A", "B"), 0));
     }
 
     [Fact]
@@ -51,7 +50,7 @@ public class ChipGameServiceTests
     {
         var t = MakeChip("A", "B");
         var svc = Service();
-        svc.StartChipTournament(t, 3, 0m, 0m, 0m, 0m);
+        svc.StartChipTournament(t, 3);
 
         svc.RecordGame(t, winnerId: t.Entrants[0].Id, loserId: t.Entrants[1].Id);
 
@@ -64,7 +63,7 @@ public class ChipGameServiceTests
     {
         var t = MakeChip("A", "B");
         var svc = Service();
-        svc.StartChipTournament(t, 1, 0m, 0m, 0m, 0m);
+        svc.StartChipTournament(t, 1);
         var a = t.Entrants[0].Id;
         var b = t.Entrants[1].Id;
 
@@ -79,7 +78,7 @@ public class ChipGameServiceTests
     {
         var t = MakeChip("A", "B");
         var svc = Service();
-        svc.StartChipTournament(t, 2, 0m, 0m, 0m, 0m);
+        svc.StartChipTournament(t, 2);
         var a = t.Entrants[0];
         var b = t.Entrants[1];
 
@@ -98,11 +97,11 @@ public class ChipGameServiceTests
     }
 
     [Fact]
-    public void FinishingOrder_FirstOut_FinishesLast_AndPayoutsFollowPlace()
+    public void FinishingOrder_FirstOut_FinishesLast()
     {
         var t = MakeChip("A", "B", "C");
         var svc = Service();
-        svc.StartChipTournament(t, startingChips: 1, buyIn: 10m, firstPayout: 20m, secondPayout: 10m, thirdPayout: 0m);
+        svc.StartChipTournament(t, startingChips: 1);
         var a = t.Entrants[0];
         var b = t.Entrants[1];
         var c = t.Entrants[2];
@@ -114,10 +113,6 @@ public class ChipGameServiceTests
         Assert.Equal(1, Row(t, a).Place);
         Assert.Equal(2, Row(t, c).Place);
         Assert.Equal(3, Row(t, b).Place);
-
-        Assert.Equal(20m, Row(t, a).Payout); // 1st
-        Assert.Equal(10m, Row(t, c).Payout); // 2nd
-        Assert.Equal(0m, Row(t, b).Payout);  // 3rd (unpaid)
     }
 
     [Fact]
@@ -125,7 +120,7 @@ public class ChipGameServiceTests
     {
         var t = MakeChip("A", "B", "C", "D");
         var svc = Service();
-        svc.StartChipTournament(t, 1, 0m, 0m, 0m, 0m);
+        svc.StartChipTournament(t, 1);
 
         svc.RecordGame(t, t.Entrants[0].Id, t.Entrants[3].Id); // D out first -> place 4
         Assert.Equal(TournamentStatus.InProgress, t.Status);
