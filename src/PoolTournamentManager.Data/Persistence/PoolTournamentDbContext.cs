@@ -6,6 +6,7 @@ namespace PoolTournamentManager.Data.Persistence;
 public class PoolTournamentDbContext : DbContext
 {
     public DbSet<Player> Players => Set<Player>();
+    public DbSet<Team> Teams => Set<Team>();
     public DbSet<Tournament> Tournaments => Set<Tournament>();
     public DbSet<TournamentEntrant> TournamentEntrants => Set<TournamentEntrant>();
     public DbSet<Table> Tables => Set<Table>();
@@ -46,7 +47,14 @@ public class PoolTournamentDbContext : DbContext
         modelBuilder.Entity<TournamentEntrant>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasOne(e => e.Player).WithMany().HasForeignKey(e => e.PlayerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Player).WithMany().HasForeignKey(e => e.PlayerId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Team).WithMany().HasForeignKey(e => e.TeamId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Team>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Name).IsRequired();
         });
 
         modelBuilder.Entity<Table>(entity =>

@@ -54,6 +54,7 @@ public partial class App : Application
             optionsLifetime: ServiceLifetime.Singleton);
 
         services.AddSingleton<IPlayerRepository, PlayerRepository>();
+        services.AddSingleton<ITeamRepository, TeamRepository>();
         services.AddSingleton<ITournamentRepository, TournamentRepository>();
         services.AddSingleton<BracketGenerationService>();
         services.AddSingleton<RoundRobinSchedulingService>();

@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
     {
         await _viewModel.LoadPlayersAsync();
+        await _viewModel.LoadTeamsAsync();
         await _viewModel.Tournament.InitializeAsync();
     }
 

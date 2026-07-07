@@ -8,10 +8,10 @@ public class MatchRowViewModel : ObservableObject
 {
     public Match Match { get; }
 
-    public string Player1Name => Match.Player1Entrant?.Player?.FullName ?? "TBD";
+    public string Player1Name => Match.Player1Entrant?.DisplayName ?? "TBD";
     public string Player2Name => Match.Player2EntrantId is null
         ? "BYE"
-        : Match.Player2Entrant?.Player?.FullName ?? "TBD";
+        : Match.Player2Entrant?.DisplayName ?? "TBD";
     public bool IsStartable => Match.Status == MatchStatus.Scheduled && !Match.IsBye;
     public bool IsInProgress => Match.Status == MatchStatus.InProgress;
     public bool IsComplete => Match.Status == MatchStatus.Completed;

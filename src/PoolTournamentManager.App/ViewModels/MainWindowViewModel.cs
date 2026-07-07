@@ -11,11 +11,17 @@ namespace PoolTournamentManager.App.ViewModels;
 public partial class MainWindowViewModel : ObservableObject
 {
     private readonly IPlayerRepository _playerRepository;
+    private readonly ITeamRepository _teamRepository;
     private Player? _editingPlayer;
+    private Team? _editingTeam;
 
     public ObservableCollection<Player> Players { get; } = new();
 
+    public ObservableCollection<Team> Teams { get; } = new();
+
     public PlayerEditorViewModel Editor { get; } = new();
+
+    public TeamEditorViewModel TeamEditor { get; } = new();
 
     public TournamentViewModel Tournament { get; }
 
@@ -25,11 +31,19 @@ public partial class MainWindowViewModel : ObservableObject
     private Player? _selectedPlayer;
 
     [ObservableProperty]
+    private Team? _selectedTeam;
+
+    [ObservableProperty]
     private string? _statusMessage;
 
-    public MainWindowViewModel(IPlayerRepository playerRepository, TournamentViewModel tournamentViewModel, ThemeService themeService)
+    public MainWindowViewModel(
+        IPlayerRepository playerRepository,
+        ITeamRepository teamRepository,
+        TournamentViewModel tournamentViewModel,
+        ThemeService themeService)
     {
         _playerRepository = playerRepository;
+        _teamRepository = teamRepository;
         Tournament = tournamentViewModel;
         Theme = themeService;
     }
@@ -40,6 +54,15 @@ public partial class MainWindowViewModel : ObservableObject
         if (value is not null)
         {
             Editor.LoadFrom(value);
+        }
+    }
+
+    partial void OnSelectedTeamChanged(Team? value)
+    {
+        _editingTeam = value;
+        if (value is not null)
+        {
+            TeamEditor.LoadFrom(value);
         }
     }
 
@@ -90,5 +113,54 @@ public partial class MainWindowViewModel : ObservableObject
 
         await LoadPlayersAsync();
         SelectedPlayer = Players.FirstOrDefault(p => p.Id == candidate.Id);
+    }
+
+    [RelayCommand]
+    public async Task LoadTeamsAsync()
+    {
+        var teams = await _teamRepository.GetAllAsync();
+        Teams.Clear();
+        foreach (var team in teams)
+        {
+            Teams.Add(team);
+        }
+        StatusMessage = $"Loaded {Teams.Count} team(s).";
+    }
+
+    [RelayCommand]
+    public void AddNewTeam()
+    {
+        SelectedTeam = null;
+        _editingTeam = null;
+        TeamEditor.Reset();
+        StatusMessage = "Enter a name for the new team and click Save.";
+    }
+
+    [RelayCommand]
+    public async Task SaveTeamAsync()
+    {
+        var candidate = _editingTeam ?? new Team { Name = string.Empty };
+        TeamEditor.ApplyTo(candidate);
+
+        var errors = TeamValidator.Validate(candidate);
+        if (errors.Count > 0)
+        {
+            StatusMessage = string.Join(" ", errors);
+            return;
+        }
+
+        if (_editingTeam is null)
+        {
+            await _teamRepository.AddAsync(candidate);
+            StatusMessage = $"Added {candidate.Name}.";
+        }
+        else
+        {
+            await _teamRepository.UpdateAsync(candidate);
+            StatusMessage = $"Saved changes to {candidate.Name}.";
+        }
+
+        await LoadTeamsAsync();
+        SelectedTeam = Teams.FirstOrDefault(t => t.Id == candidate.Id);
     }
 }

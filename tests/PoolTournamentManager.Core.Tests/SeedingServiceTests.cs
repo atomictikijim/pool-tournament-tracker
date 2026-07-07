@@ -12,6 +12,12 @@ public class SeedingServiceTests
         Player = new Player { FirstName = first, LastName = last, FargoRate = fargoRate }
     };
 
+    private static TournamentEntrant TeamEntrant(string name) => new()
+    {
+        TeamId = Guid.NewGuid(),
+        Team = new Team { Name = name }
+    };
+
     [Fact]
     public void AssignSeeds_OrdersByRatingDescending()
     {
@@ -51,5 +57,28 @@ public class SeedingServiceTests
 
         Assert.True(SeedingService.HasRating(withApa, RatingSystem.ApaNineBall));
         Assert.False(SeedingService.HasRating(without, RatingSystem.ApaNineBall));
+    }
+
+    [Fact]
+    public void AssignSeeds_TeamEntrantsHaveNoRatingAndSortByName()
+    {
+        var zebras = TeamEntrant("Zebras");
+        var aces = TeamEntrant("Aces");
+        var bulls = TeamEntrant("Bulls");
+
+        var entrants = new List<TournamentEntrant> { zebras, aces, bulls };
+        SeedingService.AssignSeeds(entrants, RatingSystem.Fargo);
+
+        Assert.Equal(1, aces.SeedNumber);
+        Assert.Equal(2, bulls.SeedNumber);
+        Assert.Equal(3, zebras.SeedNumber);
+    }
+
+    [Fact]
+    public void HasRating_IsFalseForTeamEntrants()
+    {
+        var team = TeamEntrant("Aces");
+
+        Assert.False(SeedingService.HasRating(team, RatingSystem.Fargo));
     }
 }

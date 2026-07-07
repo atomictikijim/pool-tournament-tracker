@@ -10,6 +10,7 @@ public class Tournament
     public TournamentFormat Format { get; set; }
     public TournamentStatus Status { get; set; } = TournamentStatus.Setup;
     public RatingSystem? SeedingRatingSystem { get; set; }
+    public bool UsesTeams { get; set; }
 
     public List<TournamentEntrant> Entrants { get; set; } = new();
     public List<Table> Tables { get; set; } = new();

@@ -12,9 +12,8 @@ public static class SeedingService
     public static List<TournamentEntrant> AssignSeeds(List<TournamentEntrant> entrants, RatingSystem ratingSystem)
     {
         var ordered = entrants
-            .OrderByDescending(e => GetRating(e.Player, ratingSystem) ?? int.MinValue)
-            .ThenBy(e => e.Player?.LastName)
-            .ThenBy(e => e.Player?.FirstName)
+            .OrderByDescending(e => GetRating(e, ratingSystem) ?? int.MinValue)
+            .ThenBy(e => e.DisplayName)
             .ToList();
 
         for (var i = 0; i < ordered.Count; i++)
@@ -26,10 +25,11 @@ public static class SeedingService
     }
 
     public static bool HasRating(TournamentEntrant entrant, RatingSystem ratingSystem) =>
-        GetRating(entrant.Player, ratingSystem) is not null;
+        GetRating(entrant, ratingSystem) is not null;
 
-    private static int? GetRating(Player? player, RatingSystem ratingSystem)
+    private static int? GetRating(TournamentEntrant entrant, RatingSystem ratingSystem)
     {
+        var player = entrant.Player;
         if (player is null)
         {
             return null;

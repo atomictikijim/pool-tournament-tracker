@@ -39,9 +39,10 @@ public class TournamentEntrantAdditionTests : IDisposable
         using var ctx = NewContext();
         var tournamentRepo = new TournamentRepository(ctx);
         var playerRepo = new PlayerRepository(ctx);
+        var teamRepo = new TeamRepository(ctx);
         var state = new TournamentStateService(tournamentRepo);
         var vm = new TournamentViewModel(
-            tournamentRepo, playerRepo,
+            tournamentRepo, playerRepo, teamRepo,
             new BracketGenerationService(), new RoundRobinSchedulingService(),
             new RingGameService(), new ChipGameService(), state);
 

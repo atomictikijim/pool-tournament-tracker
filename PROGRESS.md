@@ -5,6 +5,11 @@ the top of each section.
 
 ## Current status
 
+v0.12 complete: a new Teams tab (name-only roster) and a per-tournament "Use
+Teams" toggle so Single Elimination and Double Elimination can be run with
+Team entrants instead of individual Players. Round Robin, Ring Game, and
+Chip Tournament remain individual-players-only.
+
 v0.11 complete: players can be added to a tournament after creation (while
 still pre-play), every non-Ring-Game format now requires a table count at
 creation, and matches have separate Start/Finish steps with a live per-match
@@ -51,6 +56,10 @@ sections for double elimination.
 
 ## Next steps
 
+- [x] Teams tab + Team entrants for Single/Double Elimination (done in v0.12).
+- [ ] Teams are name-only by design (no player roster/membership) - there is
+  no way to see which players make up a team, and no per-player stats roll
+  up through team results.
 - [x] Add-players-after-creation, required table counts, match Start/Finish +
   timer (done in v0.11).
 - [ ] Ring Game / Chip Tournament formats don't use Match/Table at all, so
@@ -76,6 +85,44 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.12 — 2026-07-07
+
+- **Teams tab.** New roster CRUD tab, mirroring the Players tab but simpler -
+  a `Team` entity is just a name, no player membership tracked. Backed by
+  `ITeamRepository`/`TeamRepository` (mirrors `IPlayerRepository`) and a
+  `TeamEditorViewModel`/`Teams` collection on `MainWindowViewModel`.
+- **Team entrants for Single/Double Elimination.** `TournamentEntrant.PlayerId`
+  is now nullable and gained a nullable `TeamId`/`Team` pair, plus a
+  `DisplayName` accessor (`Player?.FullName ?? Team?.Name ?? "TBD"`) so every
+  display/status-message call site works for either kind of entrant.
+  `Tournament.UsesTeams` (new bool) records the choice made at creation.
+  `TournamentViewModel` gained a `UseTeams` toggle (only offered when
+  `NewTournamentFormat` is Single/Double Elimination - `IsTeamEligibleFormat`)
+  that swaps the entrant checklist between `EntrantCandidates` (Players) and
+  a new `TeamCandidates`, and hides the meaningless "seed by rating" control
+  for team tournaments. The post-creation "Add" picker on the Tournament tab
+  does the same swap based on `ActiveTournament.UsesTeams`.
+- The bracket engine itself (`BracketGenerationService`, `Match`,
+  `BracketNode`) needed **zero changes** - it already worked purely off
+  `TournamentEntrant.Id`/`SeedNumber`, never touching `.Player` directly.
+  `SeedingService.GetRating` was refactored to take the whole
+  `TournamentEntrant` (returns null for a Team entrant, same as an unrated
+  Player) and its name tie-break now uses `DisplayName`, so a team tournament
+  seeds gracefully by team name with no special-casing.
+- Migration `AddTeams`: new `Teams` table, `TournamentEntrants.PlayerId` made
+  nullable, new nullable `TournamentEntrants.TeamId` FK, new
+  `Tournaments.UsesTeams` column (default false) - additive, no data loss.
+- Tests: 81 pass (74 Core + 2 Data + 5 App, up from 79/2/... - added
+  `AssignSeeds_TeamEntrantsHaveNoRatingAndSortByName` and
+  `HasRating_IsFalseForTeamEntrants` to `SeedingServiceTests`). Verified
+  end-to-end in the running app: added 4 teams on the new Teams tab, created a
+  Single Elimination tournament with "Use Teams" checked (confirmed the
+  Player checklist and "Seed by rating" hid, the Team checklist appeared),
+  confirmed the resulting bracket showed the seeded team names (not "TBD"),
+  confirmed the Tournament tab's post-creation row showed an "Add Team:"
+  picker for that tournament, and confirmed switching format to Round Robin
+  hides the "Use Teams" checkbox entirely (auto-unchecking it).
 
 ## v0.11 — 2026-07-07
 

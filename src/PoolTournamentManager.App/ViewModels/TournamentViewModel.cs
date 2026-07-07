@@ -14,6 +14,7 @@ public partial class TournamentViewModel : ObservableObject
 {
     private readonly ITournamentRepository _tournamentRepository;
     private readonly IPlayerRepository _playerRepository;
+    private readonly ITeamRepository _teamRepository;
     private readonly BracketGenerationService _bracketService;
     private readonly RoundRobinSchedulingService _roundRobinService;
     private readonly RingGameService _ringGameService;
@@ -23,11 +24,19 @@ public partial class TournamentViewModel : ObservableObject
 
     public ObservableCollection<PlayerSelectionItem> EntrantCandidates { get; } = new();
 
+    public ObservableCollection<TeamSelectionItem> TeamCandidates { get; } = new();
+
     /// <summary>Roster players not already entered in the active tournament, for the "Add Player" picker.</summary>
     public ObservableCollection<Player> AddablePlayers { get; } = new();
 
+    /// <summary>Roster teams not already entered in the active tournament, for the "Add Team" picker.</summary>
+    public ObservableCollection<Team> AddableTeams { get; } = new();
+
     [ObservableProperty]
     private Player? _selectedPlayerToAdd;
+
+    [ObservableProperty]
+    private Team? _selectedTeamToAdd;
 
     /// <summary>
     /// True while the active tournament hasn't had any match/game actually played yet, so a new
@@ -57,6 +66,11 @@ public partial class TournamentViewModel : ObservableObject
     /// <summary>Number of tables to create up front. Required for every format except Ring Game.</summary>
     [ObservableProperty]
     private int _newTournamentTableCount = 4;
+
+    /// <summary>Whether the tournament being created uses Team entrants instead of individual Players.
+    /// Only offered for Single/Double Elimination - see <see cref="IsTeamEligibleFormat"/>.</summary>
+    [ObservableProperty]
+    private bool _useTeams;
 
     [ObservableProperty]
     private decimal _newRingBuyIn = 20m;
@@ -101,16 +115,34 @@ public partial class TournamentViewModel : ObservableObject
     /// <summary>Every format except Ring Game requires a table count before creating.</summary>
     public bool RequiresTableCount => NewTournamentFormat != TournamentFormat.RingGame;
 
+    /// <summary>Only Single/Double Elimination can be run with Team entrants.</summary>
+    public bool IsTeamEligibleFormat => NewTournamentFormat is TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination;
+
+    /// <summary>True while the create form should show the Player checklist/rating controls
+    /// instead of the Team checklist (i.e. UseTeams is off).</summary>
+    public bool ShowPlayerEntrants => !UseTeams;
+
     partial void OnNewTournamentFormatChanged(TournamentFormat value)
     {
         OnPropertyChanged(nameof(IsCreatingRingGame));
         OnPropertyChanged(nameof(IsCreatingChipTournament));
         OnPropertyChanged(nameof(RequiresTableCount));
+        OnPropertyChanged(nameof(IsTeamEligibleFormat));
+        if (!IsTeamEligibleFormat)
+        {
+            UseTeams = false;
+        }
+    }
+
+    partial void OnUseTeamsChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowPlayerEntrants));
     }
 
     public TournamentViewModel(
         ITournamentRepository tournamentRepository,
         IPlayerRepository playerRepository,
+        ITeamRepository teamRepository,
         BracketGenerationService bracketService,
         RoundRobinSchedulingService roundRobinService,
         RingGameService ringGameService,
@@ -119,6 +151,7 @@ public partial class TournamentViewModel : ObservableObject
     {
         _tournamentRepository = tournamentRepository;
         _playerRepository = playerRepository;
+        _teamRepository = teamRepository;
         _bracketService = bracketService;
         _roundRobinService = roundRobinService;
         _ringGameService = ringGameService;
@@ -171,6 +204,7 @@ public partial class TournamentViewModel : ObservableObject
     {
         await State.LoadTournamentsAsync();
         await LoadEntrantCandidatesAsync();
+        await LoadTeamCandidatesAsync();
     }
 
     [RelayCommand]
@@ -202,10 +236,27 @@ public partial class TournamentViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    public async Task LoadTeamCandidatesAsync()
+    {
+        var teams = await _teamRepository.GetAllAsync();
+        TeamCandidates.Clear();
+        foreach (var team in teams)
+        {
+            TeamCandidates.Add(new TeamSelectionItem(team));
+        }
+    }
+
     partial void OnSelectedTournamentSummaryChanged(Tournament? value)
     {
         _ = SelectTournamentAsync(value?.Id);
     }
+
+    /// <summary>True when the active tournament's entrants are Teams, for the post-creation "Add" picker.</summary>
+    public bool ActiveTournamentUsesTeams => State.ActiveTournament?.UsesTeams ?? false;
+
+    /// <summary>True when the active tournament's entrants are individual Players (the default).</summary>
+    public bool ActiveTournamentUsesPlayers => !ActiveTournamentUsesTeams;
 
     private async Task SelectTournamentAsync(Guid? tournamentId)
     {
@@ -213,6 +264,9 @@ public partial class TournamentViewModel : ObservableObject
         {
             await State.SelectTournamentAsync(tournamentId);
             await RefreshAddablePlayersAsync();
+            await RefreshAddableTeamsAsync();
+            OnPropertyChanged(nameof(ActiveTournamentUsesTeams));
+            OnPropertyChanged(nameof(ActiveTournamentUsesPlayers));
             RefreshCanAddEntrant();
         }
         catch (Exception ex)
@@ -235,6 +289,23 @@ public partial class TournamentViewModel : ObservableObject
         foreach (var player in players.Where(p => !existingPlayerIds.Contains(p.Id)))
         {
             AddablePlayers.Add(player);
+        }
+    }
+
+    private async Task RefreshAddableTeamsAsync()
+    {
+        AddableTeams.Clear();
+        var tournament = State.ActiveTournament;
+        if (tournament is null)
+        {
+            return;
+        }
+
+        var existingTeamIds = tournament.Entrants.Select(e => e.TeamId).ToHashSet();
+        var teams = await _teamRepository.GetAllAsync();
+        foreach (var team in teams.Where(t => !existingTeamIds.Contains(t.Id)))
+        {
+            AddableTeams.Add(team);
         }
     }
 
@@ -264,10 +335,32 @@ public partial class TournamentViewModel : ObservableObject
     private async Task AddEntrantAsync()
     {
         var tournament = State.ActiveTournament;
-        var player = SelectedPlayerToAdd;
-        if (tournament is null || player is null || !CanAddEntrant)
+        if (tournament is null || !CanAddEntrant)
         {
             return;
+        }
+
+        TournamentEntrant newEntrant;
+        string addedName;
+        if (tournament.UsesTeams)
+        {
+            var team = SelectedTeamToAdd;
+            if (team is null)
+            {
+                return;
+            }
+            newEntrant = new TournamentEntrant { TournamentId = tournament.Id, TeamId = team.Id, Team = team };
+            addedName = team.Name;
+        }
+        else
+        {
+            var player = SelectedPlayerToAdd;
+            if (player is null)
+            {
+                return;
+            }
+            newEntrant = new TournamentEntrant { TournamentId = tournament.Id, PlayerId = player.Id, Player = player };
+            addedName = player.FullName;
         }
 
         var newTotal = tournament.Entrants.Count + 1;
@@ -279,12 +372,6 @@ public partial class TournamentViewModel : ObservableObject
 
         try
         {
-            var newEntrant = new TournamentEntrant
-            {
-                TournamentId = tournament.Id,
-                PlayerId = player.Id,
-                Player = player
-            };
             tournament.Entrants.Add(newEntrant);
             _tournamentRepository.TrackNew(newEntrant);
 
@@ -316,9 +403,11 @@ public partial class TournamentViewModel : ObservableObject
             // full GetByIdAsync (with its Include chain) populates those.
             await State.SelectTournamentAsync(tournament.Id);
             await RefreshAddablePlayersAsync();
+            await RefreshAddableTeamsAsync();
             RefreshCanAddEntrant();
             SelectedPlayerToAdd = null;
-            StatusMessage = $"Added {player.FullName}.";
+            SelectedTeamToAdd = null;
+            StatusMessage = $"Added {addedName}.";
         }
         catch (InvalidOperationException ex)
         {
@@ -401,14 +490,18 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
-        var selected = EntrantCandidates.Where(c => c.IsSelected).ToList();
-        if (selected.Count < 2)
+        var useTeams = UseTeams && IsTeamEligibleFormat;
+        var selectedPlayers = EntrantCandidates.Where(c => c.IsSelected).ToList();
+        var selectedTeams = TeamCandidates.Where(c => c.IsSelected).ToList();
+        var entrantCount = useTeams ? selectedTeams.Count : selectedPlayers.Count;
+
+        if (entrantCount < 2)
         {
-            StatusMessage = "Select at least 2 players.";
+            StatusMessage = useTeams ? "Select at least 2 teams." : "Select at least 2 players.";
             return;
         }
 
-        if (NewTournamentFormat == TournamentFormat.DoubleElimination && (selected.Count & (selected.Count - 1)) != 0)
+        if (NewTournamentFormat == TournamentFormat.DoubleElimination && (entrantCount & (entrantCount - 1)) != 0)
         {
             StatusMessage = "Double elimination currently requires a power-of-2 number of entrants (2, 4, 8, 16, 32...).";
             return;
@@ -425,17 +518,33 @@ public partial class TournamentViewModel : ObservableObject
             Name = NewTournamentName,
             GameType = NewTournamentGameType,
             Format = NewTournamentFormat,
-            SeedingRatingSystem = NewTournamentRatingSystem
+            SeedingRatingSystem = NewTournamentRatingSystem,
+            UsesTeams = useTeams
         };
 
-        foreach (var candidate in selected)
+        if (useTeams)
         {
-            tournament.Entrants.Add(new TournamentEntrant
+            foreach (var candidate in selectedTeams)
             {
-                TournamentId = tournament.Id,
-                PlayerId = candidate.Player.Id,
-                Player = candidate.Player
-            });
+                tournament.Entrants.Add(new TournamentEntrant
+                {
+                    TournamentId = tournament.Id,
+                    TeamId = candidate.Team.Id,
+                    Team = candidate.Team
+                });
+            }
+        }
+        else
+        {
+            foreach (var candidate in selectedPlayers)
+            {
+                tournament.Entrants.Add(new TournamentEntrant
+                {
+                    TournamentId = tournament.Id,
+                    PlayerId = candidate.Player.Id,
+                    Player = candidate.Player
+                });
+            }
         }
 
         if (NewTournamentFormat != TournamentFormat.RingGame)
@@ -460,7 +569,10 @@ public partial class TournamentViewModel : ObservableObject
         }
         else
         {
-            missingRatingCount = tournament.Entrants.Count(e => !SeedingService.HasRating(e, NewTournamentRatingSystem));
+            if (!useTeams)
+            {
+                missingRatingCount = tournament.Entrants.Count(e => !SeedingService.HasRating(e, NewTournamentRatingSystem));
+            }
             SeedingService.AssignSeeds(tournament.Entrants, NewTournamentRatingSystem);
 
             if (NewTournamentFormat == TournamentFormat.DoubleElimination)
@@ -485,6 +597,10 @@ public partial class TournamentViewModel : ObservableObject
 
         NewTournamentName = string.Empty;
         foreach (var candidate in EntrantCandidates)
+        {
+            candidate.IsSelected = false;
+        }
+        foreach (var candidate in TeamCandidates)
         {
             candidate.IsSelected = false;
         }
@@ -576,8 +692,8 @@ public partial class TournamentViewModel : ObservableObject
             if (tournament.Status == TournamentStatus.Completed)
             {
                 var championName = tournament.Format == TournamentFormat.RoundRobin
-                    ? RoundRobinStandingsService.ComputeStandings(tournament).FirstOrDefault()?.Entrant.Player?.FullName ?? "Unknown player"
-                    : tournament.Entrants.FirstOrDefault(e => e.Id == match.WinnerEntrantId)?.Player?.FullName ?? "Unknown player";
+                    ? RoundRobinStandingsService.ComputeStandings(tournament).FirstOrDefault()?.Entrant.DisplayName ?? "Unknown entrant"
+                    : tournament.Entrants.FirstOrDefault(e => e.Id == match.WinnerEntrantId)?.DisplayName ?? "Unknown entrant";
                 StatusMessage = $"{championName} wins the tournament!";
             }
             else
