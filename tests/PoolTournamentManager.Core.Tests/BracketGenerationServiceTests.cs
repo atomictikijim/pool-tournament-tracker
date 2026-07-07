@@ -143,6 +143,7 @@ public class BracketGenerationServiceTests
              (m.Player1EntrantId == b.Id && m.Player2EntrantId == a.Id)));
 
         var winnerIsPlayer1 = match.Player1EntrantId == BySeed(tournament, winnerSeed).Id;
+        match.Status = MatchStatus.InProgress;
         _service.RecordMatchResult(tournament, match, winnerIsPlayer1 ? 7 : 3, winnerIsPlayer1 ? 3 : 7);
     }
 
@@ -152,8 +153,19 @@ public class BracketGenerationServiceTests
         var tournament = BuildTournament(2);
         _service.GenerateSingleElimination(tournament);
         var match = tournament.Matches.Single();
+        match.Status = MatchStatus.InProgress;
 
         Assert.Throws<InvalidOperationException>(() => _service.RecordMatchResult(tournament, match, 5, 5));
+    }
+
+    [Fact]
+    public void RecordMatchResult_ThrowsIfMatchNotStarted()
+    {
+        var tournament = BuildTournament(2);
+        _service.GenerateSingleElimination(tournament);
+        var match = tournament.Matches.Single();
+
+        Assert.Throws<InvalidOperationException>(() => _service.RecordMatchResult(tournament, match, 7, 3));
     }
 
     [Fact]

@@ -5,6 +5,11 @@ the top of each section.
 
 ## Current status
 
+v0.11 complete: players can be added to a tournament after creation (while
+still pre-play), every non-Ring-Game format now requires a table count at
+creation, and matches have separate Start/Finish steps with a live per-match
+timer instead of a single Report button.
+
 v0.10.1 complete: reorganized the tournament tabs. The "Settings" tab is
 renamed "Tournament Settings" and now hosts the whole create-tournament form
 (name, game, format, seed-by-rating, ring/chip options, entrant selection, and
@@ -46,6 +51,16 @@ sections for double elimination.
 
 ## Next steps
 
+- [x] Add-players-after-creation, required table counts, match Start/Finish +
+  timer (done in v0.11).
+- [ ] Ring Game / Chip Tournament formats don't use Match/Table at all, so
+  Start/Finish/timer only applies to Single/Double Elimination and Round
+  Robin; Chip Tournament still requires a table count at creation (per "every
+  format except Ring Game") but nothing currently consumes it.
+- [ ] Add-player-after-creation is pre-play-only for every format (locked once
+  any match/game has been played) - no support yet for adding players
+  mid-tournament even where a format could technically tolerate it (e.g. Ring
+  Game's rotation, round robin's schedule).
 - [x] Scrollbars on every main tab (done in v0.9.1).
 - [ ] All five formats are now implemented (single/double elim, round robin,
   ring game, chip tournament). No unimplemented format remains.
@@ -61,6 +76,66 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.11 — 2026-07-07
+
+- **Add players after creation.** A new "Add Player" picker on the Tournament
+  tab lets the operator add a roster player to the selected tournament as
+  long as no match/game has actually been played yet (`CanAddEntrant` in
+  `TournamentViewModel`, checked per format: no match started for
+  Single/Double Elimination/Round Robin, only buy-ins recorded for Ring Game,
+  no games logged for Chip Tournament). For Single/Double Elimination and
+  Round Robin, adding a player discards and regenerates the whole
+  bracket/schedule from scratch (safe pre-play, since nothing has a result
+  yet); double elimination still requires the new total to be a power of 2.
+  Regeneration needed a new `ITournamentRepository.TrackRemoved` (mirrors
+  `TrackNew`) to discard the old `BracketDetail`/`BracketNode`/`Match` rows.
+- **Required table count.** Tournament Settings has a new "Number of tables"
+  field, required and validated for every format except Ring Game; creating
+  the tournament bulk-creates that many `Table` rows. Existing tournaments
+  with zero tables (created before this version) simply can't start a match
+  until a table is added via the existing "Add Table" button.
+- **Match Start/Finish replaces Report.** `MatchStatus` gained an `InProgress`
+  value (explicit enum values so existing persisted `Completed` rows don't
+  shift). A match now goes `Scheduled` -[Start]-> `InProgress` -[Finish]->
+  `Completed`. Starting requires a table to be assigned and blocks if that
+  table already has another in-progress match on it. Finishing is what now
+  finalizes the score/winner and advances the bracket (`RecordMatchResult`
+  rejects finishing a match that was never started).
+- **Per-match timer.** `Match.StartedAtUtc`/`FinishedAtUtc` (new nullable
+  columns) drive a live "mm:ss" elapsed display while a match is in progress
+  (ticked once a second by a `DispatcherTimer` in `TournamentStateService`)
+  and a frozen "Finished in ..." readout once complete.
+- **Two real bugs found and fixed while building this** (see NOTES.md for
+  detail): (1) `TournamentRepository.TrackRemoved` used `DbContext.Remove()`,
+  which cascades through the whole reachable navigation graph and threw a
+  duplicate-tracked-entity exception given `GetByIdAsync`'s multiple Include
+  paths onto the same Match/Player rows - fixed by using
+  `Entry(entity).State = EntityState.Deleted` instead, which only marks the
+  one entity. (2) `PoolTournamentDbContext`/`ITournamentRepository`/
+  `IPlayerRepository` were registered `Scoped`, but the singleton
+  `TournamentStateService` and transient `TournamentViewModel` each captured
+  a *different* Scoped instance (a DI "captive dependency"), so any match
+  mutation made through `State.ActiveTournament` silently failed to persist
+  once saved through the ViewModel's own repository - fixed by registering
+  all three as `Singleton`, matching how the app already behaves (one
+  `_appScope` for its entire lifetime).
+- Migration: `AddMatchTimingAndInProgressStatus` (adds `Matches.StartedAtUtc`,
+  `Matches.FinishedAtUtc`; additive, no data loss).
+- Tests: 79 pass (72 Core + 2 Data + 5 App, up from 77/2/4 - added
+  `RecordMatchResult_ThrowsIfMatchNotStarted` and
+  `TournamentEntrantAdditionTests.AddEntrant_ToSingleElimination_...`, the
+  latter written against the real `TournamentViewModel`/`TournamentStateService`
+  wired together, which is what actually caught the DI bug above). Verified
+  end-to-end in the running app: created a Single Elimination tournament with
+  a table count, confirmed the field hides for Ring Game; added a 5th player
+  pre-play and watched the bracket regenerate with correct names/seeds;
+  confirmed Start is blocked with no table and blocked on a table already in
+  use; watched the live timer tick during an in-progress match; finished
+  matches and confirmed the score, winner, bracket advancement, and "Finished
+  in ..." duration all survive a full app restart (this is what surfaced and
+  proved the fix for the DI bug - the original code showed the same result on
+  screen either way, only a real restart revealed nothing had actually saved).
 
 ## v0.10.1 — 2026-07-07
 

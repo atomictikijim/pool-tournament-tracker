@@ -3,6 +3,64 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-07 — Singleton `TournamentStateService` + Scoped `ITournamentRepository` silently split the DbContext in two
+
+**Issue:** Finishing a match showed "Result recorded" - score frozen, winner bolded, bracket
+advanced, duration displayed - but a full app restart reverted the match to unplayed. The DB was
+never actually written to for any *mutation* of an existing entity (score/status/winner on a
+`Match`, `Slot2EntrantId`/`MatchId` on a `BracketNode`); brand-new inserts (`TrackNew`) DID persist,
+which is what made the bug so confusing - the visible "half-success" (new bracket-advancement Match
+row present, but disconnected from its BracketNode, and the original match still `Scheduled`) came
+from two different `PoolTournamentDbContext` instances being in play. `TournamentStateService` is
+`AddSingleton`; `ITournamentRepository`/`PoolTournamentDbContext` were `AddScoped`. A Singleton that
+depends on a Scoped service is a classic DI "captive dependency": .NET's container resolves the
+Singleton's own dependencies through the *root* container cache (not the ambient scope), so
+`TournamentStateService`'s `ITournamentRepository` ends up as a materially different instance than
+the one resolved directly for `TournamentViewModel`'s own constructor parameter - even though both
+are (in this app) ultimately requested from the same single `_appScope`. `GetByIdAsync` (via State)
+loaded and tracked the Tournament graph in context A; `SaveChangesAsync()` (via the ViewModel's own
+field) ran against context B, which had never seen that graph, so mutating an already-tracked
+`Match`/`BracketNode` there was a silent no-op - confirmed by dumping
+`_dbContext.ChangeTracker.Entries().Count()` at both call sites (33 vs. 8) and the constructor's
+`Environment.StackTrace` (one resolution path went through `VisitScopeCache`, the other through
+`VisitRootCache`). This bug predates this session's changes - it would have silently dropped every
+`ReportResultAsync` call past the tournament's own creation-time save, for the entire life of the
+app; it just took a session that actually restarted the app and diffed before/after to notice, since
+the in-memory ViewModel state looks identical either way.
+
+**Fix:** Registered `PoolTournamentDbContext`, `ITournamentRepository`, and `IPlayerRepository` as
+`Singleton` instead of `Scoped` in `App.xaml.cs` (`AddDbContext(..., contextLifetime:
+ServiceLifetime.Singleton, optionsLifetime: ServiceLifetime.Singleton)`). This app only ever creates
+one `IServiceScope` (`_appScope`, for its whole process lifetime), so Scoped was never buying
+anything - Singleton just makes the existing one-context-for-the-app-lifetime assumption explicit
+and removes the captive-dependency split. General lesson: a Singleton that takes a Scoped
+constructor parameter is a bug waiting to happen even when `ServiceProvider.CreateScope()` is only
+called once - verify by comparing `dbContext.GetHashCode()`/`ChangeTracker.Entries().Count()` at
+the read site vs. the write site if a save silently doesn't stick. A full app **restart** (not just
+navigating away and back in the running app - that reuses the same tracked, still-correct-looking
+in-memory objects) is the only way this class of bug reliably surfaces.
+
+## 2026-07-07 — `DbContext.Remove()`'s navigation-graph cascade threw a duplicate-tracked-entity error
+
+**Issue:** Regenerating a bracket after adding a player (`TournamentViewModel.RegenerateBracket`)
+needs to discard the old `Match`/`BracketNode`/`BracketDetail` rows before creating new ones. Doing
+that via `_dbContext.Remove(entity)` (mirroring `TrackNew`'s `_dbContext.Add(entity)`) threw "The
+instance of entity type 'Match'/'Player'/'BracketNode' cannot be tracked because another instance
+with the same key value ... is already being tracked" on the second or later `Remove()` call in the
+same batch. Unlike `Add()` (which only needs to succeed once per entity), `Remove()` walks the
+*entire* reachable navigation graph from the given entity (e.g. `Match.Player1Entrant.Player`) to
+cascade the delete - and `TournamentRepository.GetByIdAsync`'s Include chain reaches the same
+Match/TournamentEntrant/Player rows via more than one path (`Matches` directly, and via
+`Bracket.Nodes.Match`), so that graph walk re-attaches an already-tracked entity through a second
+path and trips the identity-map conflict.
+
+**Fix:** Use `_dbContext.Entry(entity).State = EntityState.Deleted` instead of `Remove()` in
+`TrackRemoved` - it marks only the given entity as Deleted without touching its navigation graph.
+General lesson: `Add()`/`Remove()` are graph-walking convenience APIs; anything that repeatedly
+mutates an already-fully-loaded aggregate (not a fresh, just-queried root) should prefer the
+single-entity `Entry(...).State = ...` form to avoid this whole class of "already tracked via a
+different path" error.
+
 ## 2026-07-06 — Verified a WPF window's look by rendering it to PNG from a tiny harness, not by driving the live app
 
 **Issue:** The v0.8 bracket-tree Display redesign is a purely visual feature - the only way to

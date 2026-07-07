@@ -41,11 +41,20 @@ public partial class App : Application
     {
         var databasePath = PoolTournamentDbContextFactory.GetDefaultDatabasePath();
 
+        // Singleton, not Scoped: TournamentStateService (a singleton) holds an ITournamentRepository
+        // for the app's whole lifetime, and every ViewModel needs to share that exact same tracked
+        // DbContext. With the default Scoped lifetime, the DI container gives a singleton consumer's
+        // own scoped dependency a *different* instance than one resolved directly elsewhere in the
+        // same object graph ("captive dependency") - two different DbContexts silently split the
+        // tracked entity graph, so mutations made through State.ActiveTournament (loaded via one
+        // context) never get detected as changes when saved through the other.
         services.AddDbContext<PoolTournamentDbContext>(
-            options => options.UseSqlite($"Data Source={databasePath}"));
+            options => options.UseSqlite($"Data Source={databasePath}"),
+            contextLifetime: ServiceLifetime.Singleton,
+            optionsLifetime: ServiceLifetime.Singleton);
 
-        services.AddScoped<IPlayerRepository, PlayerRepository>();
-        services.AddScoped<ITournamentRepository, TournamentRepository>();
+        services.AddSingleton<IPlayerRepository, PlayerRepository>();
+        services.AddSingleton<ITournamentRepository, TournamentRepository>();
         services.AddSingleton<BracketGenerationService>();
         services.AddSingleton<RoundRobinSchedulingService>();
         services.AddSingleton<RingGameService>();

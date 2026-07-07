@@ -15,5 +15,12 @@ public interface ITournamentRepository
     /// </summary>
     void TrackNew(object entity);
 
+    /// <summary>
+    /// Explicitly marks an entity detached from an already-tracked aggregate's navigation
+    /// collection/reference as removed, mirroring <see cref="TrackNew"/> for deletions - e.g.
+    /// discarding a bracket/schedule so it can be regenerated with a newly-added entrant.
+    /// </summary>
+    void TrackRemoved(object entity);
+
     Task SaveChangesAsync();
 }

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using PoolTournamentManager.App.ViewModels;
 using PoolTournamentManager.Core.Entities;
@@ -58,9 +59,23 @@ public partial class TournamentStateService : ObservableObject
     [ObservableProperty]
     private string _chipStatusLine = string.Empty;
 
+    private readonly DispatcherTimer _matchTickTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+
     public TournamentStateService(ITournamentRepository tournamentRepository)
     {
         _tournamentRepository = tournamentRepository;
+        _matchTickTimer.Tick += (_, _) => TickInProgressMatches();
+        _matchTickTimer.Start();
+    }
+
+    /// <summary>Drives the live elapsed-time display on every in-progress match's card, once a
+    /// second, for as long as the app is running.</summary>
+    private void TickInProgressMatches()
+    {
+        foreach (var row in Rounds.SelectMany(r => r.Matches))
+        {
+            row.Tick();
+        }
     }
 
     public async Task LoadTournamentsAsync()

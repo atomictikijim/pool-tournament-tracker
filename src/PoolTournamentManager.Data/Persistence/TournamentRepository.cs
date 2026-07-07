@@ -45,6 +45,16 @@ public class TournamentRepository : ITournamentRepository
         _dbContext.Add(entity);
     }
 
+    public void TrackRemoved(object entity)
+    {
+        // Entry(...).State = Deleted marks only this entity, unlike Remove(), which walks the
+        // whole reachable navigation graph and re-attaches everything on it (Match.Player1Entrant
+        // .Player etc.) - GetByIdAsync's multiple Include paths onto the same entities (Matches
+        // directly and via Bracket.Nodes.Match) mean that walk can visit an already-tracked entity
+        // through two different paths and throw a duplicate-identity error.
+        _dbContext.Entry(entity).State = EntityState.Deleted;
+    }
+
     public async Task SaveChangesAsync()
     {
         await _dbContext.SaveChangesAsync();

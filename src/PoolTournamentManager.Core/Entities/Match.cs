@@ -20,6 +20,9 @@ public class Match
     public Guid? WinnerEntrantId { get; set; }
     public MatchStatus Status { get; set; } = MatchStatus.Scheduled;
 
+    public DateTime? StartedAtUtc { get; set; }
+    public DateTime? FinishedAtUtc { get; set; }
+
     public TournamentEntrant? Player1Entrant { get; set; }
     public TournamentEntrant? Player2Entrant { get; set; }
     public Table? Table { get; set; }

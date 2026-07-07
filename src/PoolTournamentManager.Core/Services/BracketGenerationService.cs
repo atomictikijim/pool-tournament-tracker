@@ -192,6 +192,11 @@ public class BracketGenerationService
             throw new InvalidOperationException("Cannot record a score for a bye match.");
         }
 
+        if (match.Status != MatchStatus.InProgress)
+        {
+            throw new InvalidOperationException("Start the match before finishing it.");
+        }
+
         if (player1Score == player2Score)
         {
             throw new InvalidOperationException("A match cannot end in a tie; one player must win.");
@@ -201,6 +206,7 @@ public class BracketGenerationService
         match.Player2Score = player2Score;
         match.WinnerEntrantId = player1Score > player2Score ? match.Player1EntrantId : match.Player2EntrantId;
         match.Status = MatchStatus.Completed;
+        match.FinishedAtUtc = DateTime.UtcNow;
 
         var bracket = tournament.Bracket;
         var node = bracket?.Nodes.FirstOrDefault(n => n.Id == match.BracketNodeId);

@@ -36,6 +36,7 @@ public class DoubleEliminationBracketTests
              (m.Player1EntrantId == b.Id && m.Player2EntrantId == a.Id)));
 
         var winnerIsPlayer1 = match.Player1EntrantId == BySeed(tournament, winnerSeed).Id;
+        match.Status = MatchStatus.InProgress;
         _service.RecordMatchResult(tournament, match, winnerIsPlayer1 ? 7 : 3, winnerIsPlayer1 ? 3 : 7);
     }
 

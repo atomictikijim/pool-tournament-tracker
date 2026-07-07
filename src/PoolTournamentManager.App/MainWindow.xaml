@@ -42,7 +42,7 @@
                             </TextBlock.Style>
                         </TextBlock>
                         <TextBox Grid.Column="2" Text="{Binding Match.Player1Score, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
-                                 IsEnabled="{Binding IsReportable}" />
+                                 IsEnabled="{Binding IsInProgress}" />
                     </Grid>
 
                     <Border Height="1" Margin="2,4" Background="{DynamicResource AppBorderBrush}" />
@@ -71,10 +71,11 @@
                             </TextBlock.Style>
                         </TextBlock>
                         <TextBox Grid.Column="2" Text="{Binding Match.Player2Score, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
-                                 IsEnabled="{Binding IsReportable}" />
+                                 IsEnabled="{Binding IsInProgress}" />
                     </Grid>
 
-                    <Grid Margin="0,6,0,0" Visibility="{Binding IsReportable, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <!-- Before start: table picker + Start button -->
+                    <Grid Margin="0,6,0,0" Visibility="{Binding IsStartable, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -83,10 +84,28 @@
                                   ItemsSource="{Binding DataContext.State.Tables, ElementName=TournamentRoot}"
                                   SelectedValuePath="Id" DisplayMemberPath="Label"
                                   SelectedValue="{Binding Match.TableId}" />
-                        <Button Grid.Column="1" Content="Report"
-                                Command="{Binding DataContext.ReportResultCommand, ElementName=TournamentRoot}"
+                        <Button Grid.Column="1" Content="Start"
+                                Command="{Binding DataContext.StartMatchCommand, ElementName=TournamentRoot}"
                                 CommandParameter="{Binding}" Padding="8,2" />
                     </Grid>
+
+                    <!-- While in progress: live elapsed timer + Finish button -->
+                    <Grid Margin="0,6,0,0" Visibility="{Binding IsInProgress, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding ElapsedDisplay}" VerticalAlignment="Center"
+                                   FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <Button Grid.Column="1" Content="Finish"
+                                Command="{Binding DataContext.FinishMatchCommand, ElementName=TournamentRoot}"
+                                CommandParameter="{Binding}" Padding="8,2" />
+                    </Grid>
+
+                    <!-- Once complete: final duration, part of the match's recorded statistics -->
+                    <TextBlock Margin="0,4,0,0" Text="{Binding ElapsedDisplay, StringFormat='Finished in {0}'}"
+                               FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
+                               Visibility="{Binding HasFinishedDuration, Converter={StaticResource BoolToVisibilityConverter}}" />
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -226,6 +245,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -252,7 +272,17 @@
                     </StackPanel>
                     </ScrollViewer>
 
-                    <Border Grid.Row="1" Margin="0,0,0,10" Padding="8"
+                    <!-- Add players while the tournament is still pre-play; hidden once any
+                         match/game has actually started (see TournamentViewModel.CanAddEntrant). -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10"
+                                Visibility="{Binding CanAddEntrant, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="Add Player:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Bold" />
+                        <ComboBox Width="200" ItemsSource="{Binding AddablePlayers}" DisplayMemberPath="FullName"
+                                  SelectedItem="{Binding SelectedPlayerToAdd}" />
+                        <Button Content="Add" Command="{Binding AddEntrantCommand}" Padding="6,2" Margin="6,0,0,0" />
+                    </StackPanel>
+
+                    <Border Grid.Row="2" Margin="0,0,0,10" Padding="8"
                             Background="{DynamicResource CardBackgroundBrush}"
                             BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
                             Visibility="{Binding State.Standings.Count, Converter={StaticResource CountToVisibilityConverter}}">
@@ -275,7 +305,7 @@
 
                     <!-- Elimination bracket: same tree as the read-only Display window, with
                          editable boxes (score inputs + table picker + Report on the live match). -->
-                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                    <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                                   Visibility="{Binding IsEliminationBracket, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Grid Width="{Binding Bracket.Width}" Height="{Binding Bracket.Height}" HorizontalAlignment="Left" VerticalAlignment="Top">
                             <ItemsControl ItemsSource="{Binding Bracket.Connectors}" ItemTemplate="{StaticResource BracketConnectorTemplate}">
@@ -308,7 +338,7 @@
                     </ScrollViewer>
 
                     <!-- Round-robin fallback: simple round-column list, same editable card. -->
-                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                    <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                                   Visibility="{Binding ShowFlatRounds, Converter={StaticResource BoolToVisibilityConverter}}">
                         <ItemsControl ItemsSource="{Binding State.Rounds}">
                             <ItemsControl.ItemsPanel>
@@ -334,7 +364,7 @@
                     </ScrollViewer>
 
                     <!-- Ring game: live rotation, operator controls, and money ledger -->
-                    <Grid Grid.Row="2" Visibility="{Binding State.IsRingGame, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid Grid.Row="3" Visibility="{Binding State.IsRingGame, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -412,7 +442,7 @@
                     </Grid>
 
                     <!-- Chip tournament: ad-hoc game entry + live standings -->
-                    <Grid Grid.Row="2" Visibility="{Binding State.IsChipTournament, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid Grid.Row="3" Visibility="{Binding State.IsChipTournament, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -473,6 +503,13 @@
 
                     <TextBlock Text="Seed by rating" />
                     <ComboBox ItemsSource="{Binding RatingSystems}" SelectedItem="{Binding NewTournamentRatingSystem}" Margin="0,0,0,6" />
+
+                    <!-- Required for every format except Ring Game; matches cannot be started
+                         until the tournament has this many tables. -->
+                    <StackPanel Visibility="{Binding RequiresTableCount, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="Number of tables" />
+                        <TextBox Text="{Binding NewTournamentTableCount, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+                    </StackPanel>
 
                     <!-- Ring-game-only setup: buy-in and money-ball payouts -->
                     <StackPanel Visibility="{Binding IsCreatingRingGame, Converter={StaticResource BoolToVisibilityConverter}}">
