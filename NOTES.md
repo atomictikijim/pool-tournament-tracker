@@ -3,6 +3,30 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-08 — `ComboBox.SelectedItem` bound to a ViewModel property silently goes null when its `ItemsSource` collection is cleared/rebuilt
+
+**Issue:** Added Division/Location filter drop-downs to the Tournament Settings tab, backed by
+`AvailableDivisionFilters`/`AvailableLocationFilters` (`ObservableCollection<string>` rebuilt from
+scratch - `.Clear()` then re-`.Add()` - every time `LoadTeamCandidatesAsync` runs), with each
+ComboBox's `SelectedItem` two-way bound directly to a `TeamDivisionFilter`/`TeamLocationFilter`
+string property defaulting to a `"(All)"` sentinel. Worked in an isolated unit test (no real
+ComboBox involved) but in the running app the Teams checklist came up completely empty and the
+drop-downs looked unselected/blank. Root cause: `ObservableCollection.Clear()` raises a
+`NotifyCollectionChangedAction.Reset` event; WPF's `Selector` (ComboBox's base) responds to a
+Reset on its `ItemsSource` by clearing its own selection, pushing `SelectedItem = null` back
+through the two-way binding - so the property was reset to `null` mid-reload, before the list was
+even repopulated. Since `null != "(All)"`, the filter predicate then treated every team as
+not-matching-the-selected-division and excluded all of them, indefinitely, since nothing tells a
+ComboBox to re-select a value once its `ItemsSource` is populated again.
+
+**Fix:** After rebuilding both filter-option lists in `LoadTeamCandidatesAsync`, explicitly
+re-assign `TeamDivisionFilter = AllFilterOption` and `TeamLocationFilter = AllFilterOption`.
+General lesson: any property two-way bound to a `Selector.SelectedItem` (ComboBox/ListBox/etc.)
+whose `ItemsSource` collection gets cleared and rebuilt must have its value explicitly
+re-asserted afterward - don't assume the old value survives the round trip, and don't trust a
+passing unit test that never exercises a real `Selector` to catch this class of bug; verify
+collection-backed ComboBox filters manually in the running app.
+
 ## 2026-07-08 — A merged `ResourceDictionary` file can't `StaticResource` a key its parent declares
 
 **Issue:** Adding a rating column to `Themes/BracketTemplates.xaml`'s `PlayerLineTemplate` needed

@@ -5,6 +5,13 @@ the top of each section.
 
 ## Current status
 
+v0.18 complete: the Tournament Settings tab has a new filter panel to the right of the Entrants
+checklist - name search + rating min/max for individual Players, name search + Division/Location
+drop-downs for Teams. Filtering hides rows via a live `ICollectionView`, it never touches
+selection state. Found and fixed a real bug along the way: the Division/Location `ComboBox`es
+went silently blank/empty because rebuilding their `ItemsSource` list reset `SelectedItem` to
+null, which then excluded every team from the filter - see NOTES.md.
+
 v0.17 complete: on the Tournament Settings tab, the Entrants panel now stretches to the
 bottom of the window and resizes with it (the list scrolls internally instead of using a
 fixed pixel height). Each Player entrant's checklist label now shows their rating for
@@ -153,6 +160,35 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.18 — 2026-07-08
+
+- **Entrant filtering on the Tournament Settings tab.** A new filter panel sits to the right of
+  the Entrants checklist, one variant for individual Players and one for Teams (same
+  mutually-exclusive visibility as the checklists themselves):
+  - Players: search by name (substring, case-insensitive) plus a min/max range on whichever
+    rating system "Seed by rating" currently has selected - players with no rating in that
+    system are hidden while a range filter is active.
+  - Teams: search by name plus **Division** and **Location** drop-downs populated from the
+    distinct values actually present on the Team roster (plus a leading "(All)" option).
+  - Filtering hides rows via each checklist's `ICollectionView.Filter` - it never removes items
+    from the underlying `ObservableCollection` or touches `IsSelected`, so a filtered-out
+    entrant's selection survives clearing/changing the filter.
+  - `SeedingService.GetRatingValue(Player?, RatingSystem)` (Core) centralizes reading a player's
+    numeric rating for a system, used by both the seeding order and the new range filter.
+- **Bug found and fixed**: the Division/Location filter drop-downs came up completely blank and
+  filtered out every team. Root cause: rebuilding `AvailableDivisionFilters`/
+  `AvailableLocationFilters` (`.Clear()` then re-`.Add()`) fires a collection Reset, which WPF's
+  `ComboBox` responds to by resetting its own `SelectedItem` to `null` - silently pushing `null`
+  into the bound filter property, which then excluded every team since `null` never matches a
+  real division/location. Fixed by re-asserting the "(All)" default after every reload. Caught by
+  manual UI testing, not the unit tests (a headless test never exercises a real `ComboBox`'s
+  selection-reset behavior) - see NOTES.md for the general lesson.
+- 5 new tests (SeedingService, plus a new `EntrantFilteringTests` file exercising the live
+  `ICollectionView` filters against a real SQLite-backed `TournamentViewModel`) - 121 total, all
+  passing, 0 warnings.
+- Manually verified in the running app: player name search, rating range, team name search, and
+  the Division filter all narrow the checklist correctly without losing existing checkmarks.
 
 ## v0.17 — 2026-07-08
 

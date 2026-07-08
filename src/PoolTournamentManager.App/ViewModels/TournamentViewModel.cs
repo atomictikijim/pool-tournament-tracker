@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PoolTournamentManager.App.Services;
@@ -25,6 +26,54 @@ public partial class TournamentViewModel : ObservableObject
     public ObservableCollection<PlayerSelectionItem> EntrantCandidates { get; } = new();
 
     public ObservableCollection<TeamSelectionItem> TeamCandidates { get; } = new();
+
+    /// <summary>Sentinel item meaning "don't filter by this field" in the Division/Location
+    /// filter drop-downs.</summary>
+    public const string AllFilterOption = "(All)";
+
+    /// <summary>Distinct Division values currently in TeamCandidates, for the Division filter
+    /// drop-down, plus the leading "(All)" option.</summary>
+    public ObservableCollection<string> AvailableDivisionFilters { get; } = new() { AllFilterOption };
+
+    /// <summary>Distinct Location values currently in TeamCandidates, for the Location filter
+    /// drop-down, plus the leading "(All)" option.</summary>
+    public ObservableCollection<string> AvailableLocationFilters { get; } = new() { AllFilterOption };
+
+    private ICollectionView? _entrantCandidatesView;
+    private ICollectionView? _teamCandidatesView;
+
+    /// <summary>The live filtered view of <see cref="EntrantCandidates"/> - the same view WPF's
+    /// default binding uses, exposed so filter behavior can be verified without a running UI.</summary>
+    public ICollectionView EntrantCandidatesView => _entrantCandidatesView!;
+
+    /// <summary>The live filtered view of <see cref="TeamCandidates"/> - see <see cref="EntrantCandidatesView"/>.</summary>
+    public ICollectionView TeamCandidatesView => _teamCandidatesView!;
+
+    /// <summary>Filters the Entrants checklist by player name (substring, case-insensitive).</summary>
+    [ObservableProperty]
+    private string? _entrantNameFilter;
+
+    /// <summary>Filters the Entrants checklist to players whose current rating (see
+    /// <see cref="NewTournamentRatingSystem"/>) is at least this value. Players with no rating in
+    /// that system are hidden while a min/max filter is active.</summary>
+    [ObservableProperty]
+    private int? _entrantMinRating;
+
+    [ObservableProperty]
+    private int? _entrantMaxRating;
+
+    /// <summary>Filters the Teams checklist by team name (substring, case-insensitive).</summary>
+    [ObservableProperty]
+    private string? _teamNameFilter;
+
+    [ObservableProperty]
+    private string _teamDivisionFilter = AllFilterOption;
+
+    [ObservableProperty]
+    private string _teamLocationFilter = AllFilterOption;
+
+    /// <summary>"Fargo rating" / "APA 8-Ball rating" etc., for the min/max filter's label.</summary>
+    public string EntrantRatingFilterLabel => $"{SeedingService.GetRatingLabel(NewTournamentRatingSystem)} rating";
 
     /// <summary>Roster players not already entered in the active tournament, for the "Add Player" picker.</summary>
     public ObservableCollection<Player> AddablePlayers { get; } = new();
@@ -183,7 +232,12 @@ public partial class TournamentViewModel : ObservableObject
         RefreshEntrantCandidateRatings();
     }
 
-    partial void OnNewTournamentRatingSystemChanged(RatingSystem value) => RefreshEntrantCandidateRatings();
+    partial void OnNewTournamentRatingSystemChanged(RatingSystem value)
+    {
+        RefreshEntrantCandidateRatings();
+        OnPropertyChanged(nameof(EntrantRatingFilterLabel));
+        _entrantCandidatesView?.Refresh();
+    }
 
     /// <summary>Pushes the currently-selected "Seed by rating" system (or null while that control
     /// is hidden/inapplicable) onto every entrant candidate, so the checklist label shows the
@@ -248,7 +302,80 @@ public partial class TournamentViewModel : ObservableObject
         State = state;
         State.PropertyChanged += OnStateChanged;
         RebuildBracket();
+
+        _entrantCandidatesView = CollectionViewSource.GetDefaultView(EntrantCandidates);
+        _entrantCandidatesView.Filter = FilterEntrantCandidate;
+        _teamCandidatesView = CollectionViewSource.GetDefaultView(TeamCandidates);
+        _teamCandidatesView.Filter = FilterTeamCandidate;
     }
+
+    private bool FilterEntrantCandidate(object obj)
+    {
+        if (obj is not PlayerSelectionItem item)
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(EntrantNameFilter) &&
+            !item.Player.FullName.Contains(EntrantNameFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (EntrantMinRating is not null || EntrantMaxRating is not null)
+        {
+            var rating = SeedingService.GetRatingValue(item.Player, NewTournamentRatingSystem);
+            if (rating is null)
+            {
+                return false;
+            }
+            if (EntrantMinRating is not null && rating < EntrantMinRating)
+            {
+                return false;
+            }
+            if (EntrantMaxRating is not null && rating > EntrantMaxRating)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool FilterTeamCandidate(object obj)
+    {
+        if (obj is not TeamSelectionItem item)
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(TeamNameFilter) &&
+            !item.Team.Name.Contains(TeamNameFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (TeamDivisionFilter != AllFilterOption &&
+            !string.Equals(item.Team.Division, TeamDivisionFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (TeamLocationFilter != AllFilterOption &&
+            !string.Equals(item.Team.Location, TeamLocationFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    partial void OnEntrantNameFilterChanged(string? value) => _entrantCandidatesView?.Refresh();
+    partial void OnEntrantMinRatingChanged(int? value) => _entrantCandidatesView?.Refresh();
+    partial void OnEntrantMaxRatingChanged(int? value) => _entrantCandidatesView?.Refresh();
+    partial void OnTeamNameFilterChanged(string? value) => _teamCandidatesView?.Refresh();
+    partial void OnTeamDivisionFilterChanged(string value) => _teamCandidatesView?.Refresh();
+    partial void OnTeamLocationFilterChanged(string value) => _teamCandidatesView?.Refresh();
 
     // ---- Live bracket tree (editable) --------------------------------------------------------
     // Same tree layout as the read-only Display window, but with taller boxes so each match can
@@ -340,6 +467,27 @@ public partial class TournamentViewModel : ObservableObject
             item.PropertyChanged += OnEntrantCandidateSelectionChanged;
             TeamCandidates.Add(item);
         }
+
+        AvailableDivisionFilters.Clear();
+        AvailableDivisionFilters.Add(AllFilterOption);
+        foreach (var division in teams.Select(t => t.Division).Where(d => !string.IsNullOrWhiteSpace(d)).Distinct().OrderBy(d => d))
+        {
+            AvailableDivisionFilters.Add(division!);
+        }
+
+        AvailableLocationFilters.Clear();
+        AvailableLocationFilters.Add(AllFilterOption);
+        foreach (var location in teams.Select(t => t.Location).Where(l => !string.IsNullOrWhiteSpace(l)).Distinct().OrderBy(l => l))
+        {
+            AvailableLocationFilters.Add(location!);
+        }
+
+        // Clearing/rebuilding the two lists above resets each ComboBox's SelectedItem to null
+        // (a Reset notification deselects everything), which would otherwise leave the
+        // Division/Location filters stuck excluding every team. Re-assert the "no filter"
+        // default now that both lists are back in a valid state.
+        TeamDivisionFilter = AllFilterOption;
+        TeamLocationFilter = AllFilterOption;
     }
 
     private void OnEntrantCandidateSelectionChanged(object? sender, PropertyChangedEventArgs e)

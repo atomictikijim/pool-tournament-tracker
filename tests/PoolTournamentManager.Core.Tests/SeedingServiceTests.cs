@@ -109,6 +109,32 @@ public class SeedingServiceTests
     }
 
     [Fact]
+    public void GetRatingValue_ReadsTheFieldMatchingEachSystemAsANumber()
+    {
+        var player = new Player
+        {
+            FirstName = "A",
+            LastName = "Player",
+            FargoRate = 650,
+            ApaEightBallSkill = 7,
+            ApaNineBallSkill = 5,
+            TapRating = "6"
+        };
+
+        Assert.Equal(650, SeedingService.GetRatingValue(player, RatingSystem.Fargo));
+        Assert.Equal(7, SeedingService.GetRatingValue(player, RatingSystem.ApaEightBall));
+        Assert.Equal(5, SeedingService.GetRatingValue(player, RatingSystem.ApaNineBall));
+        Assert.Equal(6, SeedingService.GetRatingValue(player, RatingSystem.Tap));
+    }
+
+    [Fact]
+    public void GetRatingValue_IsNullForAnUnparseableTapRatingOrMissingPlayer()
+    {
+        Assert.Null(SeedingService.GetRatingValue(null, RatingSystem.Fargo));
+        Assert.Null(SeedingService.GetRatingValue(new Player { FirstName = "A", LastName = "Player", TapRating = "n/a" }, RatingSystem.Tap));
+    }
+
+    [Fact]
     public void GetRatingLabel_ReturnsAShortHumanReadableName()
     {
         Assert.Equal("Fargo", SeedingService.GetRatingLabel(RatingSystem.Fargo));

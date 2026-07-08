@@ -112,7 +112,16 @@ This tab holds the entire "create a new tournament" form.
    Player's checklist entry shows their rating for that system (e.g. "Alice
    Anderson (Fargo: 700)"), or a dash if they don't have one on file - this is the
    same rating that will later appear next to them in the bracket.
-10. Click **Create Tournament**.
+10. **Filter panel**, to the right of the Entrants checklist - narrows down a long
+    roster without changing who's checked (filtering only hides rows, it never
+    unchecks anyone already selected):
+    - **Individual Players**: search by name, plus a min/max range on whichever
+      rating "Seed by rating" currently has selected (players with no rating in
+      that system are hidden while a range is set).
+    - **Teams**: search by name, plus **Division** and **Location** drop-downs
+      populated from whatever values are actually on your Team roster. Pick
+      "(All)" on either to stop filtering by it.
+11. Click **Create Tournament**.
 
 Entrant count requirements:
 

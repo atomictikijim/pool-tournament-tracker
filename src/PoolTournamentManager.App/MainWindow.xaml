@@ -597,6 +597,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
                 <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -724,6 +725,38 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                 </Grid>
+
+                <!-- Filter panel: to the right of the Entrants list, one variant for individual
+                     Players and one for Teams (mutually exclusive, same visibility bindings as
+                     the two Entrants lists themselves). -->
+                <StackPanel Grid.Column="2" Width="220" Margin="24,0,0,0">
+                    <StackPanel Visibility="{Binding ShowPlayerEntrants, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="Filter Entrants" FontWeight="Bold" Margin="0,4,0,8" />
+
+                        <TextBlock Text="Search by name" />
+                        <TextBox Text="{Binding EntrantNameFilter, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
+
+                        <TextBlock Text="{Binding EntrantRatingFilterLabel}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBox Width="80" Text="{Binding EntrantMinRating, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" />
+                            <TextBlock Text="to" VerticalAlignment="Center" Margin="6,0" />
+                            <TextBox Width="80" Text="{Binding EntrantMaxRating, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Visibility="{Binding UseTeams, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="Filter Teams" FontWeight="Bold" Margin="0,4,0,8" />
+
+                        <TextBlock Text="Search by name" />
+                        <TextBox Text="{Binding TeamNameFilter, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
+
+                        <TextBlock Text="Division" />
+                        <ComboBox ItemsSource="{Binding AvailableDivisionFilters}" SelectedItem="{Binding TeamDivisionFilter}" Margin="0,0,0,10" />
+
+                        <TextBlock Text="Location" />
+                        <ComboBox ItemsSource="{Binding AvailableLocationFilters}" SelectedItem="{Binding TeamLocationFilter}" Margin="0,0,0,10" />
+                    </StackPanel>
+                </StackPanel>
                 </Grid>
             </Grid>
         </TabItem>
