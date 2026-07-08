@@ -123,7 +123,10 @@ This tab holds the entire "create a new tournament" form.
    more entrants than fit. While **Seed by rating** is showing a system, each
    Player's checklist entry shows their rating for that system (e.g. "Alice
    Anderson (Fargo: 700)"), or a dash if they don't have one on file - this is the
-   same rating that will later appear next to them in the bracket.
+   same rating that will later appear next to them in the bracket. When **Use
+   Teams** is checked, each Team's entry likewise shows its Division and/or
+   Location alongside the name when either is set (e.g. "Sharks (Div A · Corner
+   Pocket)"), so you can tell similarly-named teams apart at a glance.
 10. **Filter panel**, to the right of the Entrants checklist - narrows down a long
     roster without changing who's checked (filtering only hides rows, it never
     unchecks anyone already selected):

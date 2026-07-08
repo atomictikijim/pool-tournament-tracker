@@ -676,7 +676,9 @@
                              Visibility="{Binding UseTeams, Converter={StaticResource BoolToVisibilityConverter}}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <CheckBox Content="{Binding Team.Name}" IsChecked="{Binding IsSelected}" />
+                                <!-- DisplayLabel appends the team's Division/Location when present
+                                     (e.g. "Sharks (Div A · Corner Pocket)"). -->
+                                <CheckBox Content="{Binding DisplayLabel}" IsChecked="{Binding IsSelected}" />
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>

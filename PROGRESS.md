@@ -5,6 +5,12 @@ the top of each section.
 
 ## Current status
 
+v0.19.1 complete (UI): the Teams entrant checklist on the Tournament Settings tab now shows each
+team's Division and/or Location next to its name when either is set (e.g. "Sharks (Div A · Corner
+Pocket)"), mirroring how the individual-Player checklist shows a rating. Done via a new
+`TeamSelectionItem.DisplayLabel` (the checkbox now binds to it instead of `Team.Name`); no behavior
+change. +5 App tests (35 total in that project).
+
 v0.19 complete: player and team create/edit now happen in a dedicated modal editor window instead
 of an inline details panel. Both the Players and Teams tabs now have a **New / Edit / Delete**
 toolbar above a full-width grid (the old right-hand Details panel is gone). New/Edit open a small
@@ -179,6 +185,19 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.19.1 — 2026-07-08 (UI)
+
+- **Team Division/Location shown in the entrant checklist.** On the Tournament Settings tab, with
+  **Use Teams** checked, each team's checkbox label now appends its Division and/or Location in
+  parentheses when set - "Sharks (Div A · Corner Pocket)", "Sharks (Div A)", or "Sharks (Corner
+  Pocket)" - and is just the plain name when neither is set. Implemented as
+  `TeamSelectionItem.DisplayLabel` (parallel to `PlayerSelectionItem.DisplayLabel`); the checklist
+  `CheckBox` binds to `DisplayLabel` instead of `Team.Name`. Presentation-only, no logic change.
+- +5 App tests (`TeamSelectionItemTests`) covering name-only / division-only / location-only /
+  both / whitespace-ignored. 35 tests in the App project; solution green, 0 warnings.
+- Verified in the running app: with Use Teams checked, the Teams entrant list showed "My Bad (Div
+  684 · Mad Hippo)" etc.
 
 ## v0.19 — 2026-07-08
 
