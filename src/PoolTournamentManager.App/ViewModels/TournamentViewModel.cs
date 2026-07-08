@@ -31,6 +31,17 @@ public partial class TournamentViewModel : ObservableObject
     /// filter drop-downs.</summary>
     public const string AllFilterOption = "(All)";
 
+    // Options for the Tournament tab's status filter. Only In Progress and Completed occur in
+    // practice (a tournament goes straight to InProgress on creation and to Completed when it
+    // finishes), so those two plus an "All" pass-through are all the filter needs.
+    public const string StatusFilterAll = "All";
+    public const string StatusFilterInProgress = "In Progress";
+    public const string StatusFilterCompleted = "Completed";
+
+    /// <summary>Choices for the tournament-list status filter on the Tournament tab.</summary>
+    public ObservableCollection<string> AvailableStatusFilters { get; } =
+        new() { StatusFilterAll, StatusFilterInProgress, StatusFilterCompleted };
+
     /// <summary>Distinct Division values currently in TeamCandidates, for the Division filter
     /// drop-down, plus the leading "(All)" option.</summary>
     public ObservableCollection<string> AvailableDivisionFilters { get; } = new() { AllFilterOption };
@@ -41,6 +52,11 @@ public partial class TournamentViewModel : ObservableObject
 
     private ICollectionView? _entrantCandidatesView;
     private ICollectionView? _teamCandidatesView;
+    private ICollectionView? _tournamentsView;
+
+    /// <summary>Filters the Tournament tab's list by status ("All" / "In Progress" / "Completed").</summary>
+    [ObservableProperty]
+    private string _tournamentStatusFilter = StatusFilterAll;
 
     /// <summary>The live filtered view of <see cref="EntrantCandidates"/> - the same view WPF's
     /// default binding uses, exposed so filter behavior can be verified without a running UI.</summary>
@@ -48,6 +64,9 @@ public partial class TournamentViewModel : ObservableObject
 
     /// <summary>The live filtered view of <see cref="TeamCandidates"/> - see <see cref="EntrantCandidatesView"/>.</summary>
     public ICollectionView TeamCandidatesView => _teamCandidatesView!;
+
+    /// <summary>The live status-filtered view of the tournament list - see <see cref="EntrantCandidatesView"/>.</summary>
+    public ICollectionView TournamentsView => _tournamentsView!;
 
     /// <summary>Filters the Entrants checklist by player name (substring, case-insensitive).</summary>
     [ObservableProperty]
@@ -307,7 +326,30 @@ public partial class TournamentViewModel : ObservableObject
         _entrantCandidatesView.Filter = FilterEntrantCandidate;
         _teamCandidatesView = CollectionViewSource.GetDefaultView(TeamCandidates);
         _teamCandidatesView.Filter = FilterTeamCandidate;
+
+        // The Tournament tab's ListBox binds State.Tournaments; filtering its default view (the same
+        // view the ListBox uses) hides rows by status without touching the underlying collection, so
+        // a reload (Clear/Add in LoadTournamentsAsync) re-applies the filter automatically.
+        _tournamentsView = CollectionViewSource.GetDefaultView(State.Tournaments);
+        _tournamentsView.Filter = FilterTournament;
     }
+
+    private bool FilterTournament(object obj)
+    {
+        if (obj is not Tournament tournament)
+        {
+            return true;
+        }
+
+        return TournamentStatusFilter switch
+        {
+            StatusFilterInProgress => tournament.Status == TournamentStatus.InProgress,
+            StatusFilterCompleted => tournament.Status == TournamentStatus.Completed,
+            _ => true,
+        };
+    }
+
+    partial void OnTournamentStatusFilterChanged(string value) => _tournamentsView?.Refresh();
 
     private bool FilterEntrantCandidate(object obj)
     {

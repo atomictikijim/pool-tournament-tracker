@@ -5,6 +5,13 @@ the top of each section.
 
 ## Current status
 
+v0.21 complete: the Tournament tab's list now has a **Status** filter (All / In Progress /
+Completed) above it. Filtering hides rows through the list's `ICollectionView` (the same view the
+ListBox binds) without touching `State.Tournaments` or the current selection, and survives a reload.
+Only In Progress and Completed occur in practice (a tournament goes straight to InProgress on
+creation, Completed when it finishes), so those two plus "All" are the options. +4 App tests
+(`TournamentStatusFilterTests`); 139 total. Verified in the app.
+
 v0.20 complete: you can now delete a tournament from the Tournament tab. Select one in the picker
 and click **Delete Tournament** (disabled until something is selected); a Yes/No confirmation runs
 first (irreversible). New `ITournamentRepository.DeleteAsync(id)` loads the full owned graph and
@@ -203,6 +210,23 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.21 — 2026-07-08
+
+- **Status filter on the Tournament tab's list.** A **Status** drop-down (All / In Progress /
+  Completed) above the tournament picker. Implemented with the same live-`ICollectionView` approach
+  as the entrant filters: `TournamentViewModel` gets the default view of `State.Tournaments`, sets a
+  `FilterTournament` predicate keyed off a new `TournamentStatusFilter` property, and `Refresh()`es
+  on change. Filtering only hides rows - it never trims `State.Tournaments` or clears the current
+  selection, and it re-applies automatically after a reload (e.g. following a delete).
+- Only In Progress and Completed statuses occur in real data (creation goes straight to InProgress,
+  finishing to Completed; Setup/Cancelled are never persisted), so the filter offers those two plus
+  an "All" pass-through. Exposed `TournamentsView` for testing, mirroring `EntrantCandidatesView`.
+- +4 App tests (`TournamentStatusFilterTests`): All shows 3, In Progress shows 2, Completed shows 1,
+  and the filter survives a reload then reverts on All - all asserting `State.Tournaments` itself is
+  never trimmed. 139 tests total, solution green, 0 warnings.
+- Verified in the running app: the Status drop-down showed All/In Progress/Completed; selecting
+  Completed emptied the list (all current tournaments are In Progress) and All restored all three.
 
 ## v0.20 — 2026-07-08
 

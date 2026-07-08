@@ -158,6 +158,13 @@ list on the left.
 The left column lists every tournament you've created — click one to select it and
 work with it on the right.
 
+### Filtering the list by status
+
+Above the list is a **Status** drop-down. Leave it on **All** to see every
+tournament, or pick **In Progress** or **Completed** to show only tournaments in
+that state. This just hides rows from view — it doesn't change or delete anything,
+and any selection you had is untouched when you change the filter.
+
 ### Deleting a tournament
 
 Select a tournament in the left-hand list and click **Delete Tournament** (below the

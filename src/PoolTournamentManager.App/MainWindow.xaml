@@ -235,13 +235,23 @@
                 <Grid Grid.Column="0" Grid.Row="0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Text="Tournaments" FontWeight="Bold" FontSize="14" Margin="0,0,0,6" />
-                    <ListBox Grid.Row="1" ItemsSource="{Binding State.Tournaments}"
+
+                    <!-- Status filter: hides rows in the list by status (All / In Progress /
+                         Completed) via the collection view, without changing the underlying list. -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="Status:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox Width="150" ItemsSource="{Binding AvailableStatusFilters}"
+                                  SelectedItem="{Binding TournamentStatusFilter}" />
+                    </StackPanel>
+
+                    <ListBox Grid.Row="2" ItemsSource="{Binding State.Tournaments}"
                              SelectedItem="{Binding SelectedTournamentSummary}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
@@ -256,11 +266,11 @@
                     <!-- Permanently deletes the selected tournament (with all its matches/bracket/
                          entrant links). Confirmation is handled in code-behind before anything is
                          removed; only enabled once a tournament is selected. -->
-                    <Button Grid.Row="2" Content="Delete Tournament" Margin="0,8,0,0" Padding="8,4"
+                    <Button Grid.Row="3" Content="Delete Tournament" Margin="0,8,0,0" Padding="8,4"
                             HorizontalAlignment="Left" Click="DeleteTournamentButton_OnClick"
                             IsEnabled="{Binding SelectedTournamentSummary, Converter={StaticResource NotNullToBoolConverter}}" />
 
-                    <TextBlock Grid.Row="3" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="11"
+                    <TextBlock Grid.Row="4" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="11"
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                Text="Create and configure tournaments on the Tournament Settings tab." />
                 </Grid>
