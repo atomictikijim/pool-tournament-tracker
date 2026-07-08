@@ -3,6 +3,25 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-08 — "Create Tournament does nothing": the button worked, but its StatusMessage had nowhere to display on the Tournament Settings tab
+
+**Issue:** User reported the Create Tournament button "seems to not function." The button was fine -
+`CreateTournamentCommand` is a plain `[RelayCommand]` (always enabled) that runs and, on any
+validation failure (e.g. a non-power-of-2 Double Elimination entrant count, <2 entrants, prize
+percentages ≠ 100%), returns early after setting `StatusMessage`. The real problem: the Tournament
+Settings tab had **no element bound to `StatusMessage`**. The Players/Teams/Tournament tabs each
+show it, but when the create/configure form was split onto its own tab back in v0.15.1, the status
+line didn't come with it. So every rejected create set a message that rendered nowhere - the click
+looked like a no-op, and even a *successful* create gave no on-tab confirmation.
+
+**Fix:** Added a `TextBlock` bound to `StatusMessage` directly beneath the Create Tournament button
+(inside the form's `StackPanel`, not at the bottom of the tab - a first attempt put it in a bottom
+`Auto` row of the outer grid, but the `*`-height form row pushed it to the very bottom of the tall
+tab, far from where the user clicks). Uses `NonEmptyToVisibilityConverter` so it only appears when
+there's a message. General lesson: when moving a command's trigger to a new view, move (or
+re-add) its feedback surface too - a `StatusMessage`-style property is invisible unless some
+element in the *current* view binds it, and WPF won't warn you that nothing does.
+
 ## 2026-07-08 — Driving the app with synthetic mouse clicks: make the PowerShell process DPI-aware and pin the window first
 
 **Issue:** Verifying the v0.19 modal editors meant clicking real buttons (the New/Edit/Delete

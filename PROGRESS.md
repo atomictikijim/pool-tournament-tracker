@@ -5,6 +5,13 @@ the top of each section.
 
 ## Current status
 
+v0.19.2 complete (UI): fixed "Create Tournament does nothing." The button always worked - its
+`CreateTournamentCommand` sets a `StatusMessage` on both validation failure and success - but the
+Tournament Settings tab had no element bound to `StatusMessage` (it never came along when the create
+form was split onto its own tab in v0.15.1), so a rejected create (e.g. Double Elimination with a
+non-power-of-2 entrant count) looked like a dead button. Added a status `TextBlock` directly beneath
+the Create Tournament button. See NOTES.md.
+
 v0.19.1 complete (UI): the Teams entrant checklist on the Tournament Settings tab now shows each
 team's Division and/or Location next to its name when either is set (e.g. "Sharks (Div A · Corner
 Pocket)"), mirroring how the individual-Player checklist shows a rating. Done via a new
@@ -185,6 +192,21 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.19.2 — 2026-07-08 (UI)
+
+- **Fixed "Create Tournament does nothing."** The button (`CreateTournamentCommand`, a plain
+  always-enabled `[RelayCommand]`) was firing and setting `StatusMessage` for every validation
+  outcome, but the Tournament Settings tab had no element bound to `StatusMessage` - so both
+  rejections (e.g. Double Elimination with a non-power-of-2 count, <2 entrants, prize % ≠ 100) and
+  the success confirmation rendered nowhere, making the button look dead. Root cause: the status
+  line wasn't carried over when the create form moved to its own tab in v0.15.1.
+- **Fix:** added a `StatusMessage`-bound `TextBlock` directly beneath the Create Tournament button
+  (visible only when non-empty, via `NonEmptyToVisibilityConverter`). No logic change - purely a
+  missing feedback surface. See NOTES.md.
+- Verified in the running app: clicking Create with an empty form now shows "Enter a tournament
+  name." under the button, and a valid create shows "Created '...' with N entrants." then clears
+  the form. Solution green, 0 warnings (no test change - XAML display binding only).
 
 ## v0.19.1 — 2026-07-08 (UI)
 

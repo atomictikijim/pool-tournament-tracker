@@ -638,6 +638,14 @@
                     </StackPanel>
 
                     <Button Content="Create Tournament" Command="{Binding CreateTournamentCommand}" Padding="8,4" HorizontalAlignment="Left" />
+
+                    <!-- Create-tournament feedback (validation errors AND the success confirmation),
+                         directly under the button so a rejected create - e.g. a non-power-of-2
+                         Double Elimination count - is visible right where the user clicked, instead
+                         of silently doing nothing. -->
+                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" FontWeight="SemiBold"
+                               Margin="0,10,0,0"
+                               Visibility="{Binding StatusMessage, Converter={StaticResource NonEmptyToVisibilityConverter}}" />
                 </StackPanel>
                 </ScrollViewer>
 
