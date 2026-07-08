@@ -5,6 +5,19 @@ the top of each section.
 
 ## Current status
 
+v0.19 complete: player and team create/edit now happen in a dedicated modal editor window instead
+of an inline details panel. Both the Players and Teams tabs now have a **New / Edit / Delete**
+toolbar above a full-width grid (the old right-hand Details panel is gone). New/Edit open a small
+pop-up (`PlayerEditorWindow` / `TeamEditorWindow`) that validates on Save and only closes when the
+input is valid, showing errors inline in red otherwise; double-clicking a row also opens Edit.
+Delete supports multi-row selection (grids are `SelectionMode="Extended"`) and always asks for
+confirmation first. A player/team still entered in a tournament is protected from deletion (the
+entrant FK is `DeleteBehavior.Restrict`) — the repositories gained `DeleteAsync` +
+`IsReferencedAsync`, and blocked records are named in the status line. +8 App tests (30 total in
+that project) covering create/update/multi-delete/reference-blocking and both editors' validation.
+Verified end-to-end in the app: created "Modal Tester" via the modal, saw empty-form validation,
+deleted it through the confirmation prompt, and confirmed the Teams tab mirrors the same flow.
+
 v0.18 complete: the Tournament Settings tab has a new filter panel to the right of the Entrants
 checklist - name search + rating min/max for individual Players, name search + Division/Location
 drop-downs for Teams. Filtering hides rows via a live `ICollectionView`, it never touches
@@ -109,6 +122,12 @@ sections for double elimination.
 
 ## Next steps
 
+- [x] Modal editor windows + New/Edit/Delete toolbars with confirmed, multi-row,
+  reference-protected deletion for Players and Teams (done in v0.19).
+- [ ] Deletion is blocked (not cascaded) for a player/team entered in any
+  tournament, and there's no UI to see *which* tournament is holding a record —
+  the status line just names the blocked record. A "used in N tournaments" hint
+  or a force/detach option could come later.
 - [ ] **Manual UI testing of v0.14** (entry fees/host cut/prize payouts) - no
   UI-automation tool was available when it shipped, so the create-tournament
   flow, live total/percentage hints, and the Prize Payouts panel were never
@@ -160,6 +179,35 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.19 — 2026-07-08
+
+- **Player/Team management moved to modal editors with New/Edit/Delete toolbars.** Both the
+  Players and Teams tabs dropped their inline right-hand "Details" panel. Each tab is now a
+  full-width grid with a **New / Edit / Delete** button row above it:
+  - **New** and **Edit** open a small modal window (`PlayerEditorWindow` / `TeamEditorWindow`,
+    each bound to the existing `PlayerEditorViewModel` / `TeamEditorViewModel`). The editor
+    validates on **Save** via the new `TryValidate()` (wrapping the existing
+    `PlayerValidator`/`TeamValidator`) and only closes with `DialogResult == true` when valid,
+    otherwise it shows the errors inline in red and stays open. **Cancel** / close discards.
+    Double-clicking a grid row also opens Edit for that row.
+  - **Delete** works on the current multi-selection (grids set `SelectionMode="Extended"`), always
+    prompts a Yes/No confirmation first (deletion is irreversible), and reports the outcome in the
+    status line.
+- **Deletion is reference-protected.** The entrant foreign key is `DeleteBehavior.Restrict`, so a
+  player/team still entered in any tournament can't be deleted. `IPlayerRepository`/
+  `ITeamRepository` gained `DeleteAsync` + `IsReferencedAsync(id)`; `MainWindowViewModel.Delete*`
+  skips referenced records and names them ("Could not delete X - still entered in a tournament.")
+  rather than letting the DB throw.
+- New `NonEmptyToVisibilityConverter` shows the editors' inline error line only when there's a
+  message.
+- +8 App tests (`PlayerTeamManagementTests`): create/update persistence, multi-row delete,
+  reference-blocked delete for both players and teams, and both editors' `TryValidate`. 30 tests in
+  the App project; whole solution green, 0 warnings.
+- Verified end-to-end in the running app: opened **New Player**, saw empty-form validation
+  ("First/Last name is required" in red), created "Modal Tester" (appeared in the grid, status
+  "Added Modal Tester."), deleted it through the confirmation prompt (status "Deleted 1
+  player(s)."), and confirmed the Teams tab shows the same toolbar and opens the New Team modal.
 
 ## v0.18 — 2026-07-08
 

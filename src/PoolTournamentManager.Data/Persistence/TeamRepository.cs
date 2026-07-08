@@ -34,4 +34,15 @@ public class TeamRepository : ITeamRepository
         _dbContext.Teams.Update(team);
         await _dbContext.SaveChangesAsync();
     }
+
+    public async Task DeleteAsync(Team team)
+    {
+        _dbContext.Teams.Remove(team);
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<bool> IsReferencedAsync(Guid teamId)
+    {
+        return await _dbContext.TournamentEntrants.AnyAsync(e => e.TeamId == teamId);
+    }
 }

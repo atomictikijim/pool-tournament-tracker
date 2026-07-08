@@ -3,6 +3,30 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-08 — Driving the app with synthetic mouse clicks: make the PowerShell process DPI-aware and pin the window first
+
+**Issue:** Verifying the v0.19 modal editors meant clicking real buttons (the New/Edit/Delete
+toolbar lives inside the `TabControl`, so UI Automation can't see it — see the older TabControl
+note below — leaving coordinate-based clicks as the only option). Two things made the first several
+click attempts land in the wrong place or on the wrong window: (1) this machine runs at a display
+scale (~150%), so a screenshot captured via `Graphics.CopyFromScreen` is in *physical* pixels while
+`SetCursorPos` in a non-DPI-aware process uses *logical* pixels — the two coordinate spaces differ
+by the scale factor (here ~1.57×), so a cursor sent to "where the button is in the screenshot"
+misses. (2) `ShowWindow(h, SW_RESTORE)` and foreground-stealing by other windows kept moving/
+resizing the app between capturing and clicking, and multi-monitor virtual-screen offsets made
+absolute coordinates unstable.
+
+**Fix:** In every PowerShell tool call that captures or clicks, call `SetProcessDPIAware()` **first**
+(before any GDI/cursor call) so capture and cursor share the physical-pixel space. Then pin the app
+window once with `MoveWindow(h, 0, 0, W, H, true)` + `SetWindowPos(h, HWND_TOPMOST, …, SWP_NOMOVE|
+SWP_NOSIZE)`, capture that exact rect at 1:1, and compute click coordinates directly from that
+screenshot. Keep it topmost across the click (don't drop to `HWND_NOTOPMOST` between capture and
+click, or another window reclaims the front). For a native modal (MessageBox) that isn't the pinned
+window, capture the full virtual screen and scale the displayed-image coordinates by the physical/
+displayed ratio shown in the image note. This got New Player → validate → save → confirm-delete
+clicking reliably. General lesson: for this app, coordinate clicks are fine but only after
+DPI-awareness + a one-time window pin; re-`ShowWindow`-ing every step just moves the target.
+
 ## 2026-07-08 — `ComboBox.SelectedItem` bound to a ViewModel property silently goes null when its `ItemsSource` collection is cleared/rebuilt
 
 **Issue:** Added Division/Location filter drop-downs to the Tournament Settings tab, backed by

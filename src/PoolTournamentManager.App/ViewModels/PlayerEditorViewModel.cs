@@ -1,10 +1,19 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using PoolTournamentManager.Core.Entities;
+using PoolTournamentManager.Core.Services;
 
 namespace PoolTournamentManager.App.ViewModels;
 
 public partial class PlayerEditorViewModel : ObservableObject
 {
+    /// <summary>Heading shown in the modal editor window ("New Player" / "Edit Player").</summary>
+    [ObservableProperty]
+    private string _title = "Player";
+
+    /// <summary>Validation errors for the current fields; null when the input is valid.</summary>
+    [ObservableProperty]
+    private string? _errorMessage;
+
     [ObservableProperty]
     private string _firstName = string.Empty;
 
@@ -63,5 +72,19 @@ public partial class PlayerEditorViewModel : ObservableObject
         player.TapRating = TapRating;
         player.ApaEightBallSkill = ApaEightBallSkill;
         player.ApaNineBallSkill = ApaNineBallSkill;
+    }
+
+    /// <summary>
+    /// Validates the current field values via <see cref="PlayerValidator"/>, populating
+    /// <see cref="ErrorMessage"/> on failure. The modal editor calls this before closing so the
+    /// user sees inline errors instead of committing an invalid record.
+    /// </summary>
+    public bool TryValidate()
+    {
+        var scratch = new Player { FirstName = string.Empty, LastName = string.Empty };
+        ApplyTo(scratch);
+        var errors = PlayerValidator.Validate(scratch);
+        ErrorMessage = errors.Count > 0 ? string.Join(Environment.NewLine, errors) : null;
+        return errors.Count == 0;
     }
 }

@@ -8,7 +8,9 @@ live results on a second screen.
 
 - **Player and Team rosters.** Keep a persistent roster of players (name, contact
   info, Fargo/TAP/APA 8-ball/APA 9-ball ratings) or teams (name, division, and the
-  pool hall they play out of), reused across tournaments.
+  pool hall they play out of), reused across tournaments. Add and edit records in a
+  focused pop-up editor, and delete one or many at a time (with a confirmation
+  prompt; anyone still entered in a tournament is protected from deletion).
 - **Five tournament formats**, selectable per event:
   - **Single Elimination** — standard seeded knockout bracket, with byes for
     non-power-of-2 entrant counts.

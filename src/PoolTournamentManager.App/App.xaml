@@ -15,6 +15,7 @@
             </ResourceDictionary.MergedDictionaries>
             <converters:EnumEqualsConverter x:Key="EnumEqualsConverter" />
             <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter" />
+            <converters:NonEmptyToVisibilityConverter x:Key="NonEmptyToVisibilityConverter" />
             <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         </ResourceDictionary>
     </Application.Resources>

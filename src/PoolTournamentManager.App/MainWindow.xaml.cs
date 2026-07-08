@@ -1,7 +1,10 @@
+using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using PoolTournamentManager.App.Services;
 using PoolTournamentManager.App.ViewModels;
+using PoolTournamentManager.Core.Entities;
 
 namespace PoolTournamentManager.App;
 
@@ -42,4 +45,134 @@ public partial class MainWindow : Window
             _displayWindow.Activate();
         }
     }
+
+    // ----- Players tab: create/edit in a modal window, multi-select delete with confirmation -----
+
+    private async void NewPlayerButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var editor = new PlayerEditorViewModel { Title = "New Player" };
+        editor.Reset();
+        if (ShowPlayerEditor(editor))
+        {
+            await _viewModel.CreatePlayerAsync(editor);
+        }
+    }
+
+    private async void EditPlayerButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        await EditSelectedPlayerAsync();
+    }
+
+    private async void PlayersGrid_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        await EditSelectedPlayerAsync();
+    }
+
+    private async Task EditSelectedPlayerAsync()
+    {
+        var target = _viewModel.SelectedPlayer;
+        if (target is null)
+        {
+            _viewModel.StatusMessage = "Select a player to edit.";
+            return;
+        }
+
+        var editor = new PlayerEditorViewModel { Title = "Edit Player" };
+        editor.LoadFrom(target);
+        if (ShowPlayerEditor(editor))
+        {
+            await _viewModel.UpdatePlayerAsync(target, editor);
+        }
+    }
+
+    private bool ShowPlayerEditor(PlayerEditorViewModel editor)
+    {
+        var window = new PlayerEditorWindow(editor, _themeService) { Owner = this };
+        return window.ShowDialog() == true;
+    }
+
+    private async void DeletePlayersButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var selected = PlayersGrid.SelectedItems.Cast<Player>().ToList();
+        if (selected.Count == 0)
+        {
+            _viewModel.StatusMessage = "Select one or more players to delete.";
+            return;
+        }
+
+        if (Confirm(
+                selected.Count == 1
+                    ? $"Delete player \"{selected[0].FullName}\"?\n\nThis cannot be undone."
+                    : $"Delete these {selected.Count} players?\n\n{string.Join("\n", selected.Select(p => p.FullName))}\n\nThis cannot be undone."))
+        {
+            await _viewModel.DeletePlayersAsync(selected);
+        }
+    }
+
+    // ----- Teams tab: same pattern as Players -----
+
+    private async void NewTeamButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var editor = new TeamEditorViewModel { Title = "New Team" };
+        editor.Reset();
+        if (ShowTeamEditor(editor))
+        {
+            await _viewModel.CreateTeamAsync(editor);
+        }
+    }
+
+    private async void EditTeamButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        await EditSelectedTeamAsync();
+    }
+
+    private async void TeamsGrid_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        await EditSelectedTeamAsync();
+    }
+
+    private async Task EditSelectedTeamAsync()
+    {
+        var target = _viewModel.SelectedTeam;
+        if (target is null)
+        {
+            _viewModel.StatusMessage = "Select a team to edit.";
+            return;
+        }
+
+        var editor = new TeamEditorViewModel { Title = "Edit Team" };
+        editor.LoadFrom(target);
+        if (ShowTeamEditor(editor))
+        {
+            await _viewModel.UpdateTeamAsync(target, editor);
+        }
+    }
+
+    private bool ShowTeamEditor(TeamEditorViewModel editor)
+    {
+        var window = new TeamEditorWindow(editor, _themeService) { Owner = this };
+        return window.ShowDialog() == true;
+    }
+
+    private async void DeleteTeamsButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var selected = TeamsGrid.SelectedItems.Cast<Team>().ToList();
+        if (selected.Count == 0)
+        {
+            _viewModel.StatusMessage = "Select one or more teams to delete.";
+            return;
+        }
+
+        if (Confirm(
+                selected.Count == 1
+                    ? $"Delete team \"{selected[0].Name}\"?\n\nThis cannot be undone."
+                    : $"Delete these {selected.Count} teams?\n\n{string.Join("\n", selected.Select(t => t.Name))}\n\nThis cannot be undone."))
+        {
+            await _viewModel.DeleteTeamsAsync(selected);
+        }
+    }
+
+    private bool Confirm(string message) =>
+        MessageBox.Show(this, message, "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning)
+            == MessageBoxResult.Yes;
 }

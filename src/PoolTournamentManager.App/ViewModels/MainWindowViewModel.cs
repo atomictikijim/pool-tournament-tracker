@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.Input;
 using PoolTournamentManager.App.Services;
 using PoolTournamentManager.Core.Entities;
 using PoolTournamentManager.Core.Interfaces;
-using PoolTournamentManager.Core.Services;
 
 namespace PoolTournamentManager.App.ViewModels;
 
@@ -12,16 +11,10 @@ public partial class MainWindowViewModel : ObservableObject
 {
     private readonly IPlayerRepository _playerRepository;
     private readonly ITeamRepository _teamRepository;
-    private Player? _editingPlayer;
-    private Team? _editingTeam;
 
     public ObservableCollection<Player> Players { get; } = new();
 
     public ObservableCollection<Team> Teams { get; } = new();
-
-    public PlayerEditorViewModel Editor { get; } = new();
-
-    public TeamEditorViewModel TeamEditor { get; } = new();
 
     public TournamentViewModel Tournament { get; }
 
@@ -48,24 +41,6 @@ public partial class MainWindowViewModel : ObservableObject
         Theme = themeService;
     }
 
-    partial void OnSelectedPlayerChanged(Player? value)
-    {
-        _editingPlayer = value;
-        if (value is not null)
-        {
-            Editor.LoadFrom(value);
-        }
-    }
-
-    partial void OnSelectedTeamChanged(Team? value)
-    {
-        _editingTeam = value;
-        if (value is not null)
-        {
-            TeamEditor.LoadFrom(value);
-        }
-    }
-
     [RelayCommand]
     public async Task LoadPlayersAsync()
     {
@@ -78,41 +53,57 @@ public partial class MainWindowViewModel : ObservableObject
         StatusMessage = $"Loaded {Players.Count} player(s).";
     }
 
-    [RelayCommand]
-    public void AddNewPlayer()
+    /// <summary>
+    /// Persists a brand-new player built by the modal editor. The dialog has already validated the
+    /// input, so this just applies and saves, then reselects the added row.
+    /// </summary>
+    public async Task CreatePlayerAsync(PlayerEditorViewModel editor)
     {
-        SelectedPlayer = null;
-        _editingPlayer = null;
-        Editor.Reset();
-        StatusMessage = "Enter details for the new player and click Save.";
+        var candidate = new Player { FirstName = string.Empty, LastName = string.Empty };
+        editor.ApplyTo(candidate);
+        await _playerRepository.AddAsync(candidate);
+        await LoadPlayersAsync();
+        SelectedPlayer = Players.FirstOrDefault(p => p.Id == candidate.Id);
+        StatusMessage = $"Added {candidate.FullName}.";
     }
 
-    [RelayCommand]
-    public async Task SavePlayerAsync()
+    /// <summary>Persists edits made in the modal editor back onto an existing player.</summary>
+    public async Task UpdatePlayerAsync(Player target, PlayerEditorViewModel editor)
     {
-        var candidate = _editingPlayer ?? new Player { FirstName = string.Empty, LastName = string.Empty };
-        Editor.ApplyTo(candidate);
+        editor.ApplyTo(target);
+        await _playerRepository.UpdateAsync(target);
+        await LoadPlayersAsync();
+        SelectedPlayer = Players.FirstOrDefault(p => p.Id == target.Id);
+        StatusMessage = $"Saved changes to {target.FullName}.";
+    }
 
-        var errors = PlayerValidator.Validate(candidate);
-        if (errors.Count > 0)
+    /// <summary>
+    /// Deletes each selected player, skipping any that are still entered in a tournament (blocked
+    /// by the entrant foreign key). Confirmation is handled by the caller before this runs.
+    /// </summary>
+    public async Task DeletePlayersAsync(IReadOnlyList<Player> players)
+    {
+        if (players.Count == 0)
         {
-            StatusMessage = string.Join(" ", errors);
+            StatusMessage = "Select one or more players to delete.";
             return;
         }
 
-        if (_editingPlayer is null)
+        var blocked = new List<string>();
+        var deleted = 0;
+        foreach (var player in players)
         {
-            await _playerRepository.AddAsync(candidate);
-            StatusMessage = $"Added {candidate.FullName}.";
-        }
-        else
-        {
-            await _playerRepository.UpdateAsync(candidate);
-            StatusMessage = $"Saved changes to {candidate.FullName}.";
+            if (await _playerRepository.IsReferencedAsync(player.Id))
+            {
+                blocked.Add(player.FullName);
+                continue;
+            }
+            await _playerRepository.DeleteAsync(player);
+            deleted++;
         }
 
         await LoadPlayersAsync();
-        SelectedPlayer = Players.FirstOrDefault(p => p.Id == candidate.Id);
+        StatusMessage = ComposeDeleteStatus("player", deleted, blocked);
     }
 
     [RelayCommand]
@@ -127,40 +118,67 @@ public partial class MainWindowViewModel : ObservableObject
         StatusMessage = $"Loaded {Teams.Count} team(s).";
     }
 
-    [RelayCommand]
-    public void AddNewTeam()
+    /// <summary>Persists a brand-new team built by the modal editor.</summary>
+    public async Task CreateTeamAsync(TeamEditorViewModel editor)
     {
-        SelectedTeam = null;
-        _editingTeam = null;
-        TeamEditor.Reset();
-        StatusMessage = "Enter a name for the new team and click Save.";
+        var candidate = new Team { Name = string.Empty };
+        editor.ApplyTo(candidate);
+        await _teamRepository.AddAsync(candidate);
+        await LoadTeamsAsync();
+        SelectedTeam = Teams.FirstOrDefault(t => t.Id == candidate.Id);
+        StatusMessage = $"Added {candidate.Name}.";
     }
 
-    [RelayCommand]
-    public async Task SaveTeamAsync()
+    /// <summary>Persists edits made in the modal editor back onto an existing team.</summary>
+    public async Task UpdateTeamAsync(Team target, TeamEditorViewModel editor)
     {
-        var candidate = _editingTeam ?? new Team { Name = string.Empty };
-        TeamEditor.ApplyTo(candidate);
+        editor.ApplyTo(target);
+        await _teamRepository.UpdateAsync(target);
+        await LoadTeamsAsync();
+        SelectedTeam = Teams.FirstOrDefault(t => t.Id == target.Id);
+        StatusMessage = $"Saved changes to {target.Name}.";
+    }
 
-        var errors = TeamValidator.Validate(candidate);
-        if (errors.Count > 0)
+    /// <summary>
+    /// Deletes each selected team, skipping any that are still entered in a tournament (blocked by
+    /// the entrant foreign key). Confirmation is handled by the caller before this runs.
+    /// </summary>
+    public async Task DeleteTeamsAsync(IReadOnlyList<Team> teams)
+    {
+        if (teams.Count == 0)
         {
-            StatusMessage = string.Join(" ", errors);
+            StatusMessage = "Select one or more teams to delete.";
             return;
         }
 
-        if (_editingTeam is null)
+        var blocked = new List<string>();
+        var deleted = 0;
+        foreach (var team in teams)
         {
-            await _teamRepository.AddAsync(candidate);
-            StatusMessage = $"Added {candidate.Name}.";
-        }
-        else
-        {
-            await _teamRepository.UpdateAsync(candidate);
-            StatusMessage = $"Saved changes to {candidate.Name}.";
+            if (await _teamRepository.IsReferencedAsync(team.Id))
+            {
+                blocked.Add(team.Name);
+                continue;
+            }
+            await _teamRepository.DeleteAsync(team);
+            deleted++;
         }
 
         await LoadTeamsAsync();
-        SelectedTeam = Teams.FirstOrDefault(t => t.Id == candidate.Id);
+        StatusMessage = ComposeDeleteStatus("team", deleted, blocked);
+    }
+
+    private static string ComposeDeleteStatus(string noun, int deleted, List<string> blocked)
+    {
+        var parts = new List<string>();
+        if (deleted > 0)
+        {
+            parts.Add($"Deleted {deleted} {noun}(s).");
+        }
+        if (blocked.Count > 0)
+        {
+            parts.Add($"Could not delete {string.Join(", ", blocked)} - still entered in a tournament.");
+        }
+        return parts.Count > 0 ? string.Join(" ", parts) : $"No {noun}s were deleted.";
     }
 }

@@ -34,37 +34,49 @@ The app has four tabs across the top:
 
 ## 2. Managing players (Players tab)
 
-The left-hand grid lists every player you've added. Click a row to load that
-player into the **Player Details** panel on the right for editing.
+The grid lists every player you've added. Above it is a toolbar with **New
+Player**, **Edit**, and **Delete**. Creating and editing both happen in a small
+pop-up (modal) window, so the grid always shows your saved roster.
 
 To add a new player:
 
-1. Click **New Player**. This clears the details panel.
+1. Click **New Player**. A **New Player** window opens.
 2. Fill in **First Name** and **Last Name** (required). Email and Phone are optional.
 3. Optionally fill in one or more ratings — **Fargo Rating**, **TAP Rating**,
    **APA 8-Ball Skill** (1–9), **APA 9-Ball Skill** (1–9). These are only used if you
    choose to seed a tournament by rating (see [Section 4](#4-creating-a-tournament-tournament-settings-tab)) — leave any you don't
    track blank.
-4. Click **Save**.
+4. Click **Save**. If anything required is missing (or a rating is out of range),
+   the window stays open and shows the problem in red so you can fix it. Click
+   **Cancel** (or the window's close button) to discard the changes instead.
 
-To edit an existing player, click their row, change any field, and click **Save**
-again.
+To edit an existing player, select their row and click **Edit** — or just
+double-click the row. The same window opens pre-filled; change any field and
+**Save**.
 
-There's no delete option — a player who shouldn't be entered into a tournament
-simply isn't selected as an entrant.
+To delete players, select one or more rows (hold **Ctrl** to pick several, or
+**Shift** to select a range) and click **Delete**. You'll always be asked to
+confirm first, since deletion can't be undone. A player who is currently entered
+in a tournament can't be deleted — the status line at the bottom names anyone
+that was skipped for that reason.
 
 ## 3. Managing teams (Teams tab)
 
-Works the same way as Players, but simpler — a team has no player roster or
-membership tracking, just a name plus two optional descriptive fields.
+Works exactly like Players, with its own **New Team**, **Edit**, and **Delete**
+toolbar and the same pop-up editor — a team is just a name plus two optional
+descriptive fields.
 
-1. Click **New Team**.
+1. Click **New Team**. A **New Team** window opens.
 2. Enter the **Team Name** (required).
 3. Optionally fill in **Division** (a short number or alphanumeric code, e.g. "1"
    or "A") and **Location** (the name of the pool hall the team plays out of).
    Neither is used in scheduling or seeding — they're informational, shown in
    the Teams grid for your own reference.
-4. Click **Save**.
+4. Click **Save** (or **Cancel** to discard).
+
+Edit and delete work the same as on the Players tab: **Edit** (or double-click) a
+selected row to change it, and **Delete** selected rows after confirming. A team
+that is entered in a tournament can't be deleted.
 
 Teams are only usable as entrants in formats that support them (see below).
 

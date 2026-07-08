@@ -34,4 +34,15 @@ public class PlayerRepository : IPlayerRepository
         _dbContext.Players.Update(player);
         await _dbContext.SaveChangesAsync();
     }
+
+    public async Task DeleteAsync(Player player)
+    {
+        _dbContext.Players.Remove(player);
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<bool> IsReferencedAsync(Guid playerId)
+    {
+        return await _dbContext.TournamentEntrants.AnyAsync(e => e.PlayerId == playerId);
+    }
 }
