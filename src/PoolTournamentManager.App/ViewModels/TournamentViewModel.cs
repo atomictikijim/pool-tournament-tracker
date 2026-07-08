@@ -808,7 +808,7 @@ public partial class TournamentViewModel : ObservableObject
 
         if (NewTournamentFormat == TournamentFormat.ModifiedSingleElimination && !BracketGenerationService.IsValidModifiedSingleEliminationCount(entrantCount))
         {
-            StatusMessage = "Modified Single Elimination currently requires a multiple-of-8 power-of-2 entrant count (8, 16, 32, 64...).";
+            StatusMessage = "Modified Single Elimination requires at least 8 entrants.";
             return;
         }
 

@@ -35,12 +35,64 @@ public class ModifiedSingleEliminationBracketTests
     [InlineData(1)]
     [InlineData(4)]
     [InlineData(7)]
-    [InlineData(10)]
-    [InlineData(12)]
-    public void GenerateModifiedSingleElimination_ThrowsForInvalidEntrantCount(int entrantCount)
+    public void GenerateModifiedSingleElimination_ThrowsForFewerThanOneFullPod(int entrantCount)
     {
         var tournament = BuildTournament(entrantCount);
         Assert.Throws<InvalidOperationException>(() => _service.GenerateModifiedSingleElimination(tournament));
+    }
+
+    [Theory]
+    [InlineData(8, new[] { 8 })]
+    [InlineData(9, new[] { 5, 4 })]
+    [InlineData(12, new[] { 6, 6 })]
+    [InlineData(15, new[] { 8, 7 })]
+    [InlineData(16, new[] { 8, 8 })]
+    [InlineData(17, new[] { 6, 6, 5 })]
+    [InlineData(20, new[] { 7, 7, 6 })]
+    [InlineData(24, new[] { 8, 8, 8 })]
+    public void ModifiedSingleEliminationPodSizes_SplitsEvenlyAcrossFewestPods(int entrantCount, int[] expected)
+    {
+        Assert.Equal(expected, BracketGenerationService.ModifiedSingleEliminationPodSizes(entrantCount));
+    }
+
+    /// <summary>Plays every scheduled match (crowning Player1) until the tournament ends. Byes are
+    /// already Completed, so they're skipped naturally.</summary>
+    private void PlayOut(Tournament tournament)
+    {
+        for (var guard = 0; guard < 2000 && tournament.Status != TournamentStatus.Completed; guard++)
+        {
+            var match = tournament.Matches.FirstOrDefault(m => m.Status == MatchStatus.Scheduled);
+            if (match is null)
+            {
+                break;
+            }
+            match.Status = MatchStatus.InProgress;
+            _service.RecordMatchResult(tournament, match, 7, 3);
+        }
+    }
+
+    [Theory]
+    [InlineData(9)]
+    [InlineData(10)]
+    [InlineData(12)]
+    [InlineData(15)]
+    [InlineData(17)]
+    [InlineData(20)]
+    [InlineData(24)]
+    [InlineData(30)]
+    public void GenerateModifiedSingleElimination_NonPowerOfTwo_PlaysToCompletion(int entrantCount)
+    {
+        var tournament = BuildTournament(entrantCount);
+        _service.GenerateModifiedSingleElimination(tournament);
+
+        // Every pod contributes exactly 2 reps (Final-side round-1 nodes).
+        var expectedPods = BracketGenerationService.ModifiedSingleEliminationPodSizes(entrantCount).Length;
+        Assert.Equal(expectedPods * 2, tournament.Bracket!.Nodes.Count(n => n.Side == BracketSide.Final && n.RoundNumber == 1));
+
+        PlayOut(tournament);
+
+        Assert.Equal(TournamentStatus.Completed, tournament.Status);
+        Assert.DoesNotContain(tournament.Matches, m => m.Status == MatchStatus.Scheduled);
     }
 
     [Fact]

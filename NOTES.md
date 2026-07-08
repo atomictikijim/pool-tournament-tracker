@@ -3,6 +3,30 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-08 — Modified Single Elimination byes: keep full-pod pairing, spread partial-pod byes, and mind the reps-stage round numbering
+
+**Notes from adding even-split pods + byes to Modified Single Elimination (built on v0.22's bye
+model):**
+
+- **Don't change the full-pod round-1 pairing.** The original paired a pod's draw-order entrants
+  (seed 1v2, 3v4, ...). A prize-payout test (`ModifiedSingleElimination_Size8_ThreeTiersOfTiedPodExits`)
+  and others navigate a full pod by seed, so they encode that pairing. Switching full pods to the
+  seed chart (1v8, 4v5, ...) broke them. Fix: only *partial* pods use the seed chart (to spread
+  byes); a full pod keeps draw-order pairing. A full pod is a random draw either way, so this costs
+  nothing and preserves every existing test.
+- **Spread partial-pod byes via the 8-seed chart**, not draw order. Placing k entrants into the
+  first k of 8 draw slots clusters the byes into an all-bye "phantom" round-1 match at the end;
+  the seed chart puts byes on the high-seed slots so they spread one-per-match. Every pod is >= 4
+  entrants (the even split guarantees it), so no round-1 match is ever all byes.
+- **`BuildWinnersRounds2AndUp` must number rounds from its input round, not hardcode 2.** The reps
+  stage (`BuildRepsStage`) sits *above* the pods' Final-side round 1, so its first built round is
+  round 3+, not 2. Reading `round1[0].RoundNumber` keeps single elimination (input round 1 -> 2+)
+  and the reps stage (input round 2 -> 3+) both correct.
+- **Known nicety-gap:** the reps stage seeds reps by interleaved pod order into the standard chart.
+  For power-of-two pod counts this keeps a pod's two reps apart until late (no regression), but for
+  a few odd pod counts (e.g. 3, 7 pods) exactly one pod's two reps can meet in the first reps
+  round. Not incorrect, just slightly early; documented rather than fixed.
+
 ## 2026-07-08 — Byes beyond round 1: a resolved-slot model, not a null-slot special case
 
 **Issue:** Single Elimination handled byes by leaving a round-1 node's second slot null and
@@ -14,9 +38,9 @@ must collapse to nothing. A bare null slot can't express "permanent bye" vs "pen
 
 **Fix:** Added `Slot1IsBye`/`Slot2IsBye` to `BracketNode` (migration `AddBracketNodeSlotByes`). A
 slot is *resolved* once it holds an entrant OR is a bye (`SlotXResolved`). One resolution method,
-`AdvanceInto`, handles every case when a slot is set: two entrants -> Scheduled match; one entrant
-+ one bye -> a Completed bye that advances the entrant; two byes -> a phantom that hosts no match
-but propagates a bye forward via `PropagateWinnerBye`. Generation pads to the next power of two and,
+`AdvanceInto`, handles every case when a slot is set: two entrants -> Scheduled match; one real
+entrant against a bye -> a Completed bye that advances the entrant; two byes -> a phantom that hosts
+no match but propagates a bye forward via `PropagateWinnerBye`. Generation pads to the next power of two and,
 in a post-build pass, advances each winners round-1 bye and calls `PropagateLoserBye` to seed the
 losers bracket with byes; the cascade is automatic. Key correctness points learned:
 

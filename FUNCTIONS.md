@@ -340,9 +340,12 @@ carry through into the Losers bracket automatically.
 ### Modified Single Elimination
 
 APA's format — a shorter, faster alternative to Double Elimination that still
-guarantees everyone at least two matches. Entrants are split into groups of 8 called
-**pods** (a 16-entrant tournament has 2 pods, a 32-entrant tournament has 4, etc.),
-and each pod plays out independently:
+guarantees everyone at least two matches. Entrants are split into **pods** of up to
+8, using as few pods as possible and splitting entrants as evenly as it can across
+them (16 entrants → 2 pods of 8; 20 → pods of 7, 7, 6; 24 → 3 pods of 8). A pod with
+fewer than 8 entrants simply has first-round **byes**, so any field of 8 or more
+works — the count no longer has to be a neat power of two. Each pod plays out
+independently:
 
 1. **Round 1 (Winners)** — all 8 entrants in the pod, randomly drawn (not
    rating-seeded), play 4 matches.
@@ -358,8 +361,12 @@ and each pod plays out independently:
 Every pod's 2 representatives then feed into one ordinary single-elimination
 bracket (a straight semifinal/final for a 2-pod, 16-entrant tournament; quarterfinal
 onward for larger fields) — **from this point on it's plain single elimination**,
-with no more consolation matches and no bracket reset. Requires an entrant count
-that's a multiple of 8 and also a power of 2 (8, 16, 32, 64...).
+with no more consolation matches and no bracket reset. When the number of pods isn't
+a power of two, some representatives get a bye into the next round of that final
+stage. Requires at least 8 entrants (one full pod); above that, any count works.
+
+Note: within a pod, entrants that are fewer than 8 get their round-1 byes; the byes
+are spread across the pod's four round-1 matches rather than clustered.
 
 ### Round Robin
 

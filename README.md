@@ -18,8 +18,9 @@ live results on a second screen.
     bracket-reset rematch if the losers'-bracket champion wins it; also supports
     non-power-of-2 entrant counts via first-round byes.
   - **Modified Single Elimination** — APA's format: every entrant is guaranteed at
-    least two matches before elimination is possible, run in 8-entrant pods that
-    feed a single-elimination semifinal/final stage. Faster than double elimination.
+    least two matches before elimination is possible, run in pods of up to 8 (entrants
+    split as evenly as possible, byes fill short pods) that feed a single-elimination
+    semifinal/final stage. Faster than double elimination; any field of 8 or more.
   - **Round Robin** — every entrant plays every other entrant once; standings ranked
     by wins, then head-to-head, then point differential, then games-won %.
   - **Ring Game** — a rotation-order money game (9-ball rules): players buy in, shoot

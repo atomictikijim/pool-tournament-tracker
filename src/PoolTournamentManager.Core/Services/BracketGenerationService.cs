@@ -169,11 +169,24 @@ public class BracketGenerationService
             lbFinalNode.FeedsIntoWinnerSlot = 2;
         }
 
-        // Resolve first-round byes now that the whole graph (and every FeedsInto* link) exists:
-        // advance each bye winner through the winners bracket, and drop a "bye" into the losers
-        // bracket where that match's (non-existent) loser would have gone. AdvanceInto cascades
-        // this - two byes meeting in the losers bracket collapse to a phantom that passes the bye on.
-        foreach (var byeNode in bracket.Nodes.Where(n => n.Side == BracketSide.Winners && n.RoundNumber == 1 && n.Match is { IsBye: true }).ToList())
+        ResolveFirstRoundByes(tournament, bracket);
+
+        tournament.Status = TournamentStatus.InProgress;
+        return bracket;
+    }
+
+    /// <summary>
+    /// Resolves every first-round bye now that the whole graph (and every FeedsInto* link) exists:
+    /// advances each bye winner onward, and - for a winners-bracket bye that feeds a losers bracket -
+    /// drops a "bye" into the losers slot where that match's (non-existent) loser would have gone.
+    /// AdvanceInto cascades this, so two byes meeting collapse to a phantom that passes the bye on.
+    /// Shared by double elimination and the modified-single-elimination pods.
+    /// </summary>
+    private void ResolveFirstRoundByes(Tournament tournament, BracketDetail bracket)
+    {
+        foreach (var byeNode in bracket.Nodes
+                     .Where(n => n.Side == BracketSide.Winners && n.RoundNumber == 1 && n.Match is { IsBye: true })
+                     .ToList())
         {
             PropagateWinner(tournament, bracket, byeNode, byeNode.Match!.WinnerEntrantId!.Value);
             if (byeNode.FeedsIntoLoserNodeId is not null)
@@ -181,29 +194,44 @@ public class BracketGenerationService
                 PropagateLoserBye(tournament, bracket, byeNode);
             }
         }
-
-        tournament.Status = TournamentStatus.InProgress;
-        return bracket;
     }
 
     private const int PodSize = 8;
 
     /// <summary>
-    /// True for entrant counts this format currently supports: a multiple of 8 that's also a
-    /// power of 2 (8, 16, 32, 64...), so pods are always full-size and the rep count feeding the
-    /// final single-elimination stage is always a clean power of 2. Partial pods / byes are a
-    /// known gap for later, same as double elimination's power-of-2-only restriction.
+    /// True for entrant counts this format supports: any count of at least one full pod (8). The
+    /// field is split into <c>ceil(count / 8)</c> pods as evenly as possible (so no pod exceeds 8),
+    /// each pod carrying first-round byes for its empty slots, and the pod reps feed a single-
+    /// elimination stage that itself byes up to the next power of two when the pod count isn't one.
     /// </summary>
     public static bool IsValidModifiedSingleEliminationCount(int entrantCount) =>
-        entrantCount >= PodSize && (entrantCount & (entrantCount - 1)) == 0;
+        entrantCount >= PodSize;
+
+    /// <summary>Sizes for <paramref name="entrantCount"/> split across the fewest pods that keep
+    /// every pod at most <see cref="PodSize"/> (8), as evenly as possible - e.g. 20 -&gt; [7, 7, 6],
+    /// 12 -&gt; [6, 6], 24 -&gt; [8, 8, 8]. The larger pods come first.</summary>
+    public static int[] ModifiedSingleEliminationPodSizes(int entrantCount)
+    {
+        var podCount = (entrantCount + PodSize - 1) / PodSize; // ceil
+        var baseSize = entrantCount / podCount;
+        var remainder = entrantCount % podCount;
+        var sizes = new int[podCount];
+        for (var i = 0; i < podCount; i++)
+        {
+            sizes[i] = baseSize + (i < remainder ? 1 : 0);
+        }
+        return sizes;
+    }
 
     /// <summary>
-    /// Builds an APA-style Modified Single Elimination bracket: entrants are split into pods of
-    /// 8, each pod running a shortened ladder where round-1 losers get exactly one consolation
-    /// match (a second loss there eliminates them) and round-2 losers get one more chance against
-    /// those consolation survivors - producing exactly 2 "reps" per pod. Every pod's reps then
-    /// feed one ordinary single-elimination bracket with no further consolation chances. Round 1
-    /// is a random draw (not a rating seed) - SeedNumber is assigned from that draw order.
+    /// Builds an APA-style Modified Single Elimination bracket: entrants are split as evenly as
+    /// possible into pods of at most 8 (see <see cref="ModifiedSingleEliminationPodSizes"/>), each
+    /// pod running a shortened ladder where round-1 losers get exactly one consolation match (a
+    /// second loss there eliminates them) and round-2 losers get one more chance against those
+    /// consolation survivors - producing exactly 2 "reps" per pod. A pod smaller than 8 carries
+    /// first-round byes for its empty slots. Every pod's reps then feed one ordinary single-
+    /// elimination stage (itself byed up to the next power of two when the pod count isn't a power
+    /// of two). Round 1 is a random draw (not a rating seed) - SeedNumber records the draw order.
     /// </summary>
     public BracketDetail GenerateModifiedSingleElimination(Tournament tournament)
     {
@@ -211,7 +239,7 @@ public class BracketGenerationService
         if (!IsValidModifiedSingleEliminationCount(entrantCount))
         {
             throw new InvalidOperationException(
-                "Modified Single Elimination currently requires an entrant count that's a multiple of 8 and a power of 2 (8, 16, 32, 64...).");
+                "Modified Single Elimination requires at least 8 entrants.");
         }
 
         var drawn = RandomDraw(tournament.Entrants);
@@ -223,18 +251,21 @@ public class BracketGenerationService
         };
         tournament.Bracket = bracket;
 
-        var podCount = entrantCount / PodSize;
+        var podSizes = ModifiedSingleEliminationPodSizes(entrantCount);
+        var podCount = podSizes.Length;
         var podReps = new List<BracketNode>();
+        var drawIndex = 0;
         for (var p = 0; p < podCount; p++)
         {
-            var podEntrants = drawn.GetRange(p * PodSize, PodSize);
+            var podEntrants = drawn.GetRange(drawIndex, podSizes[p]);
+            drawIndex += podSizes[p];
             var (rep0, rep1) = BuildModifiedEliminationPod(tournament, bracket, podEntrants, p);
             podReps.Add(rep0);
             podReps.Add(rep1);
         }
 
-        // Interleave so the very first cross-pod round doesn't immediately rematch two reps
-        // from the same pod: [pod0.rep0, pod1.rep0, ..., pod0.rep1, pod1.rep1, ...].
+        // Interleave so a pod's two reps get seeds far apart in the reps stage (they should meet as
+        // late as possible, not immediately): [pod0.rep0, pod1.rep0, ..., pod0.rep1, pod1.rep1, ...].
         var interleaved = new List<BracketNode>();
         for (var i = 0; i < 2; i++)
         {
@@ -244,20 +275,65 @@ public class BracketGenerationService
             }
         }
 
-        BuildWinnersRounds2AndUp(bracket, interleaved, BracketSide.Final);
+        BuildRepsStage(bracket, interleaved);
 
-        // BuildWinnersRounds2AndUp's target-slot inference falls back to the completed node's own
-        // PositionInRound parity, which is only unambiguous within a single freshly-built round
-        // (0, 1, 2...). The interleaved list's nodes each carry their pod-relative PositionInRound
-        // instead (e.g. two different pods' "lane 0" reps can both be even), so their slot must be
-        // set explicitly here from the interleaved list's own index.
-        for (var i = 0; i < interleaved.Count; i++)
-        {
-            interleaved[i].FeedsIntoWinnerSlot = i % 2 == 0 ? 1 : 2;
-        }
+        // Now that every pod's ladder AND the reps stage are wired, resolve all first-round byes
+        // (in every pod) - the cascade carries a pod's byes up through its ladder and, where a pod
+        // is mostly byes, on into the reps stage.
+        ResolveFirstRoundByes(tournament, bracket);
 
         tournament.Status = TournamentStatus.InProgress;
         return bracket;
+    }
+
+    /// <summary>
+    /// Builds the cross-pod single-elimination stage over the pod reps (Final side, round 2 and up
+    /// - the pods' Final-Four nodes are round 1). The reps are seeded 1..N by their interleaved
+    /// order into a bracket padded to the next power of two; rep slots with no rep are byes, so a
+    /// non-power-of-two pod count simply gives some reps a first-round bye.
+    /// </summary>
+    private void BuildRepsStage(BracketDetail bracket, List<BracketNode> reps)
+    {
+        var size = NextPowerOfTwo(reps.Count);
+        var seedSlots = BuildSeedSlotOrder(size);
+        var repsRound1 = new List<BracketNode>();
+        for (var i = 0; i < size / 2; i++)
+        {
+            var node = new BracketNode
+            {
+                BracketDetailId = bracket.Id,
+                Side = BracketSide.Final,
+                RoundNumber = 2,
+                PositionInRound = i
+            };
+            bracket.Nodes.Add(node);
+            repsRound1.Add(node);
+
+            WireRepIntoSlot(reps, seedSlots[2 * i], node, 1);
+            WireRepIntoSlot(reps, seedSlots[2 * i + 1], node, 2);
+        }
+
+        BuildWinnersRounds2AndUp(bracket, repsRound1, BracketSide.Final);
+    }
+
+    /// <summary>Wires the rep at the given 1-based seed into a reps-stage node's slot, or marks
+    /// that slot a bye when the seed exceeds the rep count (a padding slot).</summary>
+    private static void WireRepIntoSlot(List<BracketNode> reps, int seed, BracketNode target, int slot)
+    {
+        if (seed <= reps.Count)
+        {
+            var rep = reps[seed - 1];
+            rep.FeedsIntoWinnerNodeId = target.Id;
+            rep.FeedsIntoWinnerSlot = slot;
+        }
+        else if (slot == 1)
+        {
+            target.Slot1IsBye = true;
+        }
+        else
+        {
+            target.Slot2IsBye = true;
+        }
     }
 
     private static List<TournamentEntrant> RandomDraw(List<TournamentEntrant> entrants)
@@ -271,27 +347,53 @@ public class BracketGenerationService
     }
 
     /// <summary>
-    /// Builds one 8-entrant pod's Round 1 -> Losers Round 1 (eliminates) -> Winners Round 2 ->
-    /// Losers Round 2 (receiving) -> Final Four, and returns the pod's 2 Final-Four nodes (its
-    /// "reps" once their winners are known). PositionInRound is offset by podIndex so every pod's
-    /// same-named round shares one rendered column instead of colliding at position 0/1.
+    /// Builds one pod's Round 1 -> Losers Round 1 (eliminates) -> Winners Round 2 -> Losers Round 2
+    /// (receiving) -> Final Four, and returns the pod's 2 Final-Four nodes (its "reps" once their
+    /// winners are known). The pod always has an 8-slot ladder; a pod with fewer than 8 entrants
+    /// fills the extra slots with first-round byes, placed by the standard seed chart so they
+    /// spread across the pod (and resolved later by <see cref="ResolveFirstRoundByes"/>).
+    /// PositionInRound is offset by podIndex so every pod's same-named round shares one rendered
+    /// column instead of colliding at position 0/1.
     /// </summary>
     private (BracketNode Rep0, BracketNode Rep1) BuildModifiedEliminationPod(
         Tournament tournament, BracketDetail bracket, List<TournamentEntrant> podEntrants, int podIndex)
     {
         const int lanesPerPod = PodSize / 4; // 2 matches per pod at every post-round-1 stage
 
+        // A full pod keeps the original draw-order pairing (draw seeds 1v2, 3v4, 5v6, 7v8). A
+        // partial pod places its entrants by the standard 8-seed chart instead, so its byes spread
+        // one-per-match across round 1 (every pod is at least 4 entrants, so no match is all byes)
+        // rather than clustering into an empty "phantom" match at the end.
+        var full = podEntrants.Count == PodSize;
+        var seedSlots = BuildSeedSlotOrder(PodSize);
         var round1 = new List<BracketNode>();
         for (var i = 0; i < PodSize / 2; i++)
         {
+            TournamentEntrant? entrantA;
+            TournamentEntrant? entrantB;
+            if (full)
+            {
+                entrantA = podEntrants[2 * i];
+                entrantB = podEntrants[2 * i + 1];
+            }
+            else
+            {
+                var seedA = seedSlots[2 * i];
+                var seedB = seedSlots[2 * i + 1];
+                entrantA = seedA <= podEntrants.Count ? podEntrants[seedA - 1] : null;
+                entrantB = seedB <= podEntrants.Count ? podEntrants[seedB - 1] : null;
+            }
+
             var node = new BracketNode
             {
                 BracketDetailId = bracket.Id,
                 Side = BracketSide.Winners,
                 RoundNumber = 1,
                 PositionInRound = podIndex * (PodSize / 2) + i,
-                Slot1EntrantId = podEntrants[2 * i].Id,
-                Slot2EntrantId = podEntrants[2 * i + 1].Id
+                Slot1EntrantId = entrantA?.Id,
+                Slot2EntrantId = entrantB?.Id,
+                Slot1IsBye = entrantA is null,
+                Slot2IsBye = entrantB is null
             };
             bracket.Nodes.Add(node);
             round1.Add(node);
@@ -480,7 +582,10 @@ public class BracketGenerationService
     private static void BuildWinnersRounds2AndUp(BracketDetail bracket, List<BracketNode> round1, BracketSide side = BracketSide.Winners)
     {
         var roundNodes = round1;
-        var roundNumber = 1;
+        // Continue numbering from the input round (single elimination passes round 1; the modified
+        // single-elimination reps stage passes a later Final-side round), so built rounds don't
+        // collide with the input round's number.
+        var roundNumber = round1.Count > 0 ? round1[0].RoundNumber : 1;
         while (roundNodes.Count > 1)
         {
             var nextRoundNodes = new List<BracketNode>();

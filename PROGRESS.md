@@ -5,6 +5,19 @@ the top of each section.
 
 ## Current status
 
+v0.23 complete: **Modified Single Elimination now accepts any field of 8 or more** (was
+multiple-of-8-and-power-of-2 only). Entrants are split into `ceil(count/8)` pods as evenly as
+possible (`ModifiedSingleEliminationPodSizes` - e.g. 20 -> [7,7,6], 24 -> [8,8,8]); a partial pod
+carries first-round byes placed by the 8-seed chart so they spread across its four round-1 matches
+(never an all-bye "phantom" match, since every pod is >= 4). The reps stage was rebuilt (new
+`BuildRepsStage`) as a proper seeded single-elim over the pod reps padded to the next power of two,
+so a non-power-of-two pod count gives some reps a bye there too. All byes resolve through the same
+`AdvanceInto` machinery from v0.22 (a shared `ResolveFirstRoundByes` now serves both formats). Full
+pods keep the original draw-order round-1 pairing, so existing 8/16-entrant behavior and tests are
+unchanged. +15 Core tests (pod-size splits + play-to-completion for 9,10,12,15,17,20,24,30); 159
+total. Verified end-to-end: created a 20-entrant MSE (3 pods 7/7/6), its bracket rendered with a
+first-round BYE in pod 0 and was operable.
+
 v0.22 complete: **Double Elimination now accepts any entrant count >= 2** (was power-of-2 only) via
 first-round byes. Introduced a first-class bye-slot concept on `BracketNode` (`Slot1IsBye`/
 `Slot2IsBye`, + `SlotXResolved` helpers; new migration `AddBracketNodeSlotByes`): a slot is
@@ -223,6 +236,29 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.23 — 2026-07-08
+
+- **Modified Single Elimination accepts any field of 8+** (previously multiple-of-8-and-power-of-2).
+  The field splits into the fewest pods that keep each pod <= 8, as evenly as possible
+  (`ModifiedSingleEliminationPodSizes`: 20 -> [7,7,6], 12 -> [6,6], 24 -> [8,8,8]); every pod is
+  therefore >= 4.
+- **Partial pods carry first-round byes**, placed via the standard 8-seed chart so a pod's byes
+  spread one-per-match across its four round-1 matches (no all-bye "phantom" match). Full pods keep
+  the original draw-order pairing, so existing 8/16-entrant tests and behavior are untouched.
+- **New `BuildRepsStage`** builds the cross-pod stage as a seeded single-elimination over the pod
+  reps (Final side, round 2+), padded to the next power of two - so a non-power-of-two pod count
+  gives some reps a bye in the first reps round. `BuildWinnersRounds2AndUp` now numbers rounds from
+  its input round's number (so the reps stage can sit above the pods' Final round).
+- All byes resolve through v0.22's `AdvanceInto`; the bye-resolution loop was extracted to a shared
+  `ResolveFirstRoundByes` used by both double elimination and the MSE pods.
+- +15 Core tests: `ModifiedSingleEliminationPodSizes` splits (8/9/12/15/16/17/20/24) and a
+  play-to-completion sweep for 9, 10, 12, 15, 17, 20, 24, 30 (asserts each pod contributes exactly
+  2 reps, the tournament finishes, and no scheduled matches linger). Existing size-8/16 shape and
+  prize-payout tests still pass. 159 tests total, solution green, 0 warnings.
+- Verified end-to-end in the app: created a 20-entrant Modified Single Elimination (3 pods of
+  7/7/6); its bracket rendered with a first-round BYE in pod 0 (top seed advanced to Winners Round
+  2) and real matches with Start buttons; deleted it afterward (0 orphaned rows).
 
 ## v0.22 — 2026-07-08
 
