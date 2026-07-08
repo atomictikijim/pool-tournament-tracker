@@ -3,6 +3,26 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-08 — A merged `ResourceDictionary` file can't `StaticResource` a key its parent declares
+
+**Issue:** Adding a rating column to `Themes/BracketTemplates.xaml`'s `PlayerLineTemplate` needed
+to hide it with `Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibilityConverter}}"`.
+`BoolToVisibilityConverter` is declared directly in `App.xaml`'s own `<Application.Resources>`,
+which merges in `BracketTemplates.xaml` via `<ResourceDictionary Source="..."/>`. That merge only
+goes one direction: the parent (`App.xaml`) can see everything in the child dictionary it merges
+in, but the child dictionary's own XAML has no visibility into keys declared by whichever parent
+happens to merge it in - `StaticResource` lookup for content authored inside `BracketTemplates.xaml`
+only searches that file's own resources (and anything *it* merges in), so the key doesn't resolve.
+
+**Fix:** Declare a second `<BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />`
+directly inside `BracketTemplates.xaml` itself. Duplicate keys across separate dictionaries don't
+conflict - each dictionary resolves its own `StaticResource`s from its own scope first, so this
+file's `DataTemplate`s find the local copy while the rest of the app keeps using App.xaml's.
+General lesson: any shared/reusable `ResourceDictionary` file that references a converter/brush
+also used app-wide should declare that resource locally (or merge it in explicitly), never assume
+a `StaticResource` will find something declared only by whatever parent dictionary happens to
+include the file.
+
 ## 2026-07-08 — TabItem: `ContentTemplate` Setter silently replaces the tab PAGE content, not the header text
 
 **Issue:** Restyling `TabItem` in `Themes/Generic.xaml` to look like a button needed the header's

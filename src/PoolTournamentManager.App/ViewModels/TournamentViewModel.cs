@@ -172,6 +172,7 @@ public partial class TournamentViewModel : ObservableObject
         {
             UseTeams = false;
         }
+        RefreshEntrantCandidateRatings();
     }
 
     partial void OnUseTeamsChanged(bool value)
@@ -179,6 +180,21 @@ public partial class TournamentViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowPlayerEntrants));
         OnPropertyChanged(nameof(ShowSeedByRating));
         OnPropertyChanged(nameof(TotalEntryFeesDisplay));
+        RefreshEntrantCandidateRatings();
+    }
+
+    partial void OnNewTournamentRatingSystemChanged(RatingSystem value) => RefreshEntrantCandidateRatings();
+
+    /// <summary>Pushes the currently-selected "Seed by rating" system (or null while that control
+    /// is hidden/inapplicable) onto every entrant candidate, so the checklist label shows the
+    /// matching rating - see PlayerSelectionItem.DisplayLabel.</summary>
+    private void RefreshEntrantCandidateRatings()
+    {
+        var ratingSystem = ShowSeedByRating ? NewTournamentRatingSystem : (RatingSystem?)null;
+        foreach (var candidate in EntrantCandidates)
+        {
+            candidate.RatingSystem = ratingSystem;
+        }
     }
 
     partial void OnNewEntryFeeChanged(decimal value) => OnPropertyChanged(nameof(TotalEntryFeesDisplay));
@@ -310,6 +326,7 @@ public partial class TournamentViewModel : ObservableObject
             item.PropertyChanged += OnEntrantCandidateSelectionChanged;
             EntrantCandidates.Add(item);
         }
+        RefreshEntrantCandidateRatings();
     }
 
     [RelayCommand]
@@ -638,7 +655,6 @@ public partial class TournamentViewModel : ObservableObject
             Name = NewTournamentName,
             GameType = NewTournamentGameType,
             Format = NewTournamentFormat,
-            SeedingRatingSystem = NewTournamentRatingSystem,
             UsesTeams = useTeams
         };
 
@@ -708,6 +724,13 @@ public partial class TournamentViewModel : ObservableObject
         }
         else
         {
+            // Only these formats actually seed by the chosen rating system - stamp it on the
+            // tournament so the bracket/entrants displays know which rating to show alongside
+            // each entrant (see SeedingService.GetRatingDisplay). Left null for Ring Game, Chip
+            // Tournament, and Modified Single Elimination, whose "Seed by rating" control is
+            // hidden/inapplicable.
+            tournament.SeedingRatingSystem = NewTournamentRatingSystem;
+
             if (!useTeams)
             {
                 missingRatingCount = tournament.Entrants.Count(e => !SeedingService.HasRating(e, NewTournamentRatingSystem));

@@ -9,13 +9,21 @@
     so the trigger can win - see NOTES.md precedence traps.
     -->
 
-    <!-- One read-only player line: seed, name, score. -->
+    <!-- Declared locally (App.xaml also declares one under the same key for the rest of the app)
+         because this file is merged INTO App.xaml's resources - a merged-in dictionary can't see
+         keys declared only by the parent, so a StaticResource here must resolve against this
+         file's own dictionary. -->
+    <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+
+    <!-- One read-only player line: seed, name, rating (for the tournament's chosen "Seed by
+         rating" system, blank when none was used), score. -->
     <DataTemplate x:Key="PlayerLineTemplate">
         <Border x:Name="LineRoot" CornerRadius="3" Margin="2,1">
             <Grid Height="26">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="22" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="46" />
                     <ColumnDefinition Width="38" />
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="SeedText" Grid.Column="0" Text="{Binding SeedDisplay}" FontSize="11"
@@ -29,7 +37,17 @@
                 <TextBlock x:Name="NameText" Grid.Column="1" Text="{Binding Name}"
                            VerticalAlignment="Center" Margin="0,0,6,0" FontSize="14"
                            TextTrimming="CharacterEllipsis" />
-                <Border x:Name="ScoreCell" Grid.Column="2" CornerRadius="0,3,3,0">
+                <TextBlock x:Name="RatingText" Grid.Column="2" Text="{Binding RatingDisplay}" FontSize="11"
+                           Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibilityConverter}}"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,6,0"
+                           TextTrimming="CharacterEllipsis">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <Border x:Name="ScoreCell" Grid.Column="3" CornerRadius="0,3,3,0">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Background" Value="{DynamicResource SurfaceBackgroundBrush}" />
@@ -47,6 +65,7 @@
                 <Setter TargetName="SeedText" Property="Foreground" Value="{DynamicResource AccentPrimaryTextBrush}" />
                 <Setter TargetName="NameText" Property="Foreground" Value="{DynamicResource AccentPrimaryTextBrush}" />
                 <Setter TargetName="NameText" Property="FontWeight" Value="Bold" />
+                <Setter TargetName="RatingText" Property="Foreground" Value="{DynamicResource AccentPrimaryTextBrush}" />
                 <Setter TargetName="ScoreText" Property="Foreground" Value="{DynamicResource AccentPrimaryTextBrush}" />
                 <Setter TargetName="ScoreText" Property="FontWeight" Value="Bold" />
             </DataTrigger>

@@ -106,7 +106,12 @@ This tab holds the entire "create a new tournament" form.
    prize pool is split across finishing places.
 9. **Entrants** — a checklist of your Players (or Teams, if Use Teams is checked)
    to include. Check everyone who's playing. Click **Refresh** if you added a
-   player/team on another tab and don't see them yet.
+   player/team on another tab and don't see them yet. The panel stretches to fill
+   the window, resizing as you resize the app; the list itself scrolls once it has
+   more entrants than fit. While **Seed by rating** is showing a system, each
+   Player's checklist entry shows their rating for that system (e.g. "Alice
+   Anderson (Fargo: 700)"), or a dash if they don't have one on file - this is the
+   same rating that will later appear next to them in the bracket.
 10. Click **Create Tournament**.
 
 Entrant count requirements:
@@ -148,7 +153,11 @@ entrants are locked in for the rest of the event.
 ### Playing an elimination bracket (Single/Double/Modified Single Elimination)
 
 The bracket displays as a tree, rounds running left to right. Each match box shows
-both entrants (with their seed number, if seeded) and a score field for each.
+both entrants (with their seed number, if seeded) and a score field for each. If the
+tournament was seeded by a rating (see [Section 4](#4-creating-a-tournament-tournament-settings-tab)), each entrant's rating for that
+same system also shows next to their name - in this bracket view and on the
+[Display window](#8-the-display-window). Random-draw and Team tournaments show no rating, since
+none was used to seed them.
 
 To play a match:
 

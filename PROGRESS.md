@@ -5,6 +5,14 @@ the top of each section.
 
 ## Current status
 
+v0.17 complete: on the Tournament Settings tab, the Entrants panel now stretches to the
+bottom of the window and resizes with it (the list scrolls internally instead of using a
+fixed pixel height). Each Player entrant's checklist label now shows their rating for
+whichever system "Seed by rating" currently has selected (e.g. "Alice Anderson (Fargo:
+700)"), and that same rating shows next to each player in the bracket - both the operator's
+Tournament tab and the read-only Display window - for any tournament actually seeded by a
+rating (not shown for random-draw Modified Single Elimination or Team tournaments).
+
 v0.16 complete: Teams now have two new optional fields, **Division** (a short
 number/alphanumeric code) and **Location** (the pool hall the team plays out
 of), editable on the Teams tab and shown as columns in the Teams grid. New EF
@@ -145,6 +153,33 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.17 — 2026-07-08
+
+- **Entrants panel resizes with the window.** The Tournament Settings tab's layout changed from
+  a single auto-height `ScrollViewer` to a `Grid` with a `*`-height row, so the Entrants
+  column stretches down to the bottom of the app and grows/shrinks as the window resizes; the
+  `ListBox` itself (no longer a fixed `Height="200"`) scrolls internally once it has more
+  entries than fit. The create-tournament form column keeps its own internal scrollbar for
+  short windows.
+- **Entrant/bracket rating display.** Added `SeedingService.GetRatingDisplay`/`GetRatingLabel`
+  (Core) so a Player's rating for a given `RatingSystem` can be read and labeled from one place.
+  `PlayerSelectionItem.DisplayLabel` (Tournament Settings' checklist) now appends the entrant's
+  rating for whichever system "Seed by rating" currently has selected, updating live as that
+  dropdown or the format/Use Teams checkbox changes; `MatchRowViewModel`/`PlayerLineViewModel`
+  carry the same rating (via the tournament's `SeedingRatingSystem`) into both the operator's
+  editable bracket and the read-only Display window's bracket. `SeedingRatingSystem` is now only
+  stamped onto a tournament when it's actually used to seed (Single/Double Elimination, Round
+  Robin) - left null for Ring Game, Chip Tournament, and Modified Single Elimination's random
+  draw, so no stale/misleading rating shows for those.
+- 10 new tests (SeedingService rating helpers, MatchRowViewModel rating display, a new
+  PlayerSelectionItemTests file) - 114 total, all passing, 0 warnings.
+- Manually verified in the running app: resized the Tournament Settings window from maximized
+  down to a small window and confirmed the Entrants list resizes correctly with internal
+  scrolling; switched "Seed by rating" between Fargo/TAP/APA 8-Ball/APA 9-Ball and confirmed
+  every entrant's checklist label updated live; created a Fargo-seeded Single Elimination
+  tournament and confirmed the Fargo rating appears next to each player in both the operator's
+  bracket and the Display window's bracket.
 
 ## v0.16 — 2026-07-08
 

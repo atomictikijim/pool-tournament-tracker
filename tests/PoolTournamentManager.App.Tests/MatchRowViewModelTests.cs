@@ -1,20 +1,21 @@
 using PoolTournamentManager.App.ViewModels;
 using PoolTournamentManager.Core.Entities;
+using PoolTournamentManager.Core.Enums;
 
 namespace PoolTournamentManager.App.Tests;
 
 public class MatchRowViewModelTests
 {
-    private static TournamentEntrant Entrant(string firstName, int seed) => new()
+    private static TournamentEntrant Entrant(string firstName, int seed, int? fargoRate = null) => new()
     {
-        Player = new Player { FirstName = firstName, LastName = "Test" },
+        Player = new Player { FirstName = firstName, LastName = "Test", FargoRate = fargoRate },
         SeedNumber = seed
     };
 
     [Fact]
     public void Placeholder_WithBothSlotsUnresolved_ShowsTbdNotBye()
     {
-        var row = new MatchRowViewModel(null, null);
+        var row = new MatchRowViewModel((TournamentEntrant?)null, null);
 
         Assert.True(row.IsPlaceholder);
         Assert.Equal("TBD", row.Player1Name);
@@ -60,5 +61,32 @@ public class MatchRowViewModelTests
 
         Assert.False(row.IsPlaceholder);
         Assert.Equal("BYE", row.Player2Name);
+    }
+
+    [Fact]
+    public void RatingDisplay_IsNullWhenNoRatingSystemWasSupplied()
+    {
+        var row = new MatchRowViewModel(Entrant("Alice", 1, fargoRate: 700), Entrant("Bob", 2, fargoRate: 500));
+
+        Assert.Null(row.Player1RatingDisplay);
+        Assert.Null(row.Player2RatingDisplay);
+    }
+
+    [Fact]
+    public void RatingDisplay_ReflectsTheSuppliedRatingSystem_ForAPlaceholderRow()
+    {
+        var row = new MatchRowViewModel(Entrant("Alice", 1, fargoRate: 700), Entrant("Bob", 2, fargoRate: 500), RatingSystem.Fargo);
+
+        Assert.Equal("700", row.Player1RatingDisplay);
+        Assert.Equal("500", row.Player2RatingDisplay);
+    }
+
+    [Fact]
+    public void RatingDisplay_IsNullForAByeSlot_EvenWithARatingSystemSupplied()
+    {
+        var match = new Match { Player1EntrantId = Guid.NewGuid(), Player2EntrantId = null };
+        var row = new MatchRowViewModel(match, RatingSystem.Fargo);
+
+        Assert.Null(row.Player2RatingDisplay);
     }
 }

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using PoolTournamentManager.Core.Entities;
 using PoolTournamentManager.Core.Enums;
+using PoolTournamentManager.Core.Services;
 
 namespace PoolTournamentManager.App.ViewModels;
 
@@ -10,6 +11,7 @@ public class MatchRowViewModel : ObservableObject
 
     private readonly TournamentEntrant? _placeholderPlayer1;
     private readonly TournamentEntrant? _placeholderPlayer2;
+    private readonly RatingSystem? _ratingSystem;
 
     /// <summary>
     /// True for a bracket slot whose match hasn't materialized yet (both entrant slots aren't
@@ -45,9 +47,19 @@ public class MatchRowViewModel : ObservableObject
         ? (Match.Player2EntrantId is null ? null : Match.Player2Entrant?.SeedNumber)
         : _placeholderPlayer2?.SeedNumber;
 
+    /// <summary>The entrant's rating for whichever system the tournament was seeded by (null if
+    /// the tournament wasn't seeded by rating, e.g. random-draw or team formats).</summary>
+    public string? Player1RatingDisplay => GetRatingDisplay(Match is not null ? Match.Player1Entrant : _placeholderPlayer1);
+    public string? Player2RatingDisplay => Match is not null
+        ? (Match.Player2EntrantId is null ? null : GetRatingDisplay(Match.Player2Entrant))
+        : GetRatingDisplay(_placeholderPlayer2);
+
+    private string? GetRatingDisplay(TournamentEntrant? entrant) =>
+        _ratingSystem is null ? null : SeedingService.GetRatingDisplay(entrant?.Player, _ratingSystem.Value);
+
     /// <summary>Per-line projections used by the read-only bracket-tree display.</summary>
-    public PlayerLineViewModel Player1Line => new(Player1Name, Match?.Player1Score, IsPlayer1Winner, Player1Seed);
-    public PlayerLineViewModel Player2Line => new(Player2Name, Match?.Player2Score, IsPlayer2Winner, Player2Seed);
+    public PlayerLineViewModel Player1Line => new(Player1Name, Match?.Player1Score, IsPlayer1Winner, Player1Seed, Player1RatingDisplay);
+    public PlayerLineViewModel Player2Line => new(Player2Name, Match?.Player2Score, IsPlayer2Winner, Player2Seed, Player2RatingDisplay);
 
     /// <summary>
     /// Elapsed time as "mm:ss" (or "h:mm:ss" past an hour) - live while in progress (measured
@@ -70,18 +82,20 @@ public class MatchRowViewModel : ObservableObject
         }
     }
 
-    public MatchRowViewModel(Match match)
+    public MatchRowViewModel(Match match, RatingSystem? ratingSystem = null)
     {
         Match = match;
+        _ratingSystem = ratingSystem;
     }
 
     /// <summary>A bracket slot whose match hasn't materialized yet - shows whichever entrant(s)
     /// have already arrived via a prior round's result, "TBD" for the rest.</summary>
-    public MatchRowViewModel(TournamentEntrant? player1, TournamentEntrant? player2)
+    public MatchRowViewModel(TournamentEntrant? player1, TournamentEntrant? player2, RatingSystem? ratingSystem = null)
     {
         Match = null;
         _placeholderPlayer1 = player1;
         _placeholderPlayer2 = player2;
+        _ratingSystem = ratingSystem;
     }
 
     /// <summary>Called once a second by TournamentStateService's shared timer to refresh the

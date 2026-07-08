@@ -194,10 +194,11 @@ public partial class TournamentStateService : ObservableObject
             var matchRows = group
                 .OrderBy(n => n.PositionInRound)
                 .Select(n => n.Match is not null
-                    ? new MatchRowViewModel(n.Match)
+                    ? new MatchRowViewModel(n.Match, tournament.SeedingRatingSystem)
                     : new MatchRowViewModel(
                         n.Slot1EntrantId is { } p1 ? entrantsById.GetValueOrDefault(p1) : null,
-                        n.Slot2EntrantId is { } p2 ? entrantsById.GetValueOrDefault(p2) : null))
+                        n.Slot2EntrantId is { } p2 ? entrantsById.GetValueOrDefault(p2) : null,
+                        tournament.SeedingRatingSystem))
                 .ToList();
 
             var title = BuildRoundTitle(bracket, group.Key.Side, group.Key.RoundNumber, group.Any(n => n.IsGrandFinalReset));
@@ -329,7 +330,7 @@ public partial class TournamentStateService : ObservableObject
 
         foreach (var group in groups)
         {
-            var matchRows = group.Select(m => new MatchRowViewModel(m)).ToList();
+            var matchRows = group.Select(m => new MatchRowViewModel(m, tournament.SeedingRatingSystem)).ToList();
             rounds.Add(new RoundGroupViewModel(group.Key, $"Round {group.Key}", matchRows));
         }
 

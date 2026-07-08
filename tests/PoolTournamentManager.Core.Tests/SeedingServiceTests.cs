@@ -81,4 +81,39 @@ public class SeedingServiceTests
 
         Assert.False(SeedingService.HasRating(team, RatingSystem.Fargo));
     }
+
+    [Fact]
+    public void GetRatingDisplay_ReadsTheFieldMatchingEachSystem()
+    {
+        var player = new Player
+        {
+            FirstName = "A",
+            LastName = "Player",
+            FargoRate = 650,
+            ApaEightBallSkill = 7,
+            ApaNineBallSkill = 5,
+            TapRating = "6"
+        };
+
+        Assert.Equal("650", SeedingService.GetRatingDisplay(player, RatingSystem.Fargo));
+        Assert.Equal("7", SeedingService.GetRatingDisplay(player, RatingSystem.ApaEightBall));
+        Assert.Equal("5", SeedingService.GetRatingDisplay(player, RatingSystem.ApaNineBall));
+        Assert.Equal("6", SeedingService.GetRatingDisplay(player, RatingSystem.Tap));
+    }
+
+    [Fact]
+    public void GetRatingDisplay_IsNullWhenThePlayerOrTheirRatingIsMissing()
+    {
+        Assert.Null(SeedingService.GetRatingDisplay(null, RatingSystem.Fargo));
+        Assert.Null(SeedingService.GetRatingDisplay(new Player { FirstName = "A", LastName = "Player" }, RatingSystem.Fargo));
+    }
+
+    [Fact]
+    public void GetRatingLabel_ReturnsAShortHumanReadableName()
+    {
+        Assert.Equal("Fargo", SeedingService.GetRatingLabel(RatingSystem.Fargo));
+        Assert.Equal("APA 8-Ball", SeedingService.GetRatingLabel(RatingSystem.ApaEightBall));
+        Assert.Equal("APA 9-Ball", SeedingService.GetRatingLabel(RatingSystem.ApaNineBall));
+        Assert.Equal("TAP", SeedingService.GetRatingLabel(RatingSystem.Tap));
+    }
 }

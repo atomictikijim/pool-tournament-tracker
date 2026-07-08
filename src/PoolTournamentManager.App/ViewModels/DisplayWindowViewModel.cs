@@ -62,6 +62,6 @@ public class DisplayWindowViewModel : ObservableObject
         var match = State.ActiveTournament?.Matches
             .FirstOrDefault(m => m.TableId == tableId &&
                 (m.Status == MatchStatus.Scheduled || m.Status == MatchStatus.InProgress));
-        return match is null ? null : new MatchRowViewModel(match);
+        return match is null ? null : new MatchRowViewModel(match, State.ActiveTournament?.SeedingRatingSystem);
     }
 }

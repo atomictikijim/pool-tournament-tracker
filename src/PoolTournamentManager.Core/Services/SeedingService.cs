@@ -27,6 +27,28 @@ public static class SeedingService
     public static bool HasRating(TournamentEntrant entrant, RatingSystem ratingSystem) =>
         GetRating(entrant, ratingSystem) is not null;
 
+    /// <summary>The entrant's rating value for the given system, formatted for display (e.g. a
+    /// Fargo/APA number or a raw TAP string), or null if the entrant has no Player or no rating
+    /// recorded in that system.</summary>
+    public static string? GetRatingDisplay(Player? player, RatingSystem ratingSystem) => ratingSystem switch
+    {
+        RatingSystem.Fargo => player?.FargoRate?.ToString(),
+        RatingSystem.ApaEightBall => player?.ApaEightBallSkill?.ToString(),
+        RatingSystem.ApaNineBall => player?.ApaNineBallSkill?.ToString(),
+        RatingSystem.Tap => player?.TapRating,
+        _ => null
+    };
+
+    /// <summary>Short human-readable label for a rating system, e.g. "APA 8-Ball".</summary>
+    public static string GetRatingLabel(RatingSystem ratingSystem) => ratingSystem switch
+    {
+        RatingSystem.Fargo => "Fargo",
+        RatingSystem.ApaEightBall => "APA 8-Ball",
+        RatingSystem.ApaNineBall => "APA 9-Ball",
+        RatingSystem.Tap => "TAP",
+        _ => ratingSystem.ToString()
+    };
+
     private static int? GetRating(TournamentEntrant entrant, RatingSystem ratingSystem)
     {
         var player = entrant.Player;

@@ -13,13 +13,17 @@ public sealed class PlayerLineViewModel
     public bool IsWinner { get; }
     public string SeedDisplay { get; }
     public bool HasSeed { get; }
+    public string RatingDisplay { get; }
+    public bool HasRating { get; }
 
-    public PlayerLineViewModel(string name, int? score, bool isWinner, int? seed)
+    public PlayerLineViewModel(string name, int? score, bool isWinner, int? seed, string? rating = null)
     {
         Name = name;
         ScoreDisplay = score?.ToString() ?? string.Empty;
         IsWinner = isWinner;
         HasSeed = seed is not null;
         SeedDisplay = seed?.ToString() ?? string.Empty;
+        HasRating = rating is not null;
+        RatingDisplay = rating ?? string.Empty;
     }
 }
