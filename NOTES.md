@@ -3,6 +3,31 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-08 — TabItem: `ContentTemplate` Setter silently replaces the tab PAGE content, not the header text
+
+**Issue:** Restyling `TabItem` in `Themes/Generic.xaml` to look like a button needed the header's
+plain-string `Content` to get a real local `Foreground` (same trap as Button's `ContentTemplate` -
+see the 2026-07-06 entry below and NOTES.md's precedence traps generally). The header is presented
+inside the `TabItem`'s `ControlTemplate` via `<ContentPresenter ContentSource="Header" .../>`. Per
+WPF's `ContentSource` convention, that specific `ContentPresenter` reads `HeaderTemplate` (and
+`HeaderTemplateSelector`/`HeaderStringFormat`), NOT `ContentTemplate` - `ContentTemplate` is a
+completely different property, still governing the TabItem's own `Content` (the tab *page*).
+Setting a `Style` `Setter Property="ContentTemplate"` on `TabItem` therefore did nothing to the
+header, and instead got picked up by `TabControl`'s own template (`<ContentPresenter
+ContentSource="SelectedContent" />`), which auto-binds `ContentTemplate` to the *selected* TabItem's
+`ContentTemplate`. The result: every tab page's real content (a `ScrollViewer` wrapping the actual
+UI) got replaced by the new `DataTemplate`'s `TextBlock Text="{Binding}"` - which rendered as the
+literal `ToString()` of whatever object `{Binding}` resolved to, e.g. "System.Windows.Controls.
+ScrollViewer" - visible on every tab, not just the one being restyled, since the Style applies to
+all `TabItem`s.
+
+**Fix:** Use `Setter Property="HeaderTemplate"` instead of `ContentTemplate` on the `TabItem`
+`Style`. General lesson: whenever a `ControlTemplate` presents a sub-part via
+`ContentSource="X"`, any Style Setter meant to affect that sub-part must target `XTemplate`/
+`XTemplateSelector`/`XStringFormat`, not the plain `Content`/`ContentTemplate` properties - those
+remain wired to the control's own (different) `Content` property and can silently leak into
+whatever else reads it (here, the parent `TabControl`'s `SelectedContentTemplate`).
+
 ## 2026-07-07 — Elimination-bracket prize payouts beyond 1st/2nd are a deliberate approximation, not exact placement
 
 **Issue:** Building `PrizePayoutService` for the new entry-fee/prize-payout feature needs a

@@ -5,6 +5,10 @@ the top of each section.
 
 ## Current status
 
+v0.14.1 complete: the main tab selectors (Players/Teams/Tournament/Tournament
+Settings) now look like a row of separate buttons instead of flat text in a
+strip.
+
 v0.14 complete: entry fees, a host cut, and place-based prize payouts.
 Single/Double/Modified Elimination, Round Robin, and Chip Tournament all get
 a per-entrant entry fee, a host fee percentage, and any number of payout
@@ -121,6 +125,35 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.14.1 — 2026-07-08 (UI)
+
+- The main tab selectors (Players/Teams/Tournament/Tournament Settings) now
+  look like a row of separate buttons - rounded, bordered chips with spacing
+  between them - instead of flat text sitting directly on the window,
+  matching the app's existing Button look. The selected tab fills with
+  `AccentPrimaryBrush` like a pressed/primary button; unselected tabs use the
+  neutral `ControlBackgroundBrush` control surface. `Themes/Generic.xaml`'s
+  `TabItem` style gained a full `ControlTemplate` (replacing the previous
+  flat-strip template) plus a `HeaderTemplate` so the header text keeps its
+  own real `Foreground` local value rather than losing to the implicit
+  `TextBlock` style, same pattern already used for `Button`.
+- Real bug caught and fixed during that work (see NOTES.md): the header text
+  fix was first written as a `ContentTemplate` Setter, which - because the
+  template's `ContentPresenter` uses `ContentSource="Header"` - actually
+  overrides each tab's *page* content instead (via `TabControl`'s
+  `ContentSource="SelectedContent"` auto-binding to the selected TabItem's
+  `ContentTemplate`), so every tab page silently rendered as the literal
+  `ToString()` of its content object (e.g. "System.Windows.Controls.
+  ScrollViewer") instead of the real UI. Fixed by using `HeaderTemplate`
+  instead, which is what `ContentSource="Header"` actually looks up.
+- No test count change (98 pass); XAML-only, no view-model/logic changes.
+  Verified end-to-end by screenshotting the running app: all four tabs
+  render as button-styled chips in both the unselected and selected states,
+  and every tab's page content (Players grid + detail panel, Tournament
+  Settings' create-tournament form, etc.) renders correctly - confirming the
+  ContentTemplate/HeaderTemplate regression above was fully fixed, not just
+  the header appearance.
 
 ## v0.14 — 2026-07-07
 

@@ -158,28 +158,52 @@
     </Style>
 
     <!--
-    Selected tab's Background switches to AppBackgroundBrush (the content area's own color) rather
-    than using a colored underline - a colored border would be invisible in dark mode now that the
-    unselected strip itself is WindowChromeBrush (the same green as the border color would be).
-    Matching the content color instead makes the selected tab read as "attached to" the page below
-    it, and works in both themes regardless of how close WindowChromeBrush is to AccentPrimaryBrush.
+    Styled to look like a row of separate buttons rather than flat text in a strip: each tab is
+    its own rounded, bordered chip with spacing between them; the selected tab fills with
+    AccentPrimaryBrush like a pressed/primary button, unselected tabs use the neutral control
+    surface. Header is a plain string, so - same trap as Button above - the anonymous TextBlock
+    WPF wraps it in would pick up the implicit TextBlock Style's Foreground and ignore the
+    TabItem's own; the explicit ContentTemplate below gives it a real local Foreground binding.
     -->
     <Style TargetType="{x:Type TabItem}">
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Padding" Value="14,8" />
+        <Setter Property="Cursor" Value="Hand" />
+        <!--
+        This must be HeaderTemplate, not ContentTemplate: the ControlTemplate below presents the
+        Header via ContentSource="Header", which makes that ContentPresenter read HeaderTemplate
+        (not ContentTemplate). Setting ContentTemplate here instead styles the TabItem's own page
+        Content - which TabControl's ContentSource="SelectedContent" presenter also picks up -
+        so it silently replaced every tab page's real content with this TextBlock's ToString().
+        -->
+        <Setter Property="HeaderTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=TabItem}}" />
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type TabItem}">
                     <Border x:Name="HeaderBorder"
-                            Background="{DynamicResource WindowChromeBrush}"
+                            Background="{DynamicResource ControlBackgroundBrush}"
+                            BorderBrush="{DynamicResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Margin="0,2,6,2"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="HeaderBorder" Property="Background" Value="{DynamicResource AppBackgroundBrush}" />
-                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                            <Setter TargetName="HeaderBorder" Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+                            <Setter TargetName="HeaderBorder" Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryTextBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="HeaderBorder" Property="Opacity" Value="0.85" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
