@@ -31,6 +31,31 @@ and commit policy below takes effect.
 - Keep secrets/connection strings out of source; use user secrets or a local
   untracked config file for anything environment-specific.
 
+## Manual UI Testing (DPI awareness)
+
+When verifying a change by driving the running WPF app with synthetic input (screenshots +
+mouse clicks / keystrokes), you MUST account for display scaling or clicks will land in the
+wrong place. This machine runs at a non-100% display scale, so a screenshot captured with
+`Graphics.CopyFromScreen` is in physical pixels while `SetCursorPos` in a non-DPI-aware
+process uses logical pixels — the two disagree by the scale factor and every click misses.
+
+Rules for any screenshot/click automation (PowerShell or otherwise):
+
+- Call `SetProcessDPIAware()` **first**, before any GDI or cursor call, in *every* process/
+  tool-call that captures or clicks — so capture and cursor share one physical-pixel space.
+- Pin the window once (`MoveWindow` to a known origin/size, then `SetWindowPos` HWND_TOPMOST
+  with `SWP_NOMOVE | SWP_NOSIZE`), capture that exact rect at 1:1, and read click coordinates
+  straight off that screenshot. Don't re-`ShowWindow`/restore between steps — it moves the target.
+- Keep the window topmost across the click (don't drop to HWND_NOTOPMOST between capture and
+  click, or another window steals the foreground).
+- For a native modal (e.g. a `MessageBox`) that isn't the pinned window, capture the full
+  virtual screen and scale the displayed-image coordinates by the physical/displayed ratio.
+- The `TabControl` tab-page content is invisible to UI Automation, so coordinate clicks are the
+  only option for anything on a tab — which is exactly why the DPI handling above matters.
+
+See NOTES.md ("Driving the app with synthetic mouse clicks") for the full worked example, and
+the `run-app` skill for the other UI-automation traps.
+
 ## User-Facing Documentation
 
 `README.md` (project overview) and `FUNCTIONS.md` (end-user instruction manual)

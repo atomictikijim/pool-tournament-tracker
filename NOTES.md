@@ -27,6 +27,21 @@ displayed ratio shown in the image note. This got New Player → validate → sa
 clicking reliably. General lesson: for this app, coordinate clicks are fine but only after
 DPI-awareness + a one-time window pin; re-`ShowWindow`-ing every step just moves the target.
 
+**Instructions (do this every time you drive the app with clicks/screenshots):**
+
+1. In *every* PowerShell (or other) call that captures or clicks, call `SetProcessDPIAware()`
+   **before any GDI/cursor call** — capture and cursor must share the physical-pixel space.
+2. Pin the window once: `MoveWindow(h, 0, 0, W, H, true)`, then `SetWindowPos(h, HWND_TOPMOST,
+   0,0,0,0, SWP_NOMOVE|SWP_NOSIZE)`. Do NOT re-`ShowWindow`/restore on later steps.
+3. Capture that exact window rect at 1:1 and read click coordinates directly off the screenshot.
+4. Keep it topmost through the click (don't switch to HWND_NOTOPMOST between capture and click).
+5. For a native modal (MessageBox) not covered by the pinned rect, capture the full virtual
+   screen and scale displayed-image coordinates by the physical/displayed ratio.
+6. Remember TabControl tab-page content is invisible to UI Automation, so coordinate clicks are
+   the only path for on-tab controls — which is why steps 1–4 are mandatory, not optional.
+
+This is also recorded as a standing rule in CLAUDE.md ("Manual UI Testing (DPI awareness)").
+
 ## 2026-07-08 — `ComboBox.SelectedItem` bound to a ViewModel property silently goes null when its `ItemsSource` collection is cleared/rebuilt
 
 **Issue:** Added Division/Location filter drop-downs to the Tournament Settings tab, backed by
