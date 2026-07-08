@@ -60,7 +60,8 @@ public class DisplayWindowViewModel : ObservableObject
     private MatchRowViewModel? FindCurrentMatch(Guid tableId)
     {
         var match = State.ActiveTournament?.Matches
-            .FirstOrDefault(m => m.TableId == tableId && m.Status == MatchStatus.Scheduled);
+            .FirstOrDefault(m => m.TableId == tableId &&
+                (m.Status == MatchStatus.Scheduled || m.Status == MatchStatus.InProgress));
         return match is null ? null : new MatchRowViewModel(match);
     }
 }
