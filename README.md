@@ -15,7 +15,8 @@ live results on a second screen.
   - **Single Elimination** — standard seeded knockout bracket, with byes for
     non-power-of-2 entrant counts.
   - **Double Elimination** — winners/losers brackets with a grand final and
-    bracket-reset rematch if the losers'-bracket champion wins it.
+    bracket-reset rematch if the losers'-bracket champion wins it; also supports
+    non-power-of-2 entrant counts via first-round byes.
   - **Modified Single Elimination** — APA's format: every entrant is guaranteed at
     least two matches before elimination is possible, run in 8-entrant pods that
     feed a single-elimination semifinal/final stage. Faster than double elimination.

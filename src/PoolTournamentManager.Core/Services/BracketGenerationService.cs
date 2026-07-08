@@ -52,8 +52,10 @@ public class BracketGenerationService
     /// later round's losers merge in after a "consolidation" round has caught the losers bracket
     /// back down to a matching player count), and a Grand Final between the two bracket champions
     /// with a single bracket-reset rematch if the losers-bracket champion wins it.
-    /// Requires an exact power-of-2 entrant count - seeding a non-power-of-2 losers bracket
-    /// (byes cascading through both brackets at once) is not yet supported.
+    /// Any entrant count >= 2 is supported: the bracket is padded to the next power of two and the
+    /// top seeds receive first-round byes, which cascade into the losers bracket as byes (a
+    /// winners-bracket bye produces no loser to drop down, so that losers-bracket slot is itself a
+    /// bye - see the bye-resolution pass below and <see cref="AdvanceInto"/>).
     /// </summary>
     public BracketDetail GenerateDoubleElimination(Tournament tournament)
     {
@@ -63,17 +65,11 @@ public class BracketGenerationService
             throw new InvalidOperationException("A double-elimination bracket requires at least 2 entrants.");
         }
 
-        if ((entrantCount & (entrantCount - 1)) != 0)
-        {
-            throw new InvalidOperationException(
-                "Double elimination currently requires a power-of-2 number of entrants (2, 4, 8, 16, 32...).");
-        }
-
         var entrantsBySeed = tournament.Entrants
             .Where(e => e.SeedNumber is not null)
             .ToDictionary(e => e.SeedNumber!.Value);
 
-        var bracketSize = entrantCount;
+        var bracketSize = NextPowerOfTwo(entrantCount);
         var totalWbRounds = (int)Math.Log2(bracketSize);
 
         var bracket = new BracketDetail
@@ -171,6 +167,19 @@ public class BracketGenerationService
         {
             lbFinalNode.FeedsIntoWinnerNodeId = grandFinalNode.Id;
             lbFinalNode.FeedsIntoWinnerSlot = 2;
+        }
+
+        // Resolve first-round byes now that the whole graph (and every FeedsInto* link) exists:
+        // advance each bye winner through the winners bracket, and drop a "bye" into the losers
+        // bracket where that match's (non-existent) loser would have gone. AdvanceInto cascades
+        // this - two byes meeting in the losers bracket collapse to a phantom that passes the bye on.
+        foreach (var byeNode in bracket.Nodes.Where(n => n.Side == BracketSide.Winners && n.RoundNumber == 1 && n.Match is { IsBye: true }).ToList())
+        {
+            PropagateWinner(tournament, bracket, byeNode, byeNode.Match!.WinnerEntrantId!.Value);
+            if (byeNode.FeedsIntoLoserNodeId is not null)
+            {
+                PropagateLoserBye(tournament, bracket, byeNode);
+            }
         }
 
         tournament.Status = TournamentStatus.InProgress;
@@ -419,11 +428,7 @@ public class BracketGenerationService
 
         var newMatches = new List<Match>();
 
-        var winnerMatch = PropagateWinner(tournament, bracket, node, match.WinnerEntrantId.Value);
-        if (winnerMatch is not null)
-        {
-            newMatches.Add(winnerMatch);
-        }
+        newMatches.AddRange(PropagateWinner(tournament, bracket, node, match.WinnerEntrantId.Value));
 
         if (node.Side == BracketSide.Winners && node.FeedsIntoLoserNodeId is not null)
         {
@@ -431,11 +436,7 @@ public class BracketGenerationService
                 ? match.Player2EntrantId!.Value
                 : match.Player1EntrantId;
 
-            var loserMatch = PropagateLoser(tournament, bracket, node, loserEntrantId);
-            if (loserMatch is not null)
-            {
-                newMatches.Add(loserMatch);
-            }
+            newMatches.AddRange(PropagateLoser(tournament, bracket, node, loserEntrantId));
         }
 
         return newMatches;
@@ -451,6 +452,8 @@ public class BracketGenerationService
         {
             var seedA = seedSlots[2 * i];
             var seedB = seedSlots[2 * i + 1];
+            var entrantA = entrantsBySeed.GetValueOrDefault(seedA);
+            var entrantB = entrantsBySeed.GetValueOrDefault(seedB);
 
             var node = new BracketNode
             {
@@ -458,8 +461,12 @@ public class BracketGenerationService
                 Side = BracketSide.Winners,
                 RoundNumber = 1,
                 PositionInRound = i,
-                Slot1EntrantId = entrantsBySeed.GetValueOrDefault(seedA)?.Id,
-                Slot2EntrantId = entrantsBySeed.GetValueOrDefault(seedB)?.Id
+                Slot1EntrantId = entrantA?.Id,
+                Slot2EntrantId = entrantB?.Id,
+                // A missing seed (the padded bracket is larger than the field) is a permanent bye,
+                // not a pending feed.
+                Slot1IsBye = entrantA is null,
+                Slot2IsBye = entrantB is null
             };
             bracket.Nodes.Add(node);
             round1.Add(node);
@@ -576,108 +583,186 @@ public class BracketGenerationService
         return resetMatch;
     }
 
-    private Match? PropagateWinner(Tournament tournament, BracketDetail bracket, BracketNode completedNode, Guid winnerEntrantId)
+    /// <summary>
+    /// Advances a completed node's winner into its downstream node's correct slot, then resolves
+    /// that node (see <see cref="AdvanceInto"/>). Returns every Match newly materialized as a result.
+    /// </summary>
+    private List<Match> PropagateWinner(Tournament tournament, BracketDetail bracket, BracketNode completedNode, Guid winnerEntrantId)
     {
         if (completedNode.FeedsIntoWinnerNodeId is null)
         {
             tournament.Status = TournamentStatus.Completed;
-            return null;
+            return new List<Match>();
         }
 
         var targetNode = bracket.Nodes.First(n => n.Id == completedNode.FeedsIntoWinnerNodeId);
-        var slot = completedNode.FeedsIntoWinnerSlot ?? (completedNode.PositionInRound % 2 == 0 ? 1 : 2);
-        if (slot == 1)
+        SetSlot(targetNode, completedNode.FeedsIntoWinnerSlot ?? (completedNode.PositionInRound % 2 == 0 ? 1 : 2), winnerEntrantId, isBye: false);
+        return AdvanceInto(tournament, bracket, targetNode);
+    }
+
+    /// <summary>
+    /// Propagates a *bye* forward from a phantom node (one whose two slots both ended up byes):
+    /// the winner slot on the downstream node is marked a bye rather than filled with a player,
+    /// so that node knows this input will never arrive.
+    /// </summary>
+    private List<Match> PropagateWinnerBye(Tournament tournament, BracketDetail bracket, BracketNode phantomNode)
+    {
+        if (phantomNode.FeedsIntoWinnerNodeId is null)
         {
-            targetNode.Slot1EntrantId = winnerEntrantId;
-        }
-        else
-        {
-            targetNode.Slot2EntrantId = winnerEntrantId;
+            return new List<Match>();
         }
 
-        return TryMaterializeAdvancedMatch(tournament, targetNode);
+        var targetNode = bracket.Nodes.First(n => n.Id == phantomNode.FeedsIntoWinnerNodeId);
+        SetSlot(targetNode, phantomNode.FeedsIntoWinnerSlot ?? (phantomNode.PositionInRound % 2 == 0 ? 1 : 2), entrantId: null, isBye: true);
+        return AdvanceInto(tournament, bracket, targetNode);
     }
 
     /// <summary>
     /// Drops a winners-bracket match's loser into its wired losers-bracket (or, for a 2-entrant
-    /// bracket, Grand Final) node. A losers-bracket loss is never propagated anywhere further -
-    /// there is no FeedsIntoLoserNodeId chain beyond the winners bracket.
+    /// bracket, Grand Final) node, then resolves that node. A losers-bracket loss is never
+    /// propagated further - there is no FeedsIntoLoserNodeId chain beyond the winners bracket.
     /// </summary>
-    private Match? PropagateLoser(Tournament tournament, BracketDetail bracket, BracketNode completedWbNode, Guid loserEntrantId)
+    private List<Match> PropagateLoser(Tournament tournament, BracketDetail bracket, BracketNode completedWbNode, Guid loserEntrantId)
     {
         var targetNode = bracket.Nodes.First(n => n.Id == completedWbNode.FeedsIntoLoserNodeId);
-        var slot = completedWbNode.FeedsIntoLoserSlot ?? 2;
-        if (slot == 1)
-        {
-            targetNode.Slot1EntrantId = loserEntrantId;
-        }
-        else
-        {
-            targetNode.Slot2EntrantId = loserEntrantId;
-        }
-
-        return TryMaterializeAdvancedMatch(tournament, targetNode);
+        SetSlot(targetNode, completedWbNode.FeedsIntoLoserSlot ?? 2, loserEntrantId, isBye: false);
+        return AdvanceInto(tournament, bracket, targetNode);
     }
 
     /// <summary>
-    /// Round 1 has complete information immediately: a node's second slot being empty means
-    /// the opponent seed doesn't exist (a permanent bye), not that it's merely pending.
+    /// Marks the losers-bracket slot that a winners-bracket bye would have fed as a bye - a bye
+    /// produces no loser to drop. Cascades: two byes feeding one losers node make it a phantom.
+    /// </summary>
+    private List<Match> PropagateLoserBye(Tournament tournament, BracketDetail bracket, BracketNode completedWbNode)
+    {
+        if (completedWbNode.FeedsIntoLoserNodeId is null)
+        {
+            return new List<Match>();
+        }
+
+        var targetNode = bracket.Nodes.First(n => n.Id == completedWbNode.FeedsIntoLoserNodeId);
+        SetSlot(targetNode, completedWbNode.FeedsIntoLoserSlot ?? 2, entrantId: null, isBye: true);
+        return AdvanceInto(tournament, bracket, targetNode);
+    }
+
+    private static void SetSlot(BracketNode node, int slot, Guid? entrantId, bool isBye)
+    {
+        if (slot == 1)
+        {
+            node.Slot1EntrantId = entrantId;
+            if (isBye) node.Slot1IsBye = true;
+        }
+        else
+        {
+            node.Slot2EntrantId = entrantId;
+            if (isBye) node.Slot2IsBye = true;
+        }
+    }
+
+    /// <summary>
+    /// Resolves a node once one of its slots has just been set, and returns every Match newly
+    /// materialized - cascading through byes:
+    ///  - two entrants        -&gt; a Scheduled match;
+    ///  - one entrant + a bye  -&gt; a Completed bye match, then that winner advances immediately;
+    ///  - two byes             -&gt; no match; a bye propagates on to the next node.
+    /// A node still missing a slot (neither an entrant nor a known bye) yields nothing yet - so a
+    /// round-2+/losers node never auto-completes just because one feeder hasn't been played.
+    /// </summary>
+    private List<Match> AdvanceInto(Tournament tournament, BracketDetail bracket, BracketNode node)
+    {
+        if (node.MatchId is not null || !node.Slot1Resolved || !node.Slot2Resolved)
+        {
+            return new List<Match>();
+        }
+
+        var hasS1 = node.Slot1EntrantId is not null;
+        var hasS2 = node.Slot2EntrantId is not null;
+
+        if (hasS1 && hasS2)
+        {
+            var match = new Match
+            {
+                TournamentId = tournament.Id,
+                BracketNodeId = node.Id,
+                Player1EntrantId = node.Slot1EntrantId!.Value,
+                Player2EntrantId = node.Slot2EntrantId!.Value,
+                Status = MatchStatus.Scheduled
+            };
+            AttachMatch(tournament, node, match);
+            return new List<Match> { match };
+        }
+
+        if (hasS1 || hasS2)
+        {
+            var winnerId = node.Slot1EntrantId ?? node.Slot2EntrantId!.Value;
+            var byeMatch = new Match
+            {
+                TournamentId = tournament.Id,
+                BracketNodeId = node.Id,
+                Player1EntrantId = winnerId,
+                Player2EntrantId = null,
+                WinnerEntrantId = winnerId,
+                Status = MatchStatus.Completed
+            };
+            AttachMatch(tournament, node, byeMatch);
+
+            var produced = new List<Match> { byeMatch };
+            produced.AddRange(PropagateWinner(tournament, bracket, node, winnerId));
+            return produced;
+        }
+
+        // Both slots byes: a phantom node - no match, no player, but the bye travels onward.
+        return PropagateWinnerBye(tournament, bracket, node);
+    }
+
+    private static void AttachMatch(Tournament tournament, BracketNode node, Match match)
+    {
+        tournament.Matches.Add(match);
+        node.Match = match;
+        node.MatchId = match.Id;
+    }
+
+    /// <summary>
+    /// Round 1 has complete information immediately: a slot with no entrant is a permanent bye
+    /// (that seed doesn't exist), not a pending feed. One real entrant auto-completes as a bye win;
+    /// two entrants make a scheduled match.
     /// </summary>
     private void MaterializeRound1Match(Tournament tournament, BracketNode node)
     {
-        if (node.Slot1EntrantId is null)
+        var hasS1 = node.Slot1EntrantId is not null;
+        var hasS2 = node.Slot2EntrantId is not null;
+        if (!hasS1 && !hasS2)
         {
             return;
         }
 
-        var match = node.Slot2EntrantId is null
-            ? new Match
+        Match match;
+        if (hasS1 && hasS2)
+        {
+            match = new Match
             {
                 TournamentId = tournament.Id,
                 BracketNodeId = node.Id,
-                Player1EntrantId = node.Slot1EntrantId.Value,
-                Player2EntrantId = null,
-                WinnerEntrantId = node.Slot1EntrantId.Value,
-                Status = MatchStatus.Completed
-            }
-            : new Match
-            {
-                TournamentId = tournament.Id,
-                BracketNodeId = node.Id,
-                Player1EntrantId = node.Slot1EntrantId.Value,
-                Player2EntrantId = node.Slot2EntrantId.Value,
+                Player1EntrantId = node.Slot1EntrantId!.Value,
+                Player2EntrantId = node.Slot2EntrantId!.Value,
                 Status = MatchStatus.Scheduled
             };
-
-        tournament.Matches.Add(match);
-        node.Match = match;
-        node.MatchId = match.Id;
-    }
-
-    /// <summary>
-    /// Round 2+ (and losers-bracket) nodes must never auto-complete as a bye: an empty slot here
-    /// always means "the other feeder hasn't been played yet", not "no opponent will ever arrive".
-    /// </summary>
-    private Match? TryMaterializeAdvancedMatch(Tournament tournament, BracketNode node)
-    {
-        if (node.MatchId is not null || node.Slot1EntrantId is null || node.Slot2EntrantId is null)
+        }
+        else
         {
-            return null;
+            var winnerId = node.Slot1EntrantId ?? node.Slot2EntrantId!.Value;
+            match = new Match
+            {
+                TournamentId = tournament.Id,
+                BracketNodeId = node.Id,
+                Player1EntrantId = winnerId,
+                Player2EntrantId = null,
+                WinnerEntrantId = winnerId,
+                Status = MatchStatus.Completed
+            };
         }
 
-        var match = new Match
-        {
-            TournamentId = tournament.Id,
-            BracketNodeId = node.Id,
-            Player1EntrantId = node.Slot1EntrantId.Value,
-            Player2EntrantId = node.Slot2EntrantId.Value,
-            Status = MatchStatus.Scheduled
-        };
-
-        tournament.Matches.Add(match);
-        node.Match = match;
-        node.MatchId = match.Id;
-        return match;
+        AttachMatch(tournament, node, match);
     }
 
     private static int NextPowerOfTwo(int n)

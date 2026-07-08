@@ -803,11 +803,8 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
-        if (NewTournamentFormat == TournamentFormat.DoubleElimination && (entrantCount & (entrantCount - 1)) != 0)
-        {
-            StatusMessage = "Double elimination currently requires a power-of-2 number of entrants (2, 4, 8, 16, 32...).";
-            return;
-        }
+        // Double Elimination accepts any count >= 2 - the bracket pads to the next power of two and
+        // the top seeds get first-round byes (see BracketGenerationService.GenerateDoubleElimination).
 
         if (NewTournamentFormat == TournamentFormat.ModifiedSingleElimination && !BracketGenerationService.IsValidModifiedSingleEliminationCount(entrantCount))
         {

@@ -3,6 +3,33 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-08 — Byes beyond round 1: a resolved-slot model, not a null-slot special case
+
+**Issue:** Single Elimination handled byes by leaving a round-1 node's second slot null and
+auto-completing it - but for round 2+ and the whole losers bracket, a null slot means "the feeder
+hasn't been played yet", NOT "no one will ever arrive". Double Elimination with a non-power-of-2
+field needs real byes in both brackets: a winners-bracket first-round bye produces no loser, so the
+losers-bracket slot that loser would have filled must itself be a bye - and two such byes meeting
+must collapse to nothing. A bare null slot can't express "permanent bye" vs "pending".
+
+**Fix:** Added `Slot1IsBye`/`Slot2IsBye` to `BracketNode` (migration `AddBracketNodeSlotByes`). A
+slot is *resolved* once it holds an entrant OR is a bye (`SlotXResolved`). One resolution method,
+`AdvanceInto`, handles every case when a slot is set: two entrants -> Scheduled match; one entrant
++ one bye -> a Completed bye that advances the entrant; two byes -> a phantom that hosts no match
+but propagates a bye forward via `PropagateWinnerBye`. Generation pads to the next power of two and,
+in a post-build pass, advances each winners round-1 bye and calls `PropagateLoserBye` to seed the
+losers bracket with byes; the cascade is automatic. Key correctness points learned:
+
+- The propagation helpers had to change from returning a single `Match?` to `List<Match>`, because
+  one real result can now cascade through several byes and materialize multiple matches at once -
+  all must be returned so `RecordMatchResult`'s caller can `TrackNew` each.
+- A node must NOT auto-complete while any slot is unresolved (neither entrant nor bye) - otherwise
+  a round-2 node with one arrived player would wrongly bye them through. `AdvanceInto` guards on
+  `Slot1Resolved && Slot2Resolved`.
+- Persisting the bye flags (vs resolving byes only at generation) is required because a
+  losers-bracket bye slot pairs with a *pending* real feeder whose loser isn't known until a match
+  is played at runtime; the bye flag has to survive to that moment for the auto-advance to fire.
+
 ## 2026-07-08 — Deleting a tournament: let EF cascade the tracked graph; don't rely on a raw single DELETE
 
 **Issue:** Adding "delete a tournament" needed to remove the tournament plus its entrants, tables,

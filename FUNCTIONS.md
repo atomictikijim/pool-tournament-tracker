@@ -333,7 +333,9 @@ eliminating you. You're only out once you lose there too. The Winners-bracket
 champion and the Losers-bracket champion meet in a **Grand Final**; if the
 Losers-bracket champion wins that match, there's one final rematch (since the
 Winners-bracket champion hasn't lost a match yet) to decide the tournament.
-Requires an exact power-of-2 entrant count.
+Works with any number of entrants (2 or more): if it isn't an exact power of two,
+the top seeds get first-round byes, just like Single Elimination — those byes
+carry through into the Losers bracket automatically.
 
 ### Modified Single Elimination
 

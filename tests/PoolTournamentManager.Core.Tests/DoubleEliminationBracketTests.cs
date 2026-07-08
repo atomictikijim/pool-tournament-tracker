@@ -47,14 +47,70 @@ public class DoubleEliminationBracketTests
         Assert.Throws<InvalidOperationException>(() => _service.GenerateDoubleElimination(tournament));
     }
 
+    /// <summary>Plays every scheduled match with the lower seed winning, until the tournament ends
+    /// (or a safety cap). Byes are already Completed, so they're skipped naturally.</summary>
+    private void PlayOutLowerSeedWins(Tournament tournament)
+    {
+        var seedById = tournament.Entrants.ToDictionary(e => e.Id, e => e.SeedNumber!.Value);
+        for (var guard = 0; guard < 1000 && tournament.Status != TournamentStatus.Completed; guard++)
+        {
+            var match = tournament.Matches.FirstOrDefault(m => m.Status == MatchStatus.Scheduled);
+            if (match is null)
+            {
+                break;
+            }
+
+            var p1Wins = seedById[match.Player1EntrantId] < seedById[match.Player2EntrantId!.Value];
+            match.Status = MatchStatus.InProgress;
+            _service.RecordMatchResult(tournament, match, p1Wins ? 7 : 3, p1Wins ? 3 : 7);
+        }
+    }
+
     [Theory]
+    [InlineData(2)]
     [InlineData(3)]
     [InlineData(5)]
     [InlineData(6)]
-    public void GenerateDoubleElimination_ThrowsForNonPowerOfTwoEntrantCount(int entrantCount)
+    [InlineData(7)]
+    [InlineData(9)]
+    [InlineData(11)]
+    [InlineData(13)]
+    public void GenerateDoubleElimination_NonPowerOfTwo_PlaysToCompletionWithTopSeedWinning(int entrantCount)
     {
         var tournament = BuildTournament(entrantCount);
-        Assert.Throws<InvalidOperationException>(() => _service.GenerateDoubleElimination(tournament));
+        _service.GenerateDoubleElimination(tournament);
+
+        PlayOutLowerSeedWins(tournament);
+
+        Assert.Equal(TournamentStatus.Completed, tournament.Status);
+        Assert.DoesNotContain(tournament.Matches, m => m.Status == MatchStatus.Scheduled);
+
+        // With the lower seed always winning, seed 1 is undefeated - it must never appear as the
+        // loser of any completed match, and it must be the eventual champion.
+        var seed1 = BySeed(tournament, 1).Id;
+        Assert.DoesNotContain(tournament.Matches, m =>
+            m.Status == MatchStatus.Completed && m.WinnerEntrantId is not null &&
+            (m.Player1EntrantId == seed1 || m.Player2EntrantId == seed1) && m.WinnerEntrantId != seed1);
+    }
+
+    [Fact]
+    public void GenerateDoubleElimination_Size3_TopSeedGetsRoundOneByeAndItsLoserSlotBecomesABye()
+    {
+        var tournament = BuildTournament(3); // bracketSize 4: seeds [1,4],[2,3] -> seed 4 missing
+        _service.GenerateDoubleElimination(tournament);
+
+        // Round 1: seed 1 has a bye (a Completed one-player match), seed2 vs seed3 is real.
+        var round1 = tournament.Bracket!.Nodes.Where(n => n.Side == BracketSide.Winners && n.RoundNumber == 1).ToList();
+        var byeNode = round1.Single(n => n.Match is { IsBye: true });
+        Assert.Equal(BySeed(tournament, 1).Id, byeNode.Match!.WinnerEntrantId);
+
+        // The losers-bracket slot that bye would have fed is itself marked a bye.
+        var lbNode = tournament.Bracket.Nodes.First(n => n.Id == byeNode.FeedsIntoLoserNodeId);
+        var byeSlot = byeNode.FeedsIntoLoserSlot ?? 2;
+        Assert.True(byeSlot == 1 ? lbNode.Slot1IsBye : lbNode.Slot2IsBye);
+
+        PlayOutLowerSeedWins(tournament);
+        Assert.Equal(TournamentStatus.Completed, tournament.Status);
     }
 
     [Fact]

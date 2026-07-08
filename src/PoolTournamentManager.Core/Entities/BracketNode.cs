@@ -14,6 +14,19 @@ public class BracketNode
     public Guid? Slot1EntrantId { get; set; }
     public Guid? Slot2EntrantId { get; set; }
 
+    /// <summary>
+    /// Marks a slot as a permanent bye: no entrant will ever arrive there (the feeder that would
+    /// have supplied it was itself a bye). A node with one entrant and one bye auto-completes as a
+    /// bye win; a node with both slots byes is a "phantom" that produces no player and propagates a
+    /// bye forward. Distinct from a null EntrantId with no bye flag, which means "still pending".
+    /// </summary>
+    public bool Slot1IsBye { get; set; }
+    public bool Slot2IsBye { get; set; }
+
+    /// <summary>True once each slot is either filled by an entrant or known to be a permanent bye.</summary>
+    public bool Slot1Resolved => Slot1EntrantId is not null || Slot1IsBye;
+    public bool Slot2Resolved => Slot2EntrantId is not null || Slot2IsBye;
+
     public Guid? MatchId { get; set; }
     public Match? Match { get; set; }
 

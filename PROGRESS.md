@@ -5,6 +5,19 @@ the top of each section.
 
 ## Current status
 
+v0.22 complete: **Double Elimination now accepts any entrant count >= 2** (was power-of-2 only) via
+first-round byes. Introduced a first-class bye-slot concept on `BracketNode` (`Slot1IsBye`/
+`Slot2IsBye`, + `SlotXResolved` helpers; new migration `AddBracketNodeSlotByes`): a slot is
+resolved once it has an entrant OR is a bye. `AdvanceInto` resolves a node when a slot is set - two
+entrants -> a scheduled match, one entrant + a bye -> a completed bye that advances, two byes -> a
+phantom that propagates a bye onward. Double-elim pads to the next power of two; each winners-bracket
+first-round bye advances its winner and drops a *bye* into the losers bracket (a bye has no loser),
+which cascades (two byes meeting -> phantom). The propagation helpers now return every cascaded
+Match. Single Elimination and the existing power-of-2 double-elim paths are unchanged. +9 Core tests
+(play-through to completion for counts 2,3,5,6,7,9,11,13 + a size-3 structural check); 154 total.
+Verified end-to-end: created & rendered a 6-entrant double-elim (seeds 1 & 2 drew byes, advanced to
+WB round 2), migration applied cleanly to the real DB. **Modified Single Elimination byes are next.**
+
 v0.21 complete: the Tournament tab's list now has a **Status** filter (All / In Progress /
 Completed) above it. Filtering hides rows through the list's `ICollectionView` (the same view the
 ListBox binds) without touching `State.Tournaments` or the current selection, and survives a reload.
@@ -210,6 +223,35 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.22 — 2026-07-08
+
+- **Double Elimination supports any entrant count >= 2** (previously power-of-2 only), via
+  first-round byes on the top seeds - the same idea Single Elimination already used, now carried
+  through the losers bracket too.
+- **New bye-slot model on `BracketNode`:** `Slot1IsBye`/`Slot2IsBye` (migration
+  `AddBracketNodeSlotByes` - two additive bool columns, default false) plus `Slot1Resolved`/
+  `Slot2Resolved` (ignored, computed). A slot counts as resolved once it holds an entrant or is a
+  known bye. The new `AdvanceInto` resolves a node the moment a slot is set: two entrants -> a
+  Scheduled match; one entrant + a bye -> a Completed bye match whose winner advances immediately;
+  two byes -> a phantom node that hosts no match but propagates a bye onward. A node still missing
+  a slot yields nothing, so round-2+/losers nodes never auto-complete early.
+- **Double-elim generation** pads to the next power of two, then a resolution pass advances each
+  winners round-1 bye winner and drops a *bye* into the losers bracket where that (non-existent)
+  loser would have gone; `AdvanceInto` cascades it (two byes meeting collapse to a phantom that
+  passes the bye on). The propagation helpers (`PropagateWinner`/`PropagateLoser` + new
+  `PropagateWinnerBye`/`PropagateLoserBye`) now return `List<Match>` so every cascaded match is
+  reported for change-tracking. `RecordMatchResult` collects them all.
+- Single Elimination and the existing exact-power-of-2 double-elim behavior are unchanged
+  (verified by the existing size-4/size-8 play-through tests).
+- +9 Core tests (`DoubleEliminationBracketTests`): a lower-seed-always-wins play-through to
+  completion for entrant counts 2, 3, 5, 6, 7, 9, 11, 13 (asserting the tournament finishes, no
+  scheduled matches linger, and the top seed never loses), plus a size-3 structural check that the
+  bye's losers-bracket slot is itself flagged a bye. 154 tests total, solution green, 0 warnings.
+- Verified end-to-end in the app: the `AddBracketNodeSlotByes` migration applied to the real dev DB
+  with no errors and existing data intact; created a 6-entrant Double Elimination and its bracket
+  rendered with seeds 1 and 2 taking first-round BYEs and advancing to WB Round 2; deleted it
+  afterward (0 orphaned rows).
 
 ## v0.21 — 2026-07-08
 

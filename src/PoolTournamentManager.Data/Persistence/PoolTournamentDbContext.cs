@@ -84,6 +84,8 @@ public class PoolTournamentDbContext : DbContext
         {
             entity.HasKey(n => n.Id);
             entity.HasOne(n => n.Match).WithMany().HasForeignKey(n => n.MatchId).OnDelete(DeleteBehavior.Restrict);
+            entity.Ignore(n => n.Slot1Resolved);
+            entity.Ignore(n => n.Slot2Resolved);
         });
 
         modelBuilder.Entity<RingGameDetail>(entity =>
