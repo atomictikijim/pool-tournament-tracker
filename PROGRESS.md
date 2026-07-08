@@ -5,6 +5,12 @@ the top of each section.
 
 ## Current status
 
+v0.16 complete: Teams now have two new optional fields, **Division** (a short
+number/alphanumeric code) and **Location** (the pool hall the team plays out
+of), editable on the Teams tab and shown as columns in the Teams grid. New EF
+Core migration (`AddTeamDivisionAndLocation`); the 44 teams already in the dev
+test data were backfilled with plausible values.
+
 v0.15.1 complete: on the Tournament Settings tab, the Entrants picker (Players or Teams,
 whichever applies) now sits in its own column to the right of the create-tournament form
 instead of stacked underneath it, and the "Appearance" blurb about following the Windows
@@ -139,6 +145,20 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.16 — 2026-07-08
+
+- Added `Division` and `Location` (nullable strings) to the `Team` entity, editable from the
+  Teams tab's detail panel and shown as new columns ("Division", "Location") in the Teams grid.
+  Division is meant as a short code (e.g. "1" or "A"); Location is the name of the pool hall the
+  team plays out of. Neither field participates in seeding/scheduling - informational only.
+- New migration `AddTeamDivisionAndLocation` adds the two nullable `TEXT` columns to `Teams`; no
+  data loss, existing rows just get `NULL` until edited.
+- Manually verified in the running app: both new fields show in the grid and round-trip correctly
+  through the detail panel's Save/select flow.
+- Backfilled the 44 teams already in the dev test data with a division (cycling "1"-"4"/"A"-"C")
+  and a location (cycling through a dozen pool-hall names) via a one-off script against the
+  repositories - not part of the app itself, just dev-environment test data.
 
 ## v0.15.1 — 2026-07-08 (UI)
 

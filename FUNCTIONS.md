@@ -55,12 +55,16 @@ simply isn't selected as an entrant.
 
 ## 3. Managing teams (Teams tab)
 
-Works the same way as Players, but simpler — a team is just a name (no player
-roster or membership tracking).
+Works the same way as Players, but simpler — a team has no player roster or
+membership tracking, just a name plus two optional descriptive fields.
 
 1. Click **New Team**.
-2. Enter the **Team Name**.
-3. Click **Save**.
+2. Enter the **Team Name** (required).
+3. Optionally fill in **Division** (a short number or alphanumeric code, e.g. "1"
+   or "A") and **Location** (the name of the pool hall the team plays out of).
+   Neither is used in scheduling or seeding — they're informational, shown in
+   the Teams grid for your own reference.
+4. Click **Save**.
 
 Teams are only usable as entrants in formats that support them (see below).
 
