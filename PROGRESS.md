@@ -5,6 +5,12 @@ the top of each section.
 
 ## Current status
 
+v0.15.1 complete: on the Tournament Settings tab, the Entrants picker (Players or Teams,
+whichever applies) now sits in its own column to the right of the create-tournament form
+instead of stacked underneath it, and the "Appearance" blurb about following the Windows
+light/dark theme has been removed from the tab entirely (still true, just no longer worth a
+paragraph on a settings screen with nothing to configure).
+
 v0.15 complete: the whole bracket tree (every round, every format) now renders
 from the moment a tournament is created, with "TBD" placeholder boxes that
 fill in with real names as entrants advance, instead of a round only
@@ -133,6 +139,16 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.15.1 — 2026-07-08 (UI)
+
+- Tournament Settings tab: the Entrants list (Players or Teams, whichever the tournament format/
+  toggle calls for) now lays out in its own column to the right of the create-tournament form via
+  a two-column `Grid`, instead of stacked below the form fields inside the same narrow column.
+- Removed the "Appearance" heading and its explanatory paragraph about following the Windows
+  light/dark theme - correct but not worth space on a settings screen with nothing to configure.
+- Manually verified in the running app: Players entrants render at right for the default
+  (non-team) form, and toggling "Use Teams" swaps in the Teams entrants list in the same spot.
 
 ## v0.15 — 2026-07-08
 
