@@ -3,6 +3,28 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-08 — Deleting a tournament: let EF cascade the tracked graph; don't rely on a raw single DELETE
+
+**Issue:** Adding "delete a tournament" needed to remove the tournament plus its entrants, tables,
+matches, bracket detail + nodes, prize places, and ring/chip detail rows. All of those child tables
+have an `ON DELETE CASCADE` FK back to `Tournaments`, so a naive `DELETE FROM Tournaments WHERE
+Id=?` looks like it should just work with `PRAGMA foreign_keys=ON`. It doesn't reliably: the graph
+also has *internal* `Restrict` FKs - `Match.Player1/2EntrantId → TournamentEntrants`, `Match.TableId
+→ Tables`, `BracketNode.MatchId → Matches`. During a DB-driven cascade SQLite deletes the top-level
+children in an unspecified order, so it can try to delete a `TournamentEntrant` (or `Table`, or
+`Match`) while a row that `Restrict`-references it still exists → `FOREIGN KEY constraint failed`.
+
+**Fix:** `TournamentRepository.DeleteAsync` loads the full owned graph via `GetByIdAsync` (so every
+child is change-tracked) and then `_dbContext.Tournaments.Remove(tournament)` + `SaveChangesAsync`.
+EF computes the correct topological delete order for the tracked graph (bracket nodes before
+matches, matches before entrants/tables, etc.), so the internal Restrict FKs are satisfied. It also
+detaches the deleted entities from the singleton `DbContext` afterward (unlike `ExecuteDelete`,
+which bypasses the tracker and would leave stale tracked instances behind). Note the earlier
+`TrackRemoved` warning about `Remove()` throwing a duplicate-identity error applies to removing a
+*detached* entity reachable by multiple include paths - removing the still-attached, fully-tracked
+aggregate root is fine, and a real-SQLite test (`TournamentDeletionTests`) confirms a full
+single-elimination tournament deletes cleanly with its players left intact.
+
 ## 2026-07-08 — "Create Tournament does nothing": the button worked, but its StatusMessage had nowhere to display on the Tournament Settings tab
 
 **Issue:** User reported the Create Tournament button "seems to not function." The button was fine -

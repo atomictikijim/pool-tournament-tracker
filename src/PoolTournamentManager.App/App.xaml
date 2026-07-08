@@ -16,6 +16,7 @@
             <converters:EnumEqualsConverter x:Key="EnumEqualsConverter" />
             <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter" />
             <converters:NonEmptyToVisibilityConverter x:Key="NonEmptyToVisibilityConverter" />
+            <converters:NotNullToBoolConverter x:Key="NotNullToBoolConverter" />
             <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         </ResourceDictionary>
     </Application.Resources>

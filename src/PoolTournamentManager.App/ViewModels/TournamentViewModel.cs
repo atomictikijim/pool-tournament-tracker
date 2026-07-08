@@ -922,6 +922,29 @@ public partial class TournamentViewModel : ObservableObject
         SelectedTournamentSummary = State.Tournaments.FirstOrDefault(t => t.Id == tournament.Id);
     }
 
+    /// <summary>
+    /// Permanently deletes the given tournament and all of its data. The caller (the Tournament
+    /// tab) is responsible for confirming with the user first. Clears the active/selected
+    /// tournament if it was the one removed, then refreshes the picker list.
+    /// </summary>
+    public async Task DeleteTournamentAsync(Tournament tournament)
+    {
+        var name = tournament.Name;
+        var wasActive = State.ActiveTournament?.Id == tournament.Id;
+
+        await _tournamentRepository.DeleteAsync(tournament.Id);
+
+        if (wasActive)
+        {
+            // Tears down the bracket/tables/standings bound to the now-deleted tournament.
+            await State.SelectTournamentAsync(null);
+        }
+
+        SelectedTournamentSummary = null;
+        await State.LoadTournamentsAsync();
+        StatusMessage = $"Deleted tournament '{name}'.";
+    }
+
     [RelayCommand]
     private async Task StartMatchAsync(MatchRowViewModel? row)
     {

@@ -158,6 +158,15 @@ list on the left.
 The left column lists every tournament you've created — click one to select it and
 work with it on the right.
 
+### Deleting a tournament
+
+Select a tournament in the left-hand list and click **Delete Tournament** (below the
+list) to remove it permanently. You'll be asked to confirm first — deletion can't be
+undone. This deletes the tournament along with its bracket, matches, tables, and
+entrant list, but it does **not** delete the Players or Teams themselves (they stay
+on their rosters for use in other tournaments). The button is disabled until you've
+selected a tournament.
+
 ### Tables
 
 The **Tables** row along the top shows every table you've added. Click **Add Table**

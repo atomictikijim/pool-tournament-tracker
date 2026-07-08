@@ -237,6 +237,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Text="Tournaments" FontWeight="Bold" FontSize="14" Margin="0,0,0,6" />
@@ -252,7 +253,14 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <TextBlock Grid.Row="2" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="11"
+                    <!-- Permanently deletes the selected tournament (with all its matches/bracket/
+                         entrant links). Confirmation is handled in code-behind before anything is
+                         removed; only enabled once a tournament is selected. -->
+                    <Button Grid.Row="2" Content="Delete Tournament" Margin="0,8,0,0" Padding="8,4"
+                            HorizontalAlignment="Left" Click="DeleteTournamentButton_OnClick"
+                            IsEnabled="{Binding SelectedTournamentSummary, Converter={StaticResource NotNullToBoolConverter}}" />
+
+                    <TextBlock Grid.Row="3" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="11"
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                Text="Create and configure tournaments on the Tournament Settings tab." />
                 </Grid>

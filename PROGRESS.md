@@ -5,6 +5,17 @@ the top of each section.
 
 ## Current status
 
+v0.20 complete: you can now delete a tournament from the Tournament tab. Select one in the picker
+and click **Delete Tournament** (disabled until something is selected); a Yes/No confirmation runs
+first (irreversible). New `ITournamentRepository.DeleteAsync(id)` loads the full owned graph and
+`Remove()`s it so EF cascades children (entrants, tables, matches, bracket + nodes, prize places,
+ring/chip detail rows) in the correct order despite the tournament's internal Restrict FKs - and
+detaches them from the singleton context afterward. Players/Teams referenced by entrants are NOT
+deleted. `TournamentViewModel.DeleteTournamentAsync` clears the active/selected tournament if it
+was the one removed and refreshes the list. +2 Data tests (cascade-delete-keeps-players,
+no-op-for-unknown-id); 137 total. Verified end-to-end in the app (deleted a real tournament, DB
+orphan check clean).
+
 v0.19.2 complete (UI): fixed "Create Tournament does nothing." The button always worked - its
 `CreateTournamentCommand` sets a `StatusMessage` on both validation failure and success - but the
 Tournament Settings tab had no element bound to `StatusMessage` (it never came along when the create
@@ -192,6 +203,29 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.20 — 2026-07-08
+
+- **Delete a tournament from the Tournament tab.** Added a **Delete Tournament** button beneath the
+  tournament picker, enabled only when one is selected (`NotNullToBoolConverter`). Clicking it
+  confirms via a Yes/No dialog (in `MainWindow.xaml.cs`, matching the player/team delete pattern),
+  then calls `TournamentViewModel.DeleteTournamentAsync`, which deletes the tournament, resets the
+  active/selected tournament if it was the one removed (tearing down the bound bracket/tables), and
+  refreshes the picker with a "Deleted tournament '...'." status.
+- **`ITournamentRepository.DeleteAsync(Guid)`** loads the full owned graph via `GetByIdAsync` (so
+  every child is tracked) then `Remove()` + `SaveChanges`. EF then orders the cascade correctly
+  across the tournament's internal Restrict FKs (Match→Entrant/Table, BracketNode→Match) - a raw
+  single `DELETE` relying on SQLite's own ON DELETE CASCADE could hit those in the wrong order.
+  Remove()+SaveChanges also detaches the deleted entities from the singleton `DbContext`. Players
+  and Teams referenced by the entrants are left intact (their entrant FK is Restrict, but the
+  entrant rows themselves are the tournament's own children and go with it).
+- Two new Data tests (`TournamentDeletionTests`): a full single-elimination tournament (bracket,
+  matches, nodes, tables, entrants) deleted on a shared context that first eager-loaded it,
+  asserting all owned rows gone and all 4 players kept; plus a no-op-for-unknown-id case. 137 tests
+  total, solution green, 0 warnings.
+- Verified end-to-end in the app: selected a tournament, got the confirmation dialog, deleted it,
+  saw it leave the list with the status message, and confirmed via a direct SQLite query that zero
+  orphaned entrants/matches/tables/bracket-nodes remained and the player/team rosters were untouched.
 
 ## v0.19.2 — 2026-07-08 (UI)
 

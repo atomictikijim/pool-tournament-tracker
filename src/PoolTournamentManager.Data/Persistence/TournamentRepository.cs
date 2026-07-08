@@ -40,6 +40,24 @@ public class TournamentRepository : ITournamentRepository
         await _dbContext.SaveChangesAsync();
     }
 
+    public async Task DeleteAsync(Guid tournamentId)
+    {
+        // Load the whole owned graph first so every child (matches, bracket nodes, tables,
+        // entrants, ring/chip detail rows) is tracked. EF then cascades the delete in the correct
+        // dependency order - the tournament's internal foreign keys (Match -> Entrant/Table,
+        // BracketNode -> Match) are Restrict, so a raw single DELETE relying on the database's own
+        // cascade could hit those in the wrong order. Remove() + SaveChanges also detaches the
+        // deleted entities from this (singleton) context's change tracker afterward.
+        var tournament = await GetByIdAsync(tournamentId);
+        if (tournament is null)
+        {
+            return;
+        }
+
+        _dbContext.Tournaments.Remove(tournament);
+        await _dbContext.SaveChangesAsync();
+    }
+
     public void TrackNew(object entity)
     {
         _dbContext.Add(entity);

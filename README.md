@@ -34,6 +34,9 @@ live results on a second screen.
   Tournament tab and Display window as entrants are decided.
 - **Live match operation.** Assign tables, start/finish matches with a live elapsed
   timer, and report scores — the bracket, standings, or ledger update immediately.
+- **Delete a tournament** you no longer need from the Tournament tab (with a
+  confirmation prompt); its bracket/matches/tables are removed while the players and
+  teams stay on their rosters.
 - **Second-screen Display window.** A read-only, projector-friendly window mirroring
   the live bracket/standings/rotation board, for the room to watch.
 - **Follows Windows light/dark mode** automatically, live, with no in-app settings.

@@ -172,6 +172,24 @@ public partial class MainWindow : Window
         }
     }
 
+    // ----- Tournament tab: delete the selected tournament, with confirmation -----
+
+    private async void DeleteTournamentButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var selected = _viewModel.Tournament.SelectedTournamentSummary;
+        if (selected is null)
+        {
+            return;
+        }
+
+        if (Confirm($"Permanently delete tournament \"{selected.Name}\"?\n\n" +
+                    "This removes its bracket, matches, tables and entrant list. " +
+                    "Players and teams are not deleted. This cannot be undone."))
+        {
+            await _viewModel.Tournament.DeleteTournamentAsync(selected);
+        }
+    }
+
     private bool Confirm(string message) =>
         MessageBox.Show(this, message, "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning)
             == MessageBoxResult.Yes;
