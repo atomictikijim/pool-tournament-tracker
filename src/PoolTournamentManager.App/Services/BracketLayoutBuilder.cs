@@ -59,6 +59,20 @@ public static class BracketLayoutBuilder
         var winnersBandTop = winnersHeaderY + HeaderHeight;
         var winnersBoxes = LayoutSide(layout, m, winners, columnBase: 0, bandTop: winnersBandTop, headerY: winnersHeaderY);
 
+        // Final stage (Modified Single Elimination's cross-pod bracket) is a continuation of the
+        // winners progression once every pod's reps converge into one shared bracket, so it
+        // renders as trailing columns in the same Winners Bracket band/section rather than its
+        // own - same treatment as Grand Final below, just via LayoutSide since it can span
+        // multiple rounds (semifinal/final for 2 pods, quarterfinal onward for 4+).
+        if (finals.Count > 0)
+        {
+            var finalsBoxes = LayoutSide(layout, m, finals, columnBase: winners.Count, bandTop: winnersBandTop, headerY: winnersHeaderY);
+            foreach (var (key, box) in finalsBoxes)
+            {
+                winnersBoxes[key] = box;
+            }
+        }
+
         if (isDouble)
         {
             layout.SectionLabels.Add(new BracketLabelViewModel("Winners Bracket", LeftPad, TopPad, m.BoxWidth * 2));
@@ -68,28 +82,15 @@ public static class BracketLayoutBuilder
         var winnersFinal = winners.Count > 0 ? winnersBoxes.GetValueOrDefault(Key(winners[^1], 0)) : null;
 
         // ---- Losers band --------------------------------------------------------------------
-        Dictionary<string, PositionedMatchViewModel> losersBoxes = new();
         PositionedMatchViewModel? losersFinal = null;
-        var losersBottom = winnersBottom;
         if (losers.Count > 0)
         {
             var losersLabelY = winnersBottom + SectionGap;
             var losersHeaderY = losersLabelY + SectionLabelHeight;
             var losersBandTop = losersHeaderY + HeaderHeight;
             layout.SectionLabels.Add(new BracketLabelViewModel("Losers Bracket", LeftPad, losersLabelY, m.BoxWidth * 2));
-            losersBoxes = LayoutSide(layout, m, losers, columnBase: 0, bandTop: losersBandTop, headerY: losersHeaderY);
+            var losersBoxes = LayoutSide(layout, m, losers, columnBase: 0, bandTop: losersBandTop, headerY: losersHeaderY);
             losersFinal = losersBoxes.GetValueOrDefault(Key(losers[^1], 0));
-            losersBottom = losersBoxes.Count > 0 ? losersBoxes.Values.Max(b => b.Y + b.Height) : losersBandTop;
-        }
-
-        // ---- Final-rounds band (Modified Single Elimination's cross-pod stage) --------------
-        if (finals.Count > 0)
-        {
-            var finalsLabelY = losersBottom + SectionGap;
-            var finalsHeaderY = finalsLabelY + SectionLabelHeight;
-            var finalsBandTop = finalsHeaderY + HeaderHeight;
-            layout.SectionLabels.Add(new BracketLabelViewModel("Final Rounds", LeftPad, finalsLabelY, m.BoxWidth * 2));
-            LayoutSide(layout, m, finals, columnBase: 0, bandTop: finalsBandTop, headerY: finalsHeaderY);
         }
 
         // ---- Grand final(s) -----------------------------------------------------------------

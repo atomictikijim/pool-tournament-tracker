@@ -6,43 +6,59 @@ namespace PoolTournamentManager.App.ViewModels;
 
 public class MatchRowViewModel : ObservableObject
 {
-    public Match Match { get; }
+    public Match? Match { get; }
 
-    public string Player1Name => Match.Player1Entrant?.DisplayName ?? "TBD";
-    public string Player2Name => Match.Player2EntrantId is null
-        ? "BYE"
-        : Match.Player2Entrant?.DisplayName ?? "TBD";
-    public bool IsStartable => Match.Status == MatchStatus.Scheduled && !Match.IsBye;
-    public bool IsInProgress => Match.Status == MatchStatus.InProgress;
-    public bool IsComplete => Match.Status == MatchStatus.Completed;
+    private readonly TournamentEntrant? _placeholderPlayer1;
+    private readonly TournamentEntrant? _placeholderPlayer2;
+
+    /// <summary>
+    /// True for a bracket slot whose match hasn't materialized yet (both entrant slots aren't
+    /// known, or only one is). Never represents a bye - Round 1's byes are always resolved
+    /// immediately at creation, and every later-round/Grand-Final node always needs two real
+    /// winners to arrive - so an empty placeholder slot always means "TBD", never "BYE".
+    /// </summary>
+    public bool IsPlaceholder => Match is null;
+
+    public string Player1Name => Match is not null
+        ? Match.Player1Entrant?.DisplayName ?? "TBD"
+        : _placeholderPlayer1?.DisplayName ?? "TBD";
+    public string Player2Name => Match is not null
+        ? (Match.Player2EntrantId is null ? "BYE" : Match.Player2Entrant?.DisplayName ?? "TBD")
+        : _placeholderPlayer2?.DisplayName ?? "TBD";
+    public bool IsStartable => Match is not null && Match.Status == MatchStatus.Scheduled && !Match.IsBye;
+    public bool IsInProgress => Match?.Status == MatchStatus.InProgress;
+    public bool IsComplete => Match?.Status == MatchStatus.Completed;
 
     /// <summary>True only for a completed match that was actually timed (not an auto-completed
     /// bye, which never gets a StartedAtUtc) - gates the "Finished in ..." duration display.</summary>
-    public bool HasFinishedDuration => IsComplete && Match.StartedAtUtc is not null;
-    public string? WinnerName => Match.WinnerEntrantId is null
+    public bool HasFinishedDuration => IsComplete && Match?.StartedAtUtc is not null;
+    public string? WinnerName => Match?.WinnerEntrantId is null
         ? null
         : Match.WinnerEntrantId == Match.Player1EntrantId
             ? Player1Name
             : Player2Name;
-    public bool IsPlayer1Winner => Match.WinnerEntrantId is not null && Match.WinnerEntrantId == Match.Player1EntrantId;
-    public bool IsPlayer2Winner => Match.WinnerEntrantId is not null && Match.WinnerEntrantId == Match.Player2EntrantId;
+    public bool IsPlayer1Winner => Match?.WinnerEntrantId is not null && Match.WinnerEntrantId == Match.Player1EntrantId;
+    public bool IsPlayer2Winner => Match?.WinnerEntrantId is not null && Match.WinnerEntrantId == Match.Player2EntrantId;
 
-    public int? Player1Seed => Match.Player1Entrant?.SeedNumber;
-    public int? Player2Seed => Match.Player2EntrantId is null ? null : Match.Player2Entrant?.SeedNumber;
+    public int? Player1Seed => Match is not null ? Match.Player1Entrant?.SeedNumber : _placeholderPlayer1?.SeedNumber;
+    public int? Player2Seed => Match is not null
+        ? (Match.Player2EntrantId is null ? null : Match.Player2Entrant?.SeedNumber)
+        : _placeholderPlayer2?.SeedNumber;
 
     /// <summary>Per-line projections used by the read-only bracket-tree display.</summary>
-    public PlayerLineViewModel Player1Line => new(Player1Name, Match.Player1Score, IsPlayer1Winner, Player1Seed);
-    public PlayerLineViewModel Player2Line => new(Player2Name, Match.Player2Score, IsPlayer2Winner, Player2Seed);
+    public PlayerLineViewModel Player1Line => new(Player1Name, Match?.Player1Score, IsPlayer1Winner, Player1Seed);
+    public PlayerLineViewModel Player2Line => new(Player2Name, Match?.Player2Score, IsPlayer2Winner, Player2Seed);
 
     /// <summary>
     /// Elapsed time as "mm:ss" (or "h:mm:ss" past an hour) - live while in progress (measured
-    /// against now), frozen at the final duration once completed, empty before the match starts.
+    /// against now), frozen at the final duration once completed, empty before the match starts
+    /// (including a placeholder row, which has no match to start).
     /// </summary>
     public string ElapsedDisplay
     {
         get
         {
-            if (Match.StartedAtUtc is null)
+            if (Match?.StartedAtUtc is null)
             {
                 return string.Empty;
             }
@@ -57,6 +73,15 @@ public class MatchRowViewModel : ObservableObject
     public MatchRowViewModel(Match match)
     {
         Match = match;
+    }
+
+    /// <summary>A bracket slot whose match hasn't materialized yet - shows whichever entrant(s)
+    /// have already arrived via a prior round's result, "TBD" for the rest.</summary>
+    public MatchRowViewModel(TournamentEntrant? player1, TournamentEntrant? player2)
+    {
+        Match = null;
+        _placeholderPlayer1 = player1;
+        _placeholderPlayer2 = player2;
     }
 
     /// <summary>Called once a second by TournamentStateService's shared timer to refresh the

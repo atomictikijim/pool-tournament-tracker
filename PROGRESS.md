@@ -5,6 +5,14 @@ the top of each section.
 
 ## Current status
 
+v0.15 complete: the whole bracket tree (every round, every format) now renders
+from the moment a tournament is created, with "TBD" placeholder boxes that
+fill in with real names as entrants advance, instead of a round only
+appearing once every match in it is playable. Double Elimination's Grand
+Final and Modified Single Elimination's cross-pod Final stage now render as
+trailing columns inside the "Winners Bracket" section instead of their own
+separately-labeled band.
+
 v0.14.1 complete: the main tab selectors (Players/Teams/Tournament/Tournament
 Settings) now look like a row of separate buttons instead of flat text in a
 strip.
@@ -125,6 +133,48 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.15 — 2026-07-08
+
+- **Whole bracket tree visible from tournament creation.** Previously a round only appeared once
+  every match in it had "materialized" (both slots known), so a fresh 8-player bracket showed
+  only Round 1 - the Quarterfinal/Semifinal/Final columns popped into existence one at a time as
+  the tournament progressed. `BracketNode` already exists for every round of the entire tree
+  upfront (created by `BracketGenerationService` at tournament creation) - only `Match` rows are
+  lazily materialized once both slots resolve. The gap was purely in the App layer, which threw
+  away any node whose `Match` hadn't materialized yet before it reached the view models. No
+  Core/database change was needed.
+- `MatchRowViewModel.Match` is now nullable; a new constructor represents a bracket slot with no
+  materialized match yet, showing whichever entrant(s) have already arrived via a prior round's
+  result and "TBD" for the rest (never "BYE" - a placeholder is never a legitimate bye, since
+  Round 1's byes are always resolved immediately and every later-round/Grand-Final node always
+  needs two real winners to arrive). `TournamentStateService.RebuildRounds` no longer filters out
+  nodes without a `Match`, resolving placeholder names against `tournament.Entrants` (always
+  fully loaded, unlike `Match.Player1Entrant`/`Player2Entrant` navigation). Every existing
+  read-only/editable card template needed **zero XAML changes** - `IsStartable`/`IsInProgress`/
+  `IsComplete` all naturally evaluate false for a placeholder, so it renders as a plain "TBD vs
+  TBD" box with no Start/Finish controls, exactly matching the existing pending-match look.
+- **Grand Final and Modified Single Elimination's cross-pod Final stage now render inside the
+  Winners Bracket section** rather than their own band. Double Elimination's Grand Final already
+  had no separate section label (just needed to keep working once its placeholder always exists
+  from creation); Modified Single Elimination's cross-pod stage previously got its own "Final
+  Rounds" band stacked below Losers Bracket - `BracketLayoutBuilder` now lays it out as trailing
+  columns in the same band as Winners, right after the last Winners column.
+- Tests: 104 pass (91 Core + 2 Data + 11 App, up from 98 total) - new
+  `BracketFullVisibilityTests` (real-SQLite, same pattern as `TournamentEntrantAdditionTests`)
+  proves the Final round shows "TBD vs TBD" before Round 1 is played and fills in real winner
+  names after; new `MatchRowViewModelTests` cover the placeholder constructor (TBD not BYE for
+  unresolved slots, one-slot-resolved, all match-state properties false); new
+  `BracketLayoutBuilderTests` case proves a `BracketSide.Final` round list lays out inside the
+  Winners band with no separate "Final Rounds" section label.
+- Verified end-to-end in the running app: created a fresh 8-entrant Single Elimination
+  tournament and confirmed Round 1/Semifinals/Final all render immediately (the bye winner
+  already showing in the Semifinal slot), played a Round 1 match and watched its Semifinal slot
+  fill in with the real winner's name while Final stayed "TBD vs TBD"; opened an existing Double
+  Elimination tournament and confirmed the Grand Final box (TBD vs TBD, connected to both the WB
+  Final and LB Final) sits beside the Winners band with no separate section label; opened a
+  completed Modified Single Elimination tournament and confirmed its Semifinals/Final columns
+  render under the "Winners Bracket" label rather than a separate "Final Rounds" band.
 
 ## v0.14.1 — 2026-07-08 (UI)
 

@@ -759,12 +759,13 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
-        var tournament = State.ActiveTournament;
-        var match = row.Match;
         if (!row.IsStartable)
         {
             return;
         }
+
+        var tournament = State.ActiveTournament;
+        var match = row.Match!; // IsStartable guarantees a materialized Match.
 
         if (tournament.Format != TournamentFormat.RingGame && tournament.Tables.Count == 0)
         {
@@ -798,6 +799,11 @@ public partial class TournamentViewModel : ObservableObject
     private async Task FinishMatchAsync(MatchRowViewModel? row)
     {
         if (row is null || State.ActiveTournament is null)
+        {
+            return;
+        }
+
+        if (row.Match is null)
         {
             return;
         }

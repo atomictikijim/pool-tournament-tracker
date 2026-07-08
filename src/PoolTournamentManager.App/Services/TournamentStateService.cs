@@ -178,16 +178,26 @@ public partial class TournamentStateService : ObservableObject
             [BracketSide.Final] = 3
         };
         var groups = bracket.Nodes
-            .Where(n => n.MatchId is not null)
             .GroupBy(n => (n.Side, n.RoundNumber))
             .OrderBy(g => sideRank[g.Key.Side])
             .ThenBy(g => g.Key.RoundNumber);
+
+        // Every round's BracketNodes exist from tournament creation (see BracketGenerationService),
+        // even for rounds whose Match hasn't materialized yet - so the whole bracket shape renders
+        // immediately, with "TBD" placeholder rows for a node whose Match doesn't exist yet.
+        // tournament.Entrants is always fully loaded (unlike Match.Player1Entrant/Player2Entrant -
+        // see FinishMatchAsync's reload comment), so this lookup is reliable with no reload needed.
+        var entrantsById = tournament.Entrants.ToDictionary(e => e.Id);
 
         foreach (var group in groups)
         {
             var matchRows = group
                 .OrderBy(n => n.PositionInRound)
-                .Select(n => new MatchRowViewModel(n.Match!))
+                .Select(n => n.Match is not null
+                    ? new MatchRowViewModel(n.Match)
+                    : new MatchRowViewModel(
+                        n.Slot1EntrantId is { } p1 ? entrantsById.GetValueOrDefault(p1) : null,
+                        n.Slot2EntrantId is { } p2 ? entrantsById.GetValueOrDefault(p2) : null))
                 .ToList();
 
             var title = BuildRoundTitle(bracket, group.Key.Side, group.Key.RoundNumber, group.Any(n => n.IsGrandFinalReset));

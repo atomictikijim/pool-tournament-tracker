@@ -88,4 +88,43 @@ public class BracketLayoutBuilderTests
         var losersTop = layout.Boxes.Skip(6).Min(b => b.Y);
         Assert.True(losersTop > winnersBottom, "Losers band should sit entirely below the winners band.");
     }
+
+    [Fact]
+    public void ModifiedSingleElimination_FoldsFinalStageIntoWinnersBand_NotItsOwnSection()
+    {
+        var rounds = new List<RoundGroupViewModel>
+        {
+            Round(1, "Winners Round 1", 4, BracketSide.Winners),
+            Round(2, "Winners Round 2", 2, BracketSide.Winners),
+            Round(1, "Losers Round 1", 2, BracketSide.Losers),
+            Round(2, "Semifinals", 2, BracketSide.Final),
+            Round(3, "Final", 1, BracketSide.Final),
+        };
+
+        var layout = BracketLayoutBuilder.Build(rounds);
+
+        // No separate "Final Rounds" section - only Winners/Losers bands.
+        Assert.DoesNotContain(layout.SectionLabels, l => l.Text == "Final Rounds");
+        Assert.Contains(layout.SectionLabels, l => l.Text == "Winners Bracket");
+        Assert.Contains(layout.SectionLabels, l => l.Text == "Losers Bracket");
+
+        // Final-side boxes sit in the same row/band as the Winners boxes (same Y range as the
+        // Winners Round 1 box), as trailing columns after Winners Round 1/2.
+        var winnersRound1Top = layout.Boxes.Take(4).Min(b => b.Y);
+        var winnersRound1Bottom = layout.Boxes.Take(4).Max(b => b.Y + b.Height);
+        var finalBoxes = layout.Boxes.Skip(6).Take(3).ToList(); // after 4 (WR1) + 2 (WR2) winners boxes, before Losers
+        Assert.Equal(3, finalBoxes.Count); // 2 semifinal + 1 final
+        Assert.All(finalBoxes, b => Assert.InRange(b.Y, winnersRound1Top, winnersRound1Bottom));
+
+        // Final-side columns trail after both Winners columns (2), i.e. columns 2 and 3.
+        var winnersColumns = layout.Boxes.Take(6).Select(b => b.X).Distinct().Count();
+        Assert.Equal(2, winnersColumns);
+        var finalColumns = finalBoxes.Select(b => b.X).Distinct().OrderBy(x => x).ToList();
+        Assert.Equal(2, finalColumns.Count);
+
+        // Losers band still stacks below the combined Winners+Final band.
+        var combinedBottom = layout.Boxes.Take(9).Max(b => b.Y + b.Height);
+        var losersTop = layout.Boxes.Skip(9).Min(b => b.Y);
+        Assert.True(losersTop > combinedBottom, "Losers band should sit entirely below the winners+final band.");
+    }
 }
