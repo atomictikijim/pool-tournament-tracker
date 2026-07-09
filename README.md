@@ -72,6 +72,29 @@ Tournament data is stored in a local SQLite database under
 `%LOCALAPPDATA%\PoolTournamentManager\tournaments.db`, created and migrated
 automatically on first launch — no setup required.
 
+## Building an installer
+
+To hand the app to someone else (or install it on another Windows computer) as a
+proper `Setup.exe` — Start Menu shortcut, uninstaller, no .NET runtime required on
+the target machine — run:
+
+```powershell
+./build-installer.ps1
+```
+
+This publishes a self-contained `win-x64` build and compiles it into
+`installer/output/PoolTournamentManager-Setup-v<version>.exe` via [Inno
+Setup](https://jrsoftware.org/isinfo.php) (`installer/PoolTournamentManager.iss`).
+Install Inno Setup once first if it isn't already on this machine:
+
+```powershell
+winget install --id JRSoftware.InnoSetup -e
+```
+
+Uninstalling the app removes the installed program files only — it never touches
+`%LOCALAPPDATA%\PoolTournamentManager`, so a reinstall picks up existing tournament
+data untouched.
+
 ## Tests
 
 ```powershell

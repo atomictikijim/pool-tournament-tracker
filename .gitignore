@@ -11,6 +11,7 @@ obj/
 ## Test / publish output
 [Tt]est[Rr]esult*/
 publish/
+installer/output/
 
 ## Local app data (never committed; app writes its DB under %LOCALAPPDATA%)
 *.db
