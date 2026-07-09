@@ -16,6 +16,14 @@ public class ChipGameEntry
     /// <summary>Monotonic ordering within the tournament, for chronological replay and undo.</summary>
     public int Sequence { get; set; }
 
+    /// <summary>
+    /// The table this game was played at. Null for legacy entries recorded before table rotation
+    /// was tracked - those still count toward chip loss and win/loss tallies, they just don't
+    /// participate in ChipGameService.ComputeTableBoard's seating replay.
+    /// </summary>
+    public Guid? TableId { get; set; }
+
     public TournamentEntrant? WinnerEntrant { get; set; }
     public TournamentEntrant? LoserEntrant { get; set; }
+    public Table? Table { get; set; }
 }

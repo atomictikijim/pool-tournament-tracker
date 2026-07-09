@@ -5,6 +5,25 @@ the top of each section.
 
 ## Current status
 
+v0.24 complete: **Chip Tournament runs on shuffled table rotation with win-rate tracking.**
+`ChipGameEntry` gained a nullable `TableId` (mirrors `Match.TableId`). A new
+`ChipGameService.ShuffleAndSeatPlayers` randomly orders active entrants into
+`TournamentEntrant.SeedNumber` (same pattern as `BracketGenerationService.RandomDraw`); a new
+static `ComputeTableBoard` replays `SeedNumber` + the game log into a `ChipTableBoard` (per-table
+`Player1`/`Player2` seats + an ordered `NextUp` queue) - initial seeding takes entrants two at a
+time per table in shuffle order, each recorded game keeps the winner seated and either eliminates
+the loser or sends them to the back of the queue, vacancies refill from the queue table-by-table,
+and once the queue is empty any tables left with a single occupant are consolidated together so
+the board never stalls near the end of a tournament. `RecordGame` now takes a `tableId` and
+validates the submitted outcome against who's actually seated there. `ComputeStandings` also now
+tracks `MatchesWon`/`MatchesPlayed`/`WinPercentage` per entrant. UI: the old free-form winner/loser
+dropdowns are replaced by a table-board of cards with per-seat "Wins" buttons, a "Shuffle & Seat
+Players" button (disabled once any table game has been recorded), and a "Next Up" queue list on
+the Tournament tab; the Display window mirrors the table board and Next Up queue read-only; the
+standings grid gained Won/Win % columns. +14 Core tests (table-board walkthroughs including a
+singles-consolidation endgame, seating-mismatch rejection, shuffle guards, legacy-entry handling,
+win-rate math); 124 Core tests total.
+
 v0.23 complete: **Modified Single Elimination now accepts any field of 8 or more** (was
 multiple-of-8-and-power-of-2 only). Entrants are split into `ceil(count/8)` pods as evenly as
 possible (`ModifiedSingleEliminationPodSizes` - e.g. 20 -> [7,7,6], 24 -> [8,8,8]); a partial pod
@@ -213,10 +232,10 @@ sections for double elimination.
   up through team results.
 - [x] Add-players-after-creation, required table counts, match Start/Finish +
   timer (done in v0.11).
-- [ ] Ring Game / Chip Tournament formats don't use Match/Table at all, so
-  Start/Finish/timer only applies to Single/Double Elimination and Round
-  Robin; Chip Tournament still requires a table count at creation (per "every
-  format except Ring Game") but nothing currently consumes it.
+- [x] Chip Tournament now uses its allocated Tables (done in v0.24): players are
+  shuffled and seated in rotation, with winner-stays/next-up-in dynamics. Ring
+  Game still doesn't use Match/Table at all - Start/Finish/timer still only
+  applies to Single/Double Elimination and Round Robin.
 - [ ] Add-player-after-creation is pre-play-only for every format (locked once
   any match/game has been played) - no support yet for adding players
   mid-tournament even where a format could technically tolerate it (e.g. Ring
@@ -226,7 +245,10 @@ sections for double elimination.
   ring game, chip tournament). No unimplemented format remains.
 - [ ] Chip-tournament follow-ups: an undo/correction control for a mis-recorded
   game (the ledger already supports it - only the UI is missing); optionally
-  enforce that payouts don't exceed the pot; a game-history/log view.
+  enforce that payouts don't exceed the pot; a game-history/log view. Table
+  rotation (v0.24) has no anti-rematch rule - if only one player is waiting,
+  they can immediately rematch the table they just left; documented as a known
+  simplification in NOTES.md rather than fixed.
 - [ ] Ring game follow-ups: rebuys / adding a waiting player into a vacated
   spot mid-session (deferred from 0.7; rotation is fixed for now), and
   optional per-rack pot-distribution rules (pay-the-breaker, etc.).
@@ -236,6 +258,44 @@ sections for double elimination.
   connectors; consider seed numbers / match numbers on each box.
 
 ## Change log
+
+## v0.24 — 2026-07-09
+
+- **Chip Tournament now runs on table rotation instead of free-form ad-hoc games.**
+  `ChipGameEntry.TableId` (nullable `Guid`, FK to `Table`, restrict-delete) records which table each
+  game was played at; legacy entries with no table still count toward chip loss and win/loss
+  tallies but don't participate in seating.
+- **`ChipGameService.ShuffleAndSeatPlayers`** randomly orders the still-active entrants into
+  `TournamentEntrant.SeedNumber` (same `Random.Shared.OrderBy` pattern as
+  `BracketGenerationService.RandomDraw`). Callable any time before the first table-tracked game -
+  including to re-shuffle or pick up a late-added table - but throws once any recorded entry has a
+  `TableId`. A tournament with only legacy (pre-feature) table-less games can still shuffle once and
+  adopt table rotation going forward.
+- **`ChipGameService.ComputeTableBoard`** (static, pure - recomputed from scratch every call, never
+  stored) replays the shuffle order and the game log into a `ChipTableBoard`: each table's current
+  `Player1`/`Player2` seats, and an ordered `NextUp` queue. Initial seeding takes two entrants per
+  table in shuffle order (leftovers queue up); each recorded game keeps the winner seated, and
+  either eliminates the loser or sends them to the back of the queue; vacancies refill from the
+  queue table-by-table; once the queue is empty, any tables left with exactly one occupant are
+  paired together (earlier table keeps the match, later table goes idle) so the board can't stall
+  near the end of a tournament when the table count doesn't evenly divide the surviving field.
+  Known simplification: no anti-rematch rule, so a lone waiting player can immediately rematch the
+  table they just left if no one else is free (documented in NOTES.md).
+- **`RecordGame`** now takes a `tableId` and validates the submitted (table, winner, loser) against
+  who's actually seated there via `ComputeTableBoard`, rejecting a stale/mismatched click with a
+  friendly message instead of corrupting the log.
+- **`ComputeStandings`** gained `MatchesWon`/`MatchesPlayed`/`WinPercentage` per entrant, tallied
+  from the same game-log replay used for chip counts and finishing places.
+- **UI**: the Tournament tab's Chip Tournament panel replaces the old winner/loser dropdowns with a
+  table-board of cards (each seat shows the player and a "Wins" button), a "Shuffle & Seat Players"
+  button (hidden once rotation has started), and a "Next Up" queue list; the standings grid gained
+  "Won" and "Win %" columns. The Display window mirrors the table board and Next Up queue read-only,
+  and the per-player summary cards now include the win/loss record.
+- +14 Core tests (table-board initial seeding, a full walkthrough exercising cross-table rotation
+  and the singles-consolidation endgame, seating-mismatch rejection, shuffle guards including the
+  legacy-adoption path, legacy null-table entries, win-rate math); 124 Core tests total. Data.Tests'
+  chip persistence test extended to add a table and pass `tableId` through every `RecordGame` call,
+  plus a `TableId`-survives-reload assertion.
 
 ## v0.23 — 2026-07-08
 

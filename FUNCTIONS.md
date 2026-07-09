@@ -261,14 +261,24 @@ table).
 Chip Tournament also has no bracket. A status line shows how many players remain,
 how many chips everyone started with, and the pot. Below that:
 
-1. Pick the **Winner** and the player they **beat** from the two dropdowns (both
-   lists only show players still in the tournament).
-2. Click **Record Game**.
-3. The loser drops one chip; the winner's chip count doesn't change. A player who
-   hits zero chips is eliminated and locks in a finishing place.
+1. Click **Shuffle & Seat Players** once, before the first game. This randomly
+   orders every player and seats them two-per-table at however many tables you
+   set up; any players left over wait in the **Next Up** queue. You can click it
+   again to re-shuffle (or to pick up a table you added late) right up until the
+   first game is recorded — after that it's no longer available.
+2. Each table shows its two current players as a card. When one of them wins,
+   click the **Wins** button next to their name.
+3. The loser drops one chip; the winner's chip count doesn't change and they stay
+   at that table. If the loser still has chips, they go to the back of the Next
+   Up queue and the next player in line takes their seat. A player who hits zero
+   chips is eliminated and locks in a finishing place — their seat is filled from
+   the queue instead. Once the queue is empty, any tables left with only one
+   player are paired up with each other so no one waits forever.
 
-The **standings grid** updates live after every game: finishing place, player, and
-current chip count. If prize payouts are configured, a separate **Prize Payouts**
+The **Next Up** list (operator screen) always shows who's waiting and in what
+order, so you know who to send to a table next. The **standings grid** updates
+live after every game: finishing place, player, current chip count, games won,
+and win percentage. If prize payouts are configured, a separate **Prize Payouts**
 panel below shows what each finishing place wins (see
 [Section 6](#6-entry-fees-and-prize-payouts)). The tournament completes automatically once one player is left holding
 chips — they're the champion.
@@ -392,11 +402,15 @@ session ends when only one player is left.
 ### Chip Tournament
 
 A "lives" tournament, not a bracket. Every player buys in and starts with the same
-number of chips. Games are logged one at a time between any two still-active
-players — the loser drops a chip, the winner is unaffected. A player at zero chips
-is eliminated (their finishing place is locked in at that moment). The last player
-still holding chips wins the tournament; see
-[Section 6](#6-entry-fees-and-prize-payouts) for how payouts are configured.
+number of chips. Players are shuffled into random order and seated two-per-table
+at whatever tables are set up; extra players wait in a "Next Up" queue. Each
+recorded game costs the loser a chip and removes them from that table — the
+winner stays put, and the next player in the queue takes the loser's seat (or, if
+the loser still has chips, they go to the back of the queue instead of leaving).
+A player at zero chips is eliminated (their finishing place is locked in at that
+moment). The last player still holding chips wins the tournament; see
+[Section 6](#6-entry-fees-and-prize-payouts) for how payouts are configured, and
+the standings grid for each player's chip count, games won, and win percentage.
 
 ## 8. The Display window
 
@@ -408,8 +422,8 @@ needed:
 - Tournament name and status.
 - A "Now Playing" board showing which match is on which table.
 - The live bracket (for elimination formats), Standings (Round Robin), rotation and
-  money board (Ring Game), or standings board (Chip Tournament) — completed matches'
-  winners are highlighted.
+  money board (Ring Game), or table board, Next Up queue, and standings board (Chip
+  Tournament) — completed matches' winners are highlighted.
 - The **Prize Payouts** panel, if the tournament has payouts configured (see
   [Section 6](#6-entry-fees-and-prize-payouts)) — not shown for Ring Game.
 

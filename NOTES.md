@@ -3,6 +3,40 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-09 — Chip Tournament table rotation: replay-from-scratch bug, and two documented simplifications
+
+**Issue found while building `ChipGameService.ComputeTableBoard`:** the initial seeding step
+filtered candidates with `entrants.Where(e => !e.IsEliminated)`. That looks right in isolation, but
+`ComputeTableBoard` recomputes the *entire* board from scratch on every call, including the initial
+seeding, using the entities' *current* `IsEliminated` flag - which `RecordGame` mutates permanently
+as more games get replayed. So by the time a later `RecordGame` call recomputed the board to
+validate itself, any player eliminated by an entry earlier in the same replay was already excluded
+from the initial-seeding pass, scrambling the whole seat assignment (a walkthrough test caught this
+immediately: an eliminated player's opponent ended up seeded at two tables at once, and requeued
+losers vanished into a NextUp with impossible duplicates).
+
+**Fix:** the initial-seeding filter should reflect "was this entrant still active *the moment
+ShuffleAndSeatPlayers ran*", not "is this entrant currently eliminated" - those are the same thing
+only until the first game gets replayed. `TournamentEntrant.SeedNumber` already captures that
+moment (only assigned to entrants active at shuffle time), so the filter became
+`e.SeedNumber is not null || !e.IsEliminated` - include anyone who was seeded (even if a later
+replayed entry goes on to eliminate them; the entries loop removes them from their seat at the
+right point) or who was never eliminated (a genuine late add with no SeedNumber, who falls to the
+back of the queue via the existing "nulls last" ordering). General lesson: any "replay the whole
+history from scratch" function must not read a mutable field that the replay itself (or a sibling
+method) permanently updates as a side effect - it silently makes the function's output depend on
+*how far* the history has already progressed, not just the history itself.
+
+**Two documented simplifications, not bugs:**
+- **Table order** is the trailing integer in `Table.Label` (regex, fallback ordinal string compare)
+  since tables have no ordinal/CreatedAt column and are always machine-labelled "Table {n}" today,
+  never renamed. Would need a real ordinal if a table-rename feature is ever added.
+- **No anti-rematch rule.** When the NextUp queue is empty and only one player is free, filling a
+  vacancy from the queue can immediately reseat that same player against the same opponent they just
+  lost to (or, via consolidation, a fresh opponent - but not guaranteed distinct from recent history).
+  Real pool-hall "winner stays" rotations have the same property when few players are left; fixing
+  it would need tracking recent-opponent history per table, which wasn't asked for.
+
 ## 2026-07-08 — Modified Single Elimination byes: keep full-pod pairing, spread partial-pod byes, and mind the reps-stage round numbering
 
 **Notes from adding even-split pods + byes to Modified Single Elimination (built on v0.22's bye

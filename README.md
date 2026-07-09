@@ -27,7 +27,9 @@ live results on a second screen.
     in a fixed order, and cash out individually as the session runs.
   - **Chip Tournament** — a buy-in "lives" tournament: every player starts with the
     same chip count, loses a chip on a loss, and is eliminated at zero; last player
-    standing wins, with configurable 1st/2nd/3rd payouts.
+    standing wins, with configurable 1st/2nd/3rd payouts. Players are shuffled and
+    seated at tables in rotation (winner stays, next player up takes the loser's
+    seat), with a live table board, Next Up queue, and per-player win-rate tracking.
 - **Teams as entrants.** Single, Double, and Modified Single Elimination can be run
   with Teams instead of individual Players.
 - **Entry fees and prize payouts.** Every format except Ring Game can charge a

@@ -4,9 +4,8 @@ namespace PoolTournamentManager.App.ViewModels;
 
 /// <summary>
 /// One player's row in the chip-tournament standings: their finishing place (once decided), chip
-/// count, and whether they've been eliminated. Rebuilt from a ChipStandingRow on every state
-/// change. Also serves the winner/loser pickers (via EntrantId + PlayerName). Payout is shown
-/// separately via the generic PrizePayoutRowViewModel panel.
+/// count, win/loss record, and whether they've been eliminated. Rebuilt from a ChipStandingRow on
+/// every state change. Payout is shown separately via the generic PrizePayoutRowViewModel panel.
 /// </summary>
 public class ChipStandingRowViewModel
 {
@@ -15,6 +14,9 @@ public class ChipStandingRowViewModel
     public int ChipsRemaining { get; }
     public bool IsEliminated { get; }
     public int? Place { get; }
+    public int MatchesWon { get; }
+    public int MatchesPlayed { get; }
+    public double WinPercentage { get; }
 
     /// <summary>"1", "2", … once decided, otherwise a dash.</summary>
     public string PlaceDisplay => Place?.ToString() ?? "—";
@@ -22,7 +24,13 @@ public class ChipStandingRowViewModel
     /// <summary>Chip count for the grid, e.g. "3 chips" / "Out".</summary>
     public string ChipsDisplay => IsEliminated ? "Out" : $"{ChipsRemaining} chip{(ChipsRemaining == 1 ? "" : "s")}";
 
-    /// <summary>One-line summary for the read-only display card, e.g. "Place 2  ·  Out".</summary>
+    /// <summary>Win-loss record for the grid, e.g. "5-2".</summary>
+    public string RecordDisplay => $"{MatchesWon}-{MatchesPlayed - MatchesWon}";
+
+    /// <summary>Win percentage for the grid, e.g. "71%", or a dash before anyone's played.</summary>
+    public string WinPercentageDisplay => MatchesPlayed == 0 ? "—" : $"{WinPercentage:0}%";
+
+    /// <summary>One-line summary for the read-only display card, e.g. "Place 2  ·  Out  ·  5-2 (71%)".</summary>
     public string SummaryLine
     {
         get
@@ -30,6 +38,7 @@ public class ChipStandingRowViewModel
             var parts = new List<string>();
             if (Place is not null) parts.Add($"Place {Place}");
             parts.Add(ChipsDisplay);
+            if (MatchesPlayed > 0) parts.Add($"{RecordDisplay} ({WinPercentageDisplay})");
             return string.Join("  ·  ", parts);
         }
     }
@@ -41,5 +50,8 @@ public class ChipStandingRowViewModel
         ChipsRemaining = row.ChipsRemaining;
         IsEliminated = row.IsEliminated;
         Place = row.Place;
+        MatchesWon = row.MatchesWon;
+        MatchesPlayed = row.MatchesPlayed;
+        WinPercentage = row.WinPercentage;
     }
 }

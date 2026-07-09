@@ -45,7 +45,7 @@ public class ChipGamePersistenceTests : IDisposable
 
         // --- Create + persist (mirrors TournamentViewModel.CreateTournamentAsync) ---
         var tournamentId = Guid.NewGuid();
-        Guid aId, bId, cId;
+        Guid aId, bId, cId, tableId;
         {
             using var ctx = NewContext();
             var repo = new TournamentRepository(ctx);
@@ -54,8 +54,16 @@ public class ChipGamePersistenceTests : IDisposable
             var a = Entrant(t.Id, "Alice");
             var b = Entrant(t.Id, "Bob");
             var c = Entrant(t.Id, "Carol");
+            // Pin the table-rotation seed order explicitly (mirrors ShuffleAndSeatPlayers) so the
+            // seating below doesn't depend on the Entrants collection's order surviving a reload -
+            // EF Core doesn't guarantee that without an explicit OrderBy.
+            a.SeedNumber = 1; b.SeedNumber = 2; c.SeedNumber = 3;
             t.Entrants.AddRange(new[] { a, b, c });
             aId = a.Id; bId = b.Id; cId = c.Id;
+
+            var table = new Table { TournamentId = t.Id, Label = "Table 1" };
+            t.Tables.Add(table);
+            tableId = table.Id;
 
             foreach (var e in t.Entrants) { ctx.Add(e.Player!); }
 
@@ -81,7 +89,7 @@ public class ChipGamePersistenceTests : IDisposable
             using var ctx = NewContext();
             var repo = new TournamentRepository(ctx);
             var t = await repo.GetByIdAsync(tournamentId);
-            var entry = svc.RecordGame(t!, winnerId: aId, loserId: bId);
+            var entry = svc.RecordGame(t!, tableId, winnerId: aId, loserId: bId);
             repo.TrackNew(entry);
             await repo.SaveChangesAsync();
         }
@@ -90,18 +98,30 @@ public class ChipGamePersistenceTests : IDisposable
             using var ctx = NewContext();
             var t = await new TournamentRepository(ctx).GetByIdAsync(tournamentId);
             Assert.Single(t!.ChipGame!.Entries);
+            Assert.Equal(tableId, t.ChipGame.Entries[0].TableId); // TableId survives the reload
             var standings = ChipGameService.ComputeStandings(t);
             Assert.Equal(1, standings.First(r => r.Entrant.Id == bId).ChipsRemaining); // Bob down one
             Assert.Equal(2, standings.First(r => r.Entrant.Id == aId).ChipsRemaining); // Alice unchanged
             Assert.Equal(TournamentStatus.InProgress, t.Status);
         }
 
-        // --- Bob loses twice more and is eliminated; then Carol is knocked out to end it ---
+        // Bob (2->1) requeued and Carol rotated onto the table in his place - so the next game
+        // at this one-table tournament is Alice vs Carol, not Alice vs Bob again.
+        // --- Alice beats Carol; Carol requeues and Bob rotates back in ---
         {
             using var ctx = NewContext();
             var repo = new TournamentRepository(ctx);
             var t = await repo.GetByIdAsync(tournamentId);
-            repo.TrackNew(svc.RecordGame(t!, aId, bId)); // Bob -> 0, eliminated
+            repo.TrackNew(svc.RecordGame(t!, tableId, aId, cId)); // Carol -> 1
+            await repo.SaveChangesAsync();
+        }
+
+        // --- Alice beats Bob again -> Bob eliminated; Carol (only one left waiting) rotates in ---
+        {
+            using var ctx = NewContext();
+            var repo = new TournamentRepository(ctx);
+            var t = await repo.GetByIdAsync(tournamentId);
+            repo.TrackNew(svc.RecordGame(t!, tableId, aId, bId)); // Bob -> 0, eliminated
             await repo.SaveChangesAsync();
         }
 
@@ -113,12 +133,12 @@ public class ChipGamePersistenceTests : IDisposable
             Assert.Equal(3, ChipGameService.ComputeStandings(t).First(r => r.Entrant.Id == bId).Place); // first out finishes last
         }
 
+        // --- Alice beats Carol again -> Carol eliminated, Alice champion ---
         {
             using var ctx = NewContext();
             var repo = new TournamentRepository(ctx);
             var t = await repo.GetByIdAsync(tournamentId);
-            repo.TrackNew(svc.RecordGame(t!, aId, cId)); // Carol -> 1
-            repo.TrackNew(svc.RecordGame(t!, aId, cId)); // Carol -> 0, eliminated; Alice champion
+            repo.TrackNew(svc.RecordGame(t!, tableId, aId, cId)); // Carol -> 0, eliminated; Alice champion
             await repo.SaveChangesAsync();
         }
 

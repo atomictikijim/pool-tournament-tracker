@@ -51,13 +51,22 @@ public partial class TournamentStateService : ObservableObject
     [ObservableProperty]
     private ObservableCollection<ChipStandingRowViewModel> _chipStandings = new();
 
-    /// <summary>Only the still-active players, for the winner/loser pickers.</summary>
-    [ObservableProperty]
-    private ObservableCollection<ChipStandingRowViewModel> _chipActiveEntrants = new();
-
     /// <summary>One-line chip-tournament status, e.g. "5 of 7 left  ·  3 chips each  ·  Pot $140".</summary>
     [ObservableProperty]
     private string _chipStatusLine = string.Empty;
+
+    /// <summary>Each table's current occupants in the chip-tournament rotation.</summary>
+    [ObservableProperty]
+    private ObservableCollection<ChipTableBoardRowViewModel> _chipTableBoard = new();
+
+    /// <summary>Entrants waiting to be seated next, in rotation order.</summary>
+    [ObservableProperty]
+    private ObservableCollection<ChipNextUpRowViewModel> _chipNextUp = new();
+
+    /// <summary>True until table rotation has started - "Shuffle &amp; Seat Players" is only
+    /// available up to that point (see ChipGameService.ShuffleAndSeatPlayers).</summary>
+    [ObservableProperty]
+    private bool _chipCanShuffle;
 
     /// <summary>Shown for every format except Ring Game once at least one payout place is
     /// configured - see PrizePayoutService.</summary>
@@ -255,8 +264,13 @@ public partial class TournamentStateService : ObservableObject
 
         var rows = ChipGameService.ComputeStandings(tournament);
         ChipStandings = new ObservableCollection<ChipStandingRowViewModel>(rows.Select(r => new ChipStandingRowViewModel(r)));
-        ChipActiveEntrants = new ObservableCollection<ChipStandingRowViewModel>(
-            ChipStandings.Where(r => !r.IsEliminated));
+
+        var board = ChipGameService.ComputeTableBoard(tournament);
+        ChipTableBoard = new ObservableCollection<ChipTableBoardRowViewModel>(
+            board.Tables.Select(s => new ChipTableBoardRowViewModel(s)));
+        ChipNextUp = new ObservableCollection<ChipNextUpRowViewModel>(
+            board.NextUp.Select((e, i) => new ChipNextUpRowViewModel(i + 1, e)));
+        ChipCanShuffle = tournament.ChipGame?.Entries.All(e => e.TableId is null) ?? true;
 
         var pot = PrizePayoutService.TotalEntryFees(tournament).ToString("C0");
         var total = tournament.Entrants.Count;
@@ -280,8 +294,10 @@ public partial class TournamentStateService : ObservableObject
     {
         IsChipTournament = false;
         ChipStandings = new ObservableCollection<ChipStandingRowViewModel>();
-        ChipActiveEntrants = new ObservableCollection<ChipStandingRowViewModel>();
         ChipStatusLine = string.Empty;
+        ChipTableBoard = new ObservableCollection<ChipTableBoardRowViewModel>();
+        ChipNextUp = new ObservableCollection<ChipNextUpRowViewModel>();
+        ChipCanShuffle = false;
     }
 
     private void ClearPrizePayouts()

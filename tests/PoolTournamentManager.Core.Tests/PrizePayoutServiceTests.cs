@@ -82,10 +82,13 @@ public class PrizePayoutServiceTests
         var b = tournament.Entrants[1];
         var c = tournament.Entrants[2];
 
+        var table = new Table { TournamentId = tournament.Id, Label = "Table 1" };
+        tournament.Tables.Add(table);
+
         var svc = new ChipGameService();
         svc.StartChipTournament(tournament, startingChips: 1);
-        svc.RecordGame(tournament, a.Id, b.Id); // B out first  -> place 3
-        svc.RecordGame(tournament, a.Id, c.Id); // C out second -> place 2; A champion -> place 1
+        svc.RecordGame(tournament, table.Id, a.Id, b.Id); // B out first  -> place 3; C rotates in
+        svc.RecordGame(tournament, table.Id, a.Id, c.Id); // C out second -> place 2; A champion -> place 1
 
         // Total entry fees = 30, no host cut, pool = 30.
         SetPrizePlaces(tournament, (1, 70m), (2, 20m), (3, 10m));

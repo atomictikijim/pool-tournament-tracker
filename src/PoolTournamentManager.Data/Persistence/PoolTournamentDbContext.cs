@@ -111,6 +111,7 @@ public class PoolTournamentDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasOne(e => e.WinnerEntrant).WithMany().HasForeignKey(e => e.WinnerEntrantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.LoserEntrant).WithMany().HasForeignKey(e => e.LoserEntrantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Table).WithMany().HasForeignKey(e => e.TableId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<TournamentPrizePlace>(entity =>

@@ -488,9 +488,11 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Chip tournament: ad-hoc game entry + live standings -->
+                    <!-- Chip tournament: table rotation board + Next Up queue + live standings -->
                     <Grid Grid.Row="3" Visibility="{Binding State.IsChipTournament, Converter={StaticResource BoolToVisibilityConverter}}">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
@@ -498,25 +500,80 @@
 
                         <TextBlock Grid.Row="0" Text="{Binding State.ChipStatusLine}" FontWeight="Bold" FontSize="15" Margin="0,0,0,10" />
 
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
-                            <TextBlock Text="Winner:" VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <ComboBox Width="160" ItemsSource="{Binding State.ChipActiveEntrants}"
-                                      DisplayMemberPath="PlayerName" SelectedValuePath="EntrantId"
-                                      SelectedValue="{Binding SelectedChipWinnerId}" />
-                            <TextBlock Text="beat" VerticalAlignment="Center" Margin="10,0,10,0" />
-                            <ComboBox Width="160" ItemsSource="{Binding State.ChipActiveEntrants}"
-                                      DisplayMemberPath="PlayerName" SelectedValuePath="EntrantId"
-                                      SelectedValue="{Binding SelectedChipLoserId}" />
-                            <Button Content="Record Game" Command="{Binding RecordChipGameCommand}" Padding="10,4" Margin="12,0,0,0" />
+                        <Button Grid.Row="1" Content="Shuffle &amp; Seat Players" Command="{Binding ShuffleAndSeatPlayersCommand}"
+                                Visibility="{Binding State.ChipCanShuffle, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Padding="10,4" HorizontalAlignment="Left" Margin="0,0,0,12" />
+
+                        <ItemsControl Grid.Row="2" ItemsSource="{Binding State.ChipTableBoard}" Margin="0,0,0,12">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="10,8" Margin="0,0,12,12" Width="220"
+                                            Background="{DynamicResource CardBackgroundBrush}"
+                                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding TableLabel}" FontWeight="Bold" Margin="0,0,0,6" />
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding Player1Name}" VerticalAlignment="Center" />
+                                                <Button Grid.Column="1" Content="Wins" Padding="8,2"
+                                                        Command="{Binding DataContext.RecordChipTableGameCommand, ElementName=TournamentRoot}"
+                                                        CommandParameter="{Binding Player1WinsOutcome}"
+                                                        Visibility="{Binding IsReady, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                            </Grid>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding Player2Name}" VerticalAlignment="Center" />
+                                                <Button Grid.Column="1" Content="Wins" Padding="8,2"
+                                                        Command="{Binding DataContext.RecordChipTableGameCommand, ElementName=TournamentRoot}"
+                                                        CommandParameter="{Binding Player2WinsOutcome}"
+                                                        Visibility="{Binding IsReady, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Grid.Row="3" Margin="0,0,0,12">
+                            <TextBlock Text="Next Up" FontWeight="Bold" FontSize="13" Margin="0,0,0,6" />
+                            <ItemsControl ItemsSource="{Binding State.ChipNextUp}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Margin="0,0,14,0">
+                                            <Run Text="{Binding Position, Mode=OneWay}" FontWeight="Bold" />
+                                            <Run Text=". " />
+                                            <Run Text="{Binding PlayerName, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
 
-                        <DataGrid Grid.Row="2" ItemsSource="{Binding State.ChipStandings}"
+                        <DataGrid Grid.Row="4" ItemsSource="{Binding State.ChipStandings}"
                                   AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                                   HeadersVisibility="Column">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Place" Binding="{Binding PlaceDisplay}" Width="55" />
                                 <DataGridTextColumn Header="Player" Binding="{Binding PlayerName}" Width="180" />
                                 <DataGridTextColumn Header="Chips" Binding="{Binding ChipsDisplay}" Width="80" />
+                                <DataGridTextColumn Header="Won" Binding="{Binding MatchesWon}" Width="60" />
+                                <DataGridTextColumn Header="Win %" Binding="{Binding WinPercentageDisplay}" Width="70" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>

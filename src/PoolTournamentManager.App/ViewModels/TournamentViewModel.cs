@@ -172,13 +172,6 @@ public partial class TournamentViewModel : ObservableObject
     [ObservableProperty]
     private string? _statusMessage;
 
-    /// <summary>Winner/loser selected in the "record a game" pickers (entrant ids).</summary>
-    [ObservableProperty]
-    private Guid? _selectedChipWinnerId;
-
-    [ObservableProperty]
-    private Guid? _selectedChipLoserId;
-
     /// <summary>True while the create form has Ring Game selected, so ring-only fields can show.</summary>
     public bool IsCreatingRingGame => NewTournamentFormat == TournamentFormat.RingGame;
 
@@ -1201,28 +1194,20 @@ public partial class TournamentViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task RecordChipGameAsync()
+    private async Task RecordChipTableGameAsync(ChipGameOutcome? outcome)
     {
         var tournament = State.ActiveTournament;
-        if (tournament?.ChipGame is null)
+        if (outcome is null || tournament?.ChipGame is null)
         {
-            return;
-        }
-        if (SelectedChipWinnerId is null || SelectedChipLoserId is null)
-        {
-            StatusMessage = "Pick both a winner and a loser.";
             return;
         }
 
         try
         {
-            var loserName = tournament.Entrants.FirstOrDefault(e => e.Id == SelectedChipLoserId)?.Player?.FullName ?? "Player";
-            var entry = _chipGameService.RecordGame(tournament, SelectedChipWinnerId.Value, SelectedChipLoserId.Value);
+            var loserName = tournament.Entrants.FirstOrDefault(e => e.Id == outcome.LoserId)?.Player?.FullName ?? "Player";
+            var entry = _chipGameService.RecordGame(tournament, outcome.TableId, outcome.WinnerId, outcome.LoserId);
             _tournamentRepository.TrackNew(entry);
             await _tournamentRepository.SaveChangesAsync();
-
-            SelectedChipWinnerId = null;
-            SelectedChipLoserId = null;
 
             State.RebuildRounds();
             await RefreshTournamentSummaryAsync();
@@ -1236,6 +1221,31 @@ public partial class TournamentViewModel : ObservableObject
             {
                 StatusMessage = $"{loserName} loses a chip.";
             }
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Most likely a stale board (seating changed between render and click) - refresh so
+            // the buttons the operator sees next reflect reality instead of failing again.
+            State.RebuildRounds();
+            StatusMessage = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ShuffleAndSeatPlayersAsync()
+    {
+        var tournament = State.ActiveTournament;
+        if (tournament?.ChipGame is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _chipGameService.ShuffleAndSeatPlayers(tournament);
+            await _tournamentRepository.SaveChangesAsync();
+            State.RebuildRounds();
+            StatusMessage = "Players shuffled and seated at tables.";
         }
         catch (InvalidOperationException ex)
         {
