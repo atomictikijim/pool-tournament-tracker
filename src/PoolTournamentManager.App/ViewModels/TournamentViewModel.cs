@@ -1054,6 +1054,8 @@ public partial class TournamentViewModel : ObservableObject
 
         match.Status = MatchStatus.InProgress;
         match.StartedAtUtc = DateTime.UtcNow;
+        // Persists match.TableId along with the status change - the table picker no longer
+        // needs its own explicit "Save Table Assignments" step.
         await _tournamentRepository.SaveChangesAsync();
         State.RebuildRounds();
         RefreshCanAddEntrant();
@@ -1146,19 +1148,7 @@ public partial class TournamentViewModel : ObservableObject
         State.Tables.Add(table);
         _tournamentRepository.TrackNew(table);
         await _tournamentRepository.SaveChangesAsync();
-    }
-
-    [RelayCommand]
-    private async Task SaveAssignmentsAsync()
-    {
-        if (State.ActiveTournament is null)
-        {
-            return;
-        }
-
-        await _tournamentRepository.SaveChangesAsync();
-        State.NotifyTableAssignmentsChanged();
-        StatusMessage = "Table assignments saved.";
+        State.RebuildRounds();
     }
 
     [RelayCommand]

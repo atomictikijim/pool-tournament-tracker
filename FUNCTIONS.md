@@ -176,10 +176,11 @@ selected a tournament.
 
 ### Tables
 
-The **Tables** row along the top shows every table you've added. Click **Add Table**
-to add another one on the fly (useful if a table frees up from another event, or you
-under-counted at creation). **Save Table Assignments** persists any table changes
-you've made in the bracket/round view below.
+The **Tables** row along the top shows how many tables you've added (e.g. "Tables: 4").
+Click **Add Table** to add another one on the fly (useful if a table frees up from
+another event, or you under-counted at creation). Assigning a table to a match in the
+bracket/round view below is saved automatically as soon as you start that match — there's
+no separate save step.
 
 ### Adding entrants after creation
 
@@ -202,9 +203,10 @@ none was used to seed them.
 To play a match:
 
 1. In the match's box, pick a **table** from the dropdown and click **Start**.
+   - The dropdown only lists tables not currently occupied by another in-progress
+     match, in numerical order (Table 1, Table 2, ...) - a table already in use won't
+     appear until its match finishes.
    - You can't start a match without picking a table.
-   - You can't start a match on a table that already has another match in progress
-     on it.
 2. While in progress, the box shows a live running timer (mm:ss) and a **Finish**
    button.
 3. Enter both players'/teams' scores in the score boxes, then click **Finish**.

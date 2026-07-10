@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using PoolTournamentManager.App.ViewModels;
@@ -197,13 +198,14 @@ public partial class TournamentStateService : ObservableObject
         // tournament.Entrants is always fully loaded (unlike Match.Player1Entrant/Player2Entrant -
         // see FinishMatchAsync's reload comment), so this lookup is reliable with no reload needed.
         var entrantsById = tournament.Entrants.ToDictionary(e => e.Id);
+        var availableTables = ComputeAvailableTables(tournament);
 
         foreach (var group in groups)
         {
             var matchRows = group
                 .OrderBy(n => n.PositionInRound)
                 .Select(n => n.Match is not null
-                    ? new MatchRowViewModel(n.Match, tournament.SeedingRatingSystem)
+                    ? new MatchRowViewModel(n.Match, tournament.SeedingRatingSystem, availableTables)
                     : new MatchRowViewModel(
                         n.Slot1EntrantId is { } p1 ? entrantsById.GetValueOrDefault(p1) : null,
                         n.Slot2EntrantId is { } p2 ? entrantsById.GetValueOrDefault(p2) : null,
@@ -343,10 +345,11 @@ public partial class TournamentStateService : ObservableObject
             .Where(m => m.RoundNumber is not null)
             .GroupBy(m => m.RoundNumber!.Value)
             .OrderBy(g => g.Key);
+        var availableTables = ComputeAvailableTables(tournament);
 
         foreach (var group in groups)
         {
-            var matchRows = group.Select(m => new MatchRowViewModel(m, tournament.SeedingRatingSystem)).ToList();
+            var matchRows = group.Select(m => new MatchRowViewModel(m, tournament.SeedingRatingSystem, availableTables)).ToList();
             rounds.Add(new RoundGroupViewModel(group.Key, $"Round {group.Key}", matchRows));
         }
 
@@ -390,13 +393,28 @@ public partial class TournamentStateService : ObservableObject
         return roundNumber == maxRoundForSide ? $"{prefix} Final" : $"{prefix} Round {roundNumber}";
     }
 
-    /// <summary>
-    /// Table entities are plain POCOs (no INotifyPropertyChanged), so a raw TableId edit on a
-    /// Match doesn't naturally raise any change notification. Call this after persisting a
-    /// table-assignment edit so bound displays (e.g. the "now playing" board) refresh.
-    /// </summary>
-    public void NotifyTableAssignmentsChanged()
+    /// <summary>Tables not currently occupied by an in-progress match, in numerical order (by the
+    /// number in each table's "Table N" label) - used to populate each scheduled match's
+    /// table-picker ComboBox so an already-busy table can't be double-booked.</summary>
+    private static List<Table> ComputeAvailableTables(Tournament tournament)
     {
-        Tables = new ObservableCollection<Table>(Tables);
+        var tablesInUse = tournament.Matches
+            .Where(m => m.Status == MatchStatus.InProgress && m.TableId is not null)
+            .Select(m => m.TableId!.Value)
+            .ToHashSet();
+        return tournament.Tables
+            .Where(t => !tablesInUse.Contains(t.Id))
+            .OrderBy(TableLabelNumber)
+            .ThenBy(t => t.Label, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>Extracts the numeric part of a table label (e.g. "Table 12" -> 12) so tables sort
+    /// numerically instead of alphabetically ("Table 10" before "Table 2"). Falls back to
+    /// int.MaxValue for a label with no digits, so it sorts after every numbered table.</summary>
+    private static int TableLabelNumber(Table table)
+    {
+        var match = Regex.Match(table.Label, @"\d+");
+        return match.Success ? int.Parse(match.Value) : int.MaxValue;
     }
 }

@@ -91,7 +91,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <ComboBox Grid.Column="0" Margin="0,0,6,0"
-                                  ItemsSource="{Binding DataContext.State.Tables, ElementName=TournamentRoot}"
+                                  ItemsSource="{Binding AvailableTables}"
                                   SelectedValuePath="Id" DisplayMemberPath="Label"
                                   SelectedValue="{Binding Match.TableId}" />
                         <Button Grid.Column="1" Content="Start"
@@ -287,23 +287,8 @@
 
                     <ScrollViewer Grid.Row="0" Margin="0,0,0,10" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Tables:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Bold" />
-                        <ItemsControl ItemsSource="{Binding State.Tables}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" Padding="6,2" Margin="0,0,6,0">
-                                        <TextBlock Text="{Binding Label}" />
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <TextBlock Text="{Binding State.Tables.Count, StringFormat='Tables: {0}'}" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Bold" />
                         <Button Content="Add Table" Command="{Binding AddTableCommand}" Padding="6,2" Margin="6,0,0,0" />
-                        <Button Content="Save Table Assignments" Command="{Binding SaveAssignmentsCommand}" Padding="6,2" Margin="6,0,0,0" />
                         <Button x:Name="OpenDisplayWindowButton" Content="Open Display Window" Click="OpenDisplayWindowButton_OnClick" Padding="6,2" Margin="16,0,0,0" />
 
                         <!-- Bracket zoom: scales the bracket tree via a LayoutTransform (see the

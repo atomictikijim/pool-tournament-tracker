@@ -5,6 +5,27 @@ the top of each section.
 
 ## Current status
 
+v0.27 complete: **The Tournament tab's table-assignment workflow is simpler and safer.** The
+"Tables:" row now shows just a count (e.g. "Tables: 4") instead of a card per table - the
+per-table cards weren't adding information beyond what the picker below already shows. The
+**Save Table Assignments** button is gone: assigning a table to a match and clicking **Start**
+already calls `SaveChangesAsync()` (to persist the match's new `InProgress` status), and that
+same call persists the table assignment along with it, so the separate manual save step was
+redundant. The match's table-picker `ComboBox` (`MatchRowViewModel.AvailableTables`, computed by
+`TournamentStateService.ComputeAvailableTables`) now also excludes any table currently occupied
+by another `InProgress` match - previously it listed every table regardless of use, relying on a
+`StartMatchAsync` validation message to reject a double-booked table after the fact - and lists
+the remaining tables in numerical order by parsing the digits out of each "Table N" label
+(`Table 10` now sorts after `Table 9` instead of alphabetically between `Table 1` and `Table 2`),
+since the underlying `tournament.Tables` collection order isn't guaranteed to match table numbers
+once reloaded from the database. +1 App test (`TableAssignmentAvailabilityTests` - starts a match
+on a table that's neither first nor last in table-number order, then asserts the other startable
+match's `AvailableTables` excludes exactly that table and stays numerically sorted); 40 App tests
+total, 168 overall. Verified end-to-end: on the live "Full Bracket Verify SE8" tournament (4
+tables), assigned Table 2 to one Round 1 match and clicked Start - the "Tables:" count stayed
+correct, no Save button was present, and the other Round 1 match's dropdown showed Table 1, Table
+3, Table 4 in that order with Table 2 correctly missing.
+
 v0.26 complete: **The elimination bracket can be zoomed in/out and fit-to-screen, in both the
 Tournament tab and the Display window.** A "Zoom: - 100% + Reset Fit" toolbar appears next to "Open
 Display Window" on the Tournament tab, and below "Now Playing" on the Display window, whenever an

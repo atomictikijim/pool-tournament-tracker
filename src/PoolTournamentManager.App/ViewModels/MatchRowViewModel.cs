@@ -42,6 +42,10 @@ public class MatchRowViewModel : ObservableObject
     public bool IsPlayer1Winner => Match?.WinnerEntrantId is not null && Match.WinnerEntrantId == Match.Player1EntrantId;
     public bool IsPlayer2Winner => Match?.WinnerEntrantId is not null && Match.WinnerEntrantId == Match.Player2EntrantId;
 
+    /// <summary>Tables not currently occupied by an in-progress match, for the table-picker
+    /// ComboBox - see TournamentStateService.ComputeAvailableTables.</summary>
+    public IReadOnlyList<Table> AvailableTables { get; }
+
     public int? Player1Seed => Match is not null ? Match.Player1Entrant?.SeedNumber : _placeholderPlayer1?.SeedNumber;
     public int? Player2Seed => Match is not null
         ? (Match.Player2EntrantId is null ? null : Match.Player2Entrant?.SeedNumber)
@@ -82,10 +86,11 @@ public class MatchRowViewModel : ObservableObject
         }
     }
 
-    public MatchRowViewModel(Match match, RatingSystem? ratingSystem = null)
+    public MatchRowViewModel(Match match, RatingSystem? ratingSystem = null, IReadOnlyList<Table>? availableTables = null)
     {
         Match = match;
         _ratingSystem = ratingSystem;
+        AvailableTables = availableTables ?? Array.Empty<Table>();
     }
 
     /// <summary>A bracket slot whose match hasn't materialized yet - shows whichever entrant(s)
@@ -96,6 +101,7 @@ public class MatchRowViewModel : ObservableObject
         _placeholderPlayer1 = player1;
         _placeholderPlayer2 = player2;
         _ratingSystem = ratingSystem;
+        AvailableTables = Array.Empty<Table>();
     }
 
     /// <summary>Called once a second by TournamentStateService's shared timer to refresh the
