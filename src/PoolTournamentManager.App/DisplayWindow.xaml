@@ -18,13 +18,17 @@
         <!-- Faded ball watermark behind everything else, filling the whole window - which ball
              (8/9/10) shows depends on the active tournament's GameType (see
              DisplayWindowViewModel.RebuildBracket). Uniform-stretch inside a Viewbox so the ball
-             stays circular instead of stretching to the window's aspect ratio. -->
-        <Viewbox Grid.Row="0" Grid.RowSpan="4" Margin="-20" Stretch="Uniform" Opacity="0.28" IsHitTestVisible="False">
+             stays circular instead of stretching to the window's aspect ratio. Opacity is set per
+             shape rather than once on the Viewbox: the white parts of the ball stay fully opaque
+             (true white, so they read as a solid disc against any window/theme background)
+             while the black/colored parts are faded individually - a group Opacity here would
+             fade the whites into invisibility against a light background too. -->
+        <Viewbox Grid.Row="0" Grid.RowSpan="4" Margin="-20" Stretch="Uniform" IsHitTestVisible="False">
             <Grid Width="400" Height="400">
                 <Grid Visibility="{Binding IsEightBallGame, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <Ellipse Width="400" Height="400" Fill="Black" />
+                    <Ellipse Width="400" Height="400" Fill="Black" Opacity="0.28" />
                     <Ellipse Width="150" Height="150" Fill="White" />
-                    <TextBlock Text="8" FontSize="90" FontWeight="Bold" Foreground="Black"
+                    <TextBlock Text="8" FontSize="90" FontWeight="Bold" Foreground="Black" Opacity="0.28"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Grid>
                 <Grid Visibility="{Binding IsNineBallGame, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -32,9 +36,10 @@
                         <EllipseGeometry Center="200,200" RadiusX="200" RadiusY="200" />
                     </Grid.Clip>
                     <Ellipse Width="400" Height="400" Fill="White" />
-                    <Rectangle Width="400" Height="160" Fill="#F5C518" VerticalAlignment="Center" />
-                    <Ellipse Width="150" Height="150" Fill="White" Stroke="Black" StrokeThickness="3" />
-                    <TextBlock Text="9" FontSize="90" FontWeight="Bold" Foreground="Black"
+                    <Rectangle Width="400" Height="160" Fill="#F5C518" Opacity="0.28" VerticalAlignment="Center" />
+                    <Ellipse Width="150" Height="150" Fill="White" />
+                    <Ellipse Width="150" Height="150" Stroke="Black" StrokeThickness="3" Opacity="0.28" />
+                    <TextBlock Text="9" FontSize="90" FontWeight="Bold" Foreground="Black" Opacity="0.28"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Grid>
                 <Grid Visibility="{Binding IsTenBallGame, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -42,9 +47,10 @@
                         <EllipseGeometry Center="200,200" RadiusX="200" RadiusY="200" />
                     </Grid.Clip>
                     <Ellipse Width="400" Height="400" Fill="White" />
-                    <Rectangle Width="400" Height="160" Fill="#1E5FBF" VerticalAlignment="Center" />
-                    <Ellipse Width="150" Height="150" Fill="White" Stroke="Black" StrokeThickness="3" />
-                    <TextBlock Text="10" FontSize="76" FontWeight="Bold" Foreground="Black"
+                    <Rectangle Width="400" Height="160" Fill="#1E5FBF" Opacity="0.28" VerticalAlignment="Center" />
+                    <Ellipse Width="150" Height="150" Fill="White" />
+                    <Ellipse Width="150" Height="150" Stroke="Black" StrokeThickness="3" Opacity="0.28" />
+                    <TextBlock Text="10" FontSize="76" FontWeight="Bold" Foreground="Black" Opacity="0.28"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Grid>
             </Grid>

@@ -5,6 +5,20 @@ the top of each section.
 
 ## Current status
 
+v0.27.3 complete (UI): **Fixed the Display window's ball watermark (v0.27.2) rendering its white
+areas as see-through instead of solid white.** The watermark previously applied `Opacity="0.28"`
+once on the whole `Viewbox`, which faded every shape - including the white ones - toward whatever
+was behind them; since the window background is near-white, the white parts (the ball body on the
+9/10-ball, the number-circle on all three) blended almost invisibly into it instead of reading as a
+crisp white disc. Fixed by moving `Opacity="0.28"` onto each individual black/colored shape (the
+8-ball's outer ring, the 9/10-ball's stripe `Rectangle` and ring `Ellipse`, and every ball's number
+`TextBlock`) and leaving the white `Ellipse`s with no `Opacity` set (fully opaque). No test count
+change (pure XAML tweak). Verified end-to-end: reopened the Display window for the live "Full
+Bracket Verify SE8" (8-ball) tournament and confirmed the number-circle now renders as a solid
+white disc with a clearly legible faded "8"; created and deleted a second "Nine Ball Watermark Test
+2" tournament and confirmed its 9-ball watermark shows a solid white ball body with a faded yellow
+stripe and faded ring/number, instead of the stripe and background bleeding through the white area.
+
 v0.27.2 complete (UI): **The Display window now shows a large, faded ball graphic behind the
 bracket, filling the whole window.** Which ball shows - 8, 9, or 10 - depends on the active
 tournament's `GameType` (`DisplayWindowViewModel.IsEightBallGame`/`IsNineBallGame`/`IsTenBallGame`,
