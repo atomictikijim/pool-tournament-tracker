@@ -5,6 +5,20 @@ the top of each section.
 
 ## Current status
 
+v0.27.1 complete (UI): **The app icon and header logo changed to a new alligator-with-pool-balls
+image** ("Alligator will pool balls in mouth (1).png" in `images/`, replacing the previous
+cue-holding alligator sourced from "You Chalkin To Me.png"). `Assets/AppIcon.ico` (16/32/48/256,
+PNG-compressed frames for crisp alpha transparency at every size) and `Assets/Logo.png` (1024px,
+transparency-keyed) were regenerated from the new source image via a from-scratch square crop -
+no code changes, since both files are referenced by the same paths already (`ApplicationIcon` in
+the `.csproj`, and `Icon="Assets/Logo.png"` / the header `Image` in MainWindow/DisplayWindow/
+PlayerEditorWindow/TeamEditorWindow XAML). No test count change (pure asset swap). Verified
+end-to-end: built and ran the app, confirmed the new icon renders correctly in the title bar and
+36x36 header image on the Players tab, and extracted the icon embedded in the built .exe
+(`Icon.ExtractAssociatedIcon`) to confirm the taskbar/Explorer icon matches at 256x256 - also
+spot-checked the 32x32 and 16x16 frames upscaled, confirming the eyes and the yellow/black/blue
+pool balls stay legible even at the smallest title-bar size.
+
 v0.27 complete: **The Tournament tab's table-assignment workflow is simpler and safer.** The
 "Tables:" row now shows just a count (e.g. "Tables: 4") instead of a card per table - the
 per-table cards weren't adding information beyond what the picker below already shows. The
