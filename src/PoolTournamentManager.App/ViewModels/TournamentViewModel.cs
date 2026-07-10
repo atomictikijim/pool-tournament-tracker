@@ -182,6 +182,44 @@ public partial class TournamentViewModel : ObservableObject
     [ObservableProperty]
     private int _newChipStartingChips = 3;
 
+    /// <summary>When true, a Chip Tournament assigns starting chips by skill range
+    /// (<see cref="NewChipRatingSystem"/> + <see cref="NewChipRanges"/>) instead of the flat
+    /// <see cref="NewChipStartingChips"/>, which then becomes the fallback for unrated players.</summary>
+    [ObservableProperty]
+    private bool _newChipUsesSkillRanges;
+
+    /// <summary>Which rating drives the chip skill ranges (when <see cref="NewChipUsesSkillRanges"/>).</summary>
+    [ObservableProperty]
+    private RatingSystem _newChipRatingSystem = RatingSystem.Fargo;
+
+    /// <summary>The editable "skill range → chips" rows shown when <see cref="NewChipUsesSkillRanges"/>.</summary>
+    public ObservableCollection<ChipRangeInputViewModel> NewChipRanges { get; } = new();
+
+    /// <summary>Seed a sensible starter set of ranges the first time skill-based chips are turned on
+    /// (the operator edits them from there), so the grid is never empty and confusing.</summary>
+    partial void OnNewChipUsesSkillRangesChanged(bool value)
+    {
+        if (value && NewChipRanges.Count == 0)
+        {
+            NewChipRanges.Add(new ChipRangeInputViewModel { MinRating = 650, MaxRating = null, Chips = 3 });
+            NewChipRanges.Add(new ChipRangeInputViewModel { MinRating = 550, MaxRating = 649, Chips = 4 });
+            NewChipRanges.Add(new ChipRangeInputViewModel { MinRating = 450, MaxRating = 549, Chips = 5 });
+            NewChipRanges.Add(new ChipRangeInputViewModel { MinRating = null, MaxRating = 449, Chips = 6 });
+        }
+    }
+
+    [RelayCommand]
+    private void AddChipRange() => NewChipRanges.Add(new ChipRangeInputViewModel());
+
+    [RelayCommand]
+    private void RemoveChipRange(ChipRangeInputViewModel? row)
+    {
+        if (row is not null)
+        {
+            NewChipRanges.Remove(row);
+        }
+    }
+
     /// <summary>Per-entrant entry fee. Shown for every format except Ring Game, which has its
     /// own separate buy-in - see <see cref="ShowEntryFeeSection"/>.</summary>
     [ObservableProperty]
@@ -982,6 +1020,13 @@ public partial class TournamentViewModel : ObservableObject
         if (tournament.ChipGame is not null)
         {
             NewChipStartingChips = tournament.ChipGame.StartingChips;
+            NewChipUsesSkillRanges = tournament.ChipGame.ChipRatingSystem is not null && tournament.ChipGame.StartingRules.Count > 0;
+            NewChipRatingSystem = tournament.ChipGame.ChipRatingSystem ?? RatingSystem.Fargo;
+            NewChipRanges.Clear();
+            foreach (var rule in tournament.ChipGame.StartingRules.OrderBy(r => r.Sequence))
+            {
+                NewChipRanges.Add(new ChipRangeInputViewModel { MinRating = rule.MinRating, MaxRating = rule.MaxRating, Chips = rule.Chips });
+            }
         }
 
         var playerIds = tournament.Entrants.Where(e => e.PlayerId is not null).Select(e => e.PlayerId!.Value).ToHashSet();
@@ -1065,6 +1110,36 @@ public partial class TournamentViewModel : ObservableObject
         {
             StatusMessage = "Enter the number of available tables.";
             return false;
+        }
+
+        if (IsCreatingChipTournament)
+        {
+            if (NewChipStartingChips < 1)
+            {
+                StatusMessage = "Starting chips must be at least 1.";
+                return false;
+            }
+            if (NewChipUsesSkillRanges)
+            {
+                if (NewChipRanges.Count == 0)
+                {
+                    StatusMessage = "Add at least one chip range, or turn off skill-based chips.";
+                    return false;
+                }
+                foreach (var range in NewChipRanges)
+                {
+                    if (range.Chips < 1)
+                    {
+                        StatusMessage = "Each chip range needs at least 1 chip.";
+                        return false;
+                    }
+                    if (range.MinRating is int min && range.MaxRating is int max && min > max)
+                    {
+                        StatusMessage = "A chip range's minimum can't be greater than its maximum.";
+                        return false;
+                    }
+                }
+            }
         }
 
         if (ShowEntryFeeSection)
@@ -1163,8 +1238,17 @@ public partial class TournamentViewModel : ObservableObject
         }
         else if (NewTournamentFormat == TournamentFormat.ChipTournament)
         {
-            // Ad-hoc "loser loses a life" play; no seeding or pairings.
-            _chipGameService.StartChipTournament(tournament, NewChipStartingChips);
+            // Ad-hoc "loser loses a life" play; no seeding or pairings. Starting chips are either
+            // flat or, when skill ranges are on, per-player by rating - snapshotted onto each
+            // entrant inside StartChipTournament.
+            var rules = NewChipUsesSkillRanges
+                ? NewChipRanges.Select(r => new ChipStartingRule { MinRating = r.MinRating, MaxRating = r.MaxRating, Chips = r.Chips }).ToList()
+                : new List<ChipStartingRule>();
+            _chipGameService.StartChipTournament(
+                tournament,
+                NewChipStartingChips,
+                NewChipUsesSkillRanges ? NewChipRatingSystem : null,
+                rules);
         }
         else if (NewTournamentFormat == TournamentFormat.ModifiedSingleElimination)
         {
@@ -1223,6 +1307,10 @@ public partial class TournamentViewModel : ObservableObject
         if (tournament.ChipGame is not null)
         {
             _tournamentRepository.TrackNew(tournament.ChipGame);
+            foreach (var rule in tournament.ChipGame.StartingRules)
+            {
+                _tournamentRepository.TrackNew(rule);
+            }
             foreach (var entry in tournament.ChipGame.Entries)
             {
                 _tournamentRepository.TrackNew(entry);
@@ -1274,6 +1362,10 @@ public partial class TournamentViewModel : ObservableObject
             {
                 _tournamentRepository.TrackRemoved(entry);
             }
+            foreach (var rule in tournament.ChipGame.StartingRules.ToList())
+            {
+                _tournamentRepository.TrackRemoved(rule);
+            }
             _tournamentRepository.TrackRemoved(tournament.ChipGame);
             tournament.ChipGame = null;
         }
@@ -1306,6 +1398,8 @@ public partial class TournamentViewModel : ObservableObject
         NewEntryFee = 0m;
         NewHostFeePercentage = 0m;
         NewPayoutPlaceCount = 0;
+        NewChipUsesSkillRanges = false;
+        NewChipRanges.Clear();
         foreach (var candidate in EntrantCandidates)
         {
             candidate.IsSelected = false;
@@ -1614,6 +1708,47 @@ public partial class TournamentViewModel : ObservableObject
         {
             // Most likely a stale board (seating changed between render and click) - refresh so
             // the buttons the operator sees next reflect reality instead of failing again.
+            State.RebuildRounds();
+            StatusMessage = ex.Message;
+        }
+    }
+
+    /// <summary>Tournament-director action: add or remove a chip from one player mid-tournament (a
+    /// penalty or a bought chip). Persists the per-entrant adjustment and rebuilds the board/
+    /// standings; the Core service enforces that a player can't be taken below zero.</summary>
+    [RelayCommand]
+    private async Task AdjustChipsAsync(ChipAdjustmentRequest? request)
+    {
+        var tournament = State.ActiveTournament;
+        if (request is null || tournament?.ChipGame is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var name = tournament.Entrants.FirstOrDefault(e => e.Id == request.EntrantId)?.Player?.FullName ?? "Player";
+            _chipGameService.AdjustChips(tournament, request.EntrantId, request.Delta);
+            await _tournamentRepository.SaveChangesAsync();
+
+            State.RebuildRounds();
+            await RefreshTournamentSummaryAsync();
+
+            if (tournament.Status == TournamentStatus.Completed)
+            {
+                var champion = ChipGameService.ComputeStandings(tournament).FirstOrDefault(r => r.Place == 1)?.Entrant.Player?.FullName ?? "Unknown player";
+                StatusMessage = $"Chip tournament over - {champion} wins!";
+            }
+            else
+            {
+                var count = Math.Abs(request.Delta);
+                StatusMessage = request.Delta > 0
+                    ? $"Added {count} chip{(count == 1 ? "" : "s")} to {name}."
+                    : $"Removed {count} chip{(count == 1 ? "" : "s")} from {name}.";
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
             State.RebuildRounds();
             StatusMessage = ex.Message;
         }

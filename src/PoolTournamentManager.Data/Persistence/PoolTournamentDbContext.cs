@@ -17,6 +17,7 @@ public class PoolTournamentDbContext : DbContext
     public DbSet<RingLedgerEntry> RingLedgerEntries => Set<RingLedgerEntry>();
     public DbSet<ChipGameDetail> ChipGameDetails => Set<ChipGameDetail>();
     public DbSet<ChipGameEntry> ChipGameEntries => Set<ChipGameEntry>();
+    public DbSet<ChipStartingRule> ChipStartingRules => Set<ChipStartingRule>();
     public DbSet<TournamentPrizePlace> TournamentPrizePlaces => Set<TournamentPrizePlace>();
 
     public PoolTournamentDbContext(DbContextOptions<PoolTournamentDbContext> options) : base(options)
@@ -104,6 +105,12 @@ public class PoolTournamentDbContext : DbContext
         {
             entity.HasKey(c => c.Id);
             entity.HasMany(c => c.Entries).WithOne().HasForeignKey(e => e.ChipGameDetailId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(c => c.StartingRules).WithOne().HasForeignKey(r => r.ChipGameDetailId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ChipStartingRule>(entity =>
+        {
+            entity.HasKey(r => r.Id);
         });
 
         modelBuilder.Entity<ChipGameEntry>(entity =>

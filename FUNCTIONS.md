@@ -124,7 +124,15 @@ This tab holds the entire "create a new tournament" form.
    Tournament tab).
 7. Format-specific setup fields appear automatically:
    - **Ring Game**: Buy-in ($), 5-ball payout ($), 9-ball payout ($).
-   - **Chip Tournament**: Starting chips per player.
+   - **Chip Tournament**: Starting chips per player. Optionally tick **Assign
+     starting chips by skill rating** to give stronger players fewer chips: pick a
+     **Rating** (Fargo/TAP/APA 8-Ball/APA 9-Ball) and add one or more **chip ranges**
+     (a Min, a Max, and the Chips for that band — leave a bound blank for open-ended,
+     e.g. "650 and up" or "under 450"). Ranges are checked top to bottom and the first
+     one a player's rating falls into wins; a player with no rating in that system (or
+     who fits no range) gets the plain "Starting chips per player" value above. Each
+     player's chips are locked in when you create or save the tournament, so later
+     edits to a player's rating won't change an already-running event.
 8. **Entry fee and prize payouts** — appears for every format except Ring Game.
    See [Section 6](#6-entry-fees-and-prize-payouts) for the full explanation; this is
    where you set the entry fee, the tournament host's cut, and how the remaining
@@ -314,7 +322,8 @@ table).
 ### Running a Chip Tournament
 
 Chip Tournament also has no bracket. A status line shows how many players remain,
-how many chips everyone started with, and the pot. Below that:
+how many chips everyone started with (or that chips were assigned by the chosen
+rating, when starting chips were set by skill), and the pot. Below that:
 
 1. Click **Shuffle & Seat Players** once, before the first game. This randomly
    orders every player and seats them two-per-table at however many tables you
@@ -329,6 +338,13 @@ how many chips everyone started with, and the pot. Below that:
    chips is eliminated and locks in a finishing place — their seat is filled from
    the queue instead. Once the queue is empty, any tables left with only one
    player are paired up with each other so no one waits forever.
+4. **Adjusting a player's chips.** While the tournament is in progress, each row of
+   the standings grid has **−** and **+** buttons in an **Adjust** column. Use them
+   to remove a chip (a penalty) or add one (a player who "buys" or is awarded a
+   chip). You can't take a player below zero chips; adding a chip to a player who
+   was just eliminated brings them back into the tournament. The board, standings,
+   and eliminations all update immediately. (The buttons disappear once the
+   tournament is over.)
 
 The **Next Up** list (operator screen) always shows who's waiting and in what
 order, so you know who to send to a table next. The **standings grid** updates

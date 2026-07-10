@@ -2,6 +2,10 @@ using PoolTournamentManager.Core.Services;
 
 namespace PoolTournamentManager.App.ViewModels;
 
+/// <summary>The (entrant, delta) pair submitted when the director clicks a +/- chip button in the
+/// chip-tournament standings - the single parameter type for AdjustChipsCommand.</summary>
+public record ChipAdjustmentRequest(Guid EntrantId, int Delta);
+
 /// <summary>
 /// One player's row in the chip-tournament standings: their finishing place (once decided), chip
 /// count, win/loss record, and whether they've been eliminated. Rebuilt from a ChipStandingRow on
@@ -29,6 +33,14 @@ public class ChipStandingRowViewModel
 
     /// <summary>Win percentage for the grid, e.g. "71%", or a dash before anyone's played.</summary>
     public string WinPercentageDisplay => MatchesPlayed == 0 ? "—" : $"{WinPercentage:0}%";
+
+    /// <summary>Command parameters for the director's +1 / -1 chip buttons in the standings.</summary>
+    public ChipAdjustmentRequest AddChipParam => new(EntrantId, +1);
+    public ChipAdjustmentRequest RemoveChipParam => new(EntrantId, -1);
+
+    /// <summary>Whether a chip can be removed from this player (they still have at least one). A
+    /// chip can always be added - including to revive a just-eliminated player who buys back in.</summary>
+    public bool CanRemoveChip => ChipsRemaining > 0;
 
     /// <summary>One-line summary for the read-only display card, e.g. "Place 2  ·  Out  ·  5-2 (71%)".</summary>
     public string SummaryLine

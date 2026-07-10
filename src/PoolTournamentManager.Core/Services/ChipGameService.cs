@@ -51,11 +51,19 @@ public class ChipGameService
     private static readonly Regex TrailingDigits = new(@"(\d+)$", RegexOptions.Compiled);
 
     /// <summary>
-    /// Sets up a chip tournament on an already-populated tournament: gives every entrant the same
-    /// starting chip count and marks the tournament InProgress. Entry fee/host cut/prize payouts
-    /// are the generic Tournament fields (EntryFee etc.), already set by the caller.
+    /// Sets up a chip tournament on an already-populated tournament and marks it InProgress. Each
+    /// entrant's starting chips are snapshotted onto <see cref="TournamentEntrant.StartingChips"/>:
+    /// the flat <paramref name="startingChips"/> for everyone, unless
+    /// <paramref name="ratingSystem"/> is given, in which case the first matching
+    /// <paramref name="rules"/> range for their rating applies (falling back to the default when
+    /// they have no rating in that system or match no range). Entry fee/host cut/prize payouts are
+    /// the generic Tournament fields (EntryFee etc.), already set by the caller.
     /// </summary>
-    public ChipGameDetail StartChipTournament(Tournament tournament, int startingChips)
+    public ChipGameDetail StartChipTournament(
+        Tournament tournament,
+        int startingChips,
+        RatingSystem? ratingSystem = null,
+        IReadOnlyList<ChipStartingRule>? rules = null)
     {
         if (tournament.Entrants.Count < 2)
         {
@@ -66,20 +74,141 @@ public class ChipGameService
             throw new InvalidOperationException("Each player needs at least 1 starting chip.");
         }
 
+        var ruleList = ratingSystem is null ? new List<ChipStartingRule>() : (rules ?? new List<ChipStartingRule>()).ToList();
+        if (ruleList.Any(r => r.Chips < 1))
+        {
+            throw new InvalidOperationException("Each chip range needs at least 1 chip.");
+        }
+        if (ratingSystem is not null && ruleList.Count == 0)
+        {
+            throw new InvalidOperationException("Add at least one chip range, or turn off skill-based chips.");
+        }
+
         var detail = new ChipGameDetail
         {
             TournamentId = tournament.Id,
-            StartingChips = startingChips
+            StartingChips = startingChips,
+            ChipRatingSystem = ratingSystem
         };
+
+        var sequence = 0;
+        foreach (var rule in ruleList)
+        {
+            detail.StartingRules.Add(new ChipStartingRule
+            {
+                ChipGameDetailId = detail.Id,
+                MinRating = rule.MinRating,
+                MaxRating = rule.MaxRating,
+                Chips = rule.Chips,
+                Sequence = sequence++
+            });
+        }
 
         foreach (var entrant in tournament.Entrants)
         {
             entrant.IsEliminated = false;
+            entrant.ChipAdjustment = 0;
+            entrant.StartingChips = ResolveStartingChips(entrant, ratingSystem, detail.StartingRules, startingChips);
         }
 
         tournament.ChipGame = detail;
         tournament.Status = TournamentStatus.InProgress;
         return detail;
+    }
+
+    /// <summary>Adjusts one entrant's chip count by <paramref name="delta"/> (a director penalty is
+    /// negative, a bought/awarded chip is positive) while the tournament is in progress, recomputing
+    /// eliminations and completion. Rejected if it would drop the entrant below zero chips; a
+    /// positive delta can bring a just-eliminated player back into contention.</summary>
+    public void AdjustChips(Tournament tournament, Guid entrantId, int delta)
+    {
+        RequireActive(tournament);
+
+        var entrant = tournament.Entrants.FirstOrDefault(e => e.Id == entrantId)
+            ?? throw new InvalidOperationException("That player is not in this tournament.");
+
+        if (delta == 0)
+        {
+            return;
+        }
+
+        var current = ChipCounts(tournament).TryGetValue(entrantId, out var c) ? c : 0;
+        if (current + delta < 0)
+        {
+            throw new InvalidOperationException(
+                $"{Name(entrant)} only has {current} chip{(current == 1 ? "" : "s")} - can't remove {-delta}.");
+        }
+
+        entrant.ChipAdjustment += delta;
+        RecomputeEliminationAndStatus(tournament);
+    }
+
+    /// <summary>The chips an entrant currently has BEFORE game losses are replayed: their
+    /// snapshotted starting chips (or the detail's flat default for legacy/unsnapshotted entrants)
+    /// plus the director's running adjustment. Never negative.</summary>
+    private static int BaseChips(TournamentEntrant entrant, ChipGameDetail? detail)
+    {
+        var start = entrant.StartingChips ?? detail?.StartingChips ?? 0;
+        return Math.Max(0, start + entrant.ChipAdjustment);
+    }
+
+    /// <summary>Resolves the starting chips for one entrant from the skill-range rules, or the flat
+    /// default when there's no rating system, no rules, no rating on file, or no matching range.</summary>
+    public static int ResolveStartingChips(
+        TournamentEntrant entrant, RatingSystem? ratingSystem, IReadOnlyList<ChipStartingRule> rules, int defaultChips)
+    {
+        if (ratingSystem is null || rules.Count == 0)
+        {
+            return defaultChips;
+        }
+
+        var rating = RatingValue(entrant.Player, ratingSystem.Value);
+        if (rating is null)
+        {
+            return defaultChips;
+        }
+
+        foreach (var rule in rules.OrderBy(r => r.Sequence))
+        {
+            if ((rule.MinRating is null || rating >= rule.MinRating) &&
+                (rule.MaxRating is null || rating <= rule.MaxRating))
+            {
+                return rule.Chips;
+            }
+        }
+
+        return defaultChips;
+    }
+
+    /// <summary>A player's numeric rating for a system, or null if unset/unparseable. TAP is stored
+    /// as a string, so it's parsed; Fargo and the two APA skills are already integers.</summary>
+    public static int? RatingValue(Player? player, RatingSystem system)
+    {
+        if (player is null)
+        {
+            return null;
+        }
+
+        return system switch
+        {
+            RatingSystem.Fargo => player.FargoRate,
+            RatingSystem.Tap => int.TryParse(player.TapRating, out var tap) ? tap : null,
+            RatingSystem.ApaEightBall => player.ApaEightBallSkill,
+            RatingSystem.ApaNineBall => player.ApaNineBallSkill,
+            _ => null
+        };
+    }
+
+    private static void RecomputeEliminationAndStatus(Tournament tournament)
+    {
+        var chips = ChipCounts(tournament);
+        foreach (var entrant in tournament.Entrants)
+        {
+            entrant.IsEliminated = (chips.TryGetValue(entrant.Id, out var c) ? c : 0) <= 0;
+        }
+
+        var active = tournament.Entrants.Count(e => !e.IsEliminated);
+        tournament.Status = active <= 1 ? TournamentStatus.Completed : TournamentStatus.InProgress;
     }
 
     /// <summary>
@@ -223,8 +352,7 @@ public class ChipGameService
         }
         nextUp.AddRange(seedOrder);
 
-        var start = tournament.ChipGame?.StartingChips ?? 0;
-        var chips = tournament.Entrants.ToDictionary(e => e.Id, _ => start);
+        var chips = tournament.Entrants.ToDictionary(e => e.Id, e => BaseChips(e, tournament.ChipGame));
 
         foreach (var entry in (tournament.ChipGame?.Entries ?? new List<ChipGameEntry>()).OrderBy(e => e.Sequence))
         {
@@ -329,9 +457,8 @@ public class ChipGameService
         var detail = tournament.ChipGame;
         var entrants = tournament.Entrants;
         var total = entrants.Count;
-        var start = detail?.StartingChips ?? 0;
 
-        var chips = entrants.ToDictionary(e => e.Id, _ => start);
+        var chips = entrants.ToDictionary(e => e.Id, e => BaseChips(e, detail));
         var wins = entrants.ToDictionary(e => e.Id, _ => 0);
         var played = entrants.ToDictionary(e => e.Id, _ => 0);
         var eliminationSequence = new Dictionary<Guid, int>();
@@ -356,11 +483,16 @@ public class ChipGameService
         }
 
         // Rank eliminated players by when they went out (earliest first). The first player out
-        // finishes last (place = total); the last player out finishes 2nd.
-        var eliminationRank = eliminationSequence
-            .OrderBy(kv => kv.Value)
-            .Select((kv, index) => (kv.Key, index))
-            .ToDictionary(x => x.Key, x => x.index);
+        // finishes last (place = total); the last player out finishes 2nd. Built from every
+        // entrant now at 0 chips - not just those the game log eliminated - so a player taken to
+        // zero by a director penalty (no losing game recorded) still gets a place instead of
+        // throwing; such a player sorts last (int.MaxValue), i.e. "eliminated most recently".
+        var eliminationRank = entrants
+            .Where(e => chips[e.Id] <= 0)
+            .OrderBy(e => eliminationSequence.TryGetValue(e.Id, out var s) ? s : int.MaxValue)
+            .ThenBy(e => entrants.IndexOf(e))
+            .Select((e, index) => (e.Id, index))
+            .ToDictionary(x => x.Id, x => x.index);
 
         var activeCount = entrants.Count(e => chips[e.Id] > 0);
         var completed = tournament.Status == TournamentStatus.Completed;
@@ -407,8 +539,7 @@ public class ChipGameService
     private static Dictionary<Guid, int> ChipCounts(Tournament tournament)
     {
         var detail = tournament.ChipGame;
-        var start = detail?.StartingChips ?? 0;
-        var chips = tournament.Entrants.ToDictionary(e => e.Id, _ => start);
+        var chips = tournament.Entrants.ToDictionary(e => e.Id, e => BaseChips(e, detail));
         foreach (var entry in detail?.Entries ?? new List<ChipGameEntry>())
         {
             if (chips.ContainsKey(entry.LoserEntrantId))

@@ -608,6 +608,26 @@
                                 <DataGridTextColumn Header="Chips" Binding="{Binding ChipsDisplay}" Width="80" />
                                 <DataGridTextColumn Header="Won" Binding="{Binding MatchesWon}" Width="60" />
                                 <DataGridTextColumn Header="Win %" Binding="{Binding WinPercentageDisplay}" Width="70" />
+                                <!-- Director chip adjustment: -1 (penalty) / +1 (bought or awarded chip).
+                                     Whole cell hidden once the tournament is complete (State.ChipCanAdjust);
+                                     "-" disabled when the player has no chips left. TournamentRoot's
+                                     DataContext is the TournamentViewModel that owns the command + State. -->
+                                <DataGridTemplateColumn Header="Adjust" Width="86">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal"
+                                                        Visibility="{Binding DataContext.State.ChipCanAdjust, ElementName=TournamentRoot, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <Button Content="−" Width="26" Padding="0" Margin="0,0,4,0" ToolTip="Remove a chip (penalty)"
+                                                        Command="{Binding DataContext.AdjustChipsCommand, ElementName=TournamentRoot}"
+                                                        CommandParameter="{Binding RemoveChipParam}"
+                                                        IsEnabled="{Binding CanRemoveChip}" />
+                                                <Button Content="+" Width="26" Padding="0" ToolTip="Add a chip (bought / awarded)"
+                                                        Command="{Binding DataContext.AdjustChipsCommand, ElementName=TournamentRoot}"
+                                                        CommandParameter="{Binding AddChipParam}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
@@ -707,10 +727,61 @@
                         <TextBox Text="{Binding NewRingNinePayout}" Margin="0,0,0,6" />
                     </StackPanel>
 
-                    <!-- Chip-tournament-only setup: starting chips -->
+                    <!-- Chip-tournament-only setup: starting chips, optionally assigned by skill
+                         range. The flat value doubles as the fallback for unrated players when
+                         skill ranges are on. -->
                     <StackPanel Visibility="{Binding IsCreatingChipTournament, Converter={StaticResource BoolToVisibilityConverter}}">
                         <TextBlock Text="Starting chips per player" />
-                        <TextBox Text="{Binding NewChipStartingChips}" Margin="0,0,0,6" />
+                        <TextBox Text="{Binding NewChipStartingChips, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+
+                        <CheckBox Content="Assign starting chips by skill rating"
+                                  IsChecked="{Binding NewChipUsesSkillRanges}" Margin="0,2,0,6" />
+
+                        <StackPanel Visibility="{Binding NewChipUsesSkillRanges, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="Rating" />
+                            <ComboBox ItemsSource="{Binding RatingSystems}" SelectedItem="{Binding NewChipRatingSystem}" Margin="0,0,0,6" />
+
+                            <TextBlock Text="Chip ranges (first match wins; leave a bound blank for open-ended, e.g. 650+ or under 450)"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4" />
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="60" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Min" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
+                                <TextBlock Grid.Column="1" Text="Max" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
+                                <TextBlock Grid.Column="2" Text="Chips" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding NewChipRanges}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="70" />
+                                                <ColumnDefinition Width="70" />
+                                                <ColumnDefinition Width="60" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" Margin="0,0,4,0"
+                                                     Text="{Binding MinRating, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" />
+                                            <TextBox Grid.Column="1" Margin="0,0,4,0"
+                                                     Text="{Binding MaxRating, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" />
+                                            <TextBox Grid.Column="2" Margin="0,0,4,0"
+                                                     Text="{Binding Chips, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Column="3" Content="✕" Padding="8,0" ToolTip="Remove this range"
+                                                    Command="{Binding DataContext.RemoveChipRangeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="Add Range" HorizontalAlignment="Left" Padding="8,2" Margin="0,2,0,6"
+                                    Command="{Binding AddChipRangeCommand}" />
+                            <TextBlock Text="Players with no rating (or outside every range) get the starting-chips value above."
+                                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- Entry fee, host cut, and place-based prize payouts - every format except

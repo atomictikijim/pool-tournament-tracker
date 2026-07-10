@@ -5,6 +5,45 @@ the top of each section.
 
 ## Current status
 
+v0.32 complete: **Chip Tournaments can assign starting chips by skill range, and the tournament
+director can add/remove a player's chips mid-event.** Starting chips are no longer one flat number
+for everyone: on the Tournament Settings tab, ticking **Assign starting chips by skill rating**
+reveals a rating picker (Fargo/TAP/APA 8-Ball/APA 9-Ball) and an editable list of **chip ranges**
+(Min/Max/Chips; a blank bound = open-ended). Ranges evaluate first-match-wins in order; a player
+with no rating in that system, or who fits no range, falls back to the plain "Starting chips per
+player" value. The example from the request (650+→3, 550-649→4, 450-549→5, under 450→6) is
+pre-seeded the first time the box is ticked. Each entrant's chips are **snapshotted** at create/edit
+time onto `TournamentEntrant.StartingChips`, so later edits to a player's rating never change an
+already-running event.
+
+Data model: new `ChipStartingRule` child entity (Min/Max/Chips/Sequence, cascade FK to
+`ChipGameDetail`), `ChipGameDetail.ChipRatingSystem` (nullable), and two new `TournamentEntrant`
+columns - `StartingChips` (int?, the per-player snapshot) and `ChipAdjustment` (int, the director's
+running +/- delta). Migration `AddChipSkillRangesAndAdjustments` (additive: two columns on
+TournamentEntrants, one on ChipGameDetails, the new ChipStartingRules table). `ChipGameService` now
+computes each entrant's chips as `BaseChips = (snapshot ?? flat default) + ChipAdjustment - losses`
+in all three replay sites (table board, standings, chip-count check); `StartChipTournament` takes an
+optional rating system + rules and snapshots per-entrant chips; `ResolveStartingChips`/`RatingValue`
+map a player's rating (TAP parsed from its string) to a range; and the eliminated-order rank is now
+built from every zero-chip entrant (not just game-eliminated ones) so a penalty-to-zero can't throw.
+
+Director control: a new `AdjustChips(tournament, entrantId, delta)` service method (rejects going
+below zero; a +delta can revive a just-eliminated player and reopen an InProgress event, recomputing
+eliminations/completion), surfaced as an **Adjust** column of −/+ buttons on each standings row
+(gated by `State.ChipCanAdjust`, hidden once complete; "−" disabled at zero chips) wired to a new
+`AdjustChipsCommand`. The chip status line reads "chips by {rating} rating" instead of "N chips each"
+when skill-based.
+
++9 Core tests (`ChipSkillChipsAndAdjustmentsTests`: per-player chips by Fargo with unrated/out-of-range
+fallback; TAP parsed from string; rejects empty/zero-chip rule sets; add/remove adjust; can't go below
+zero; penalty-to-zero eliminates but keeps a place while others remain; +chip revives an eliminated
+player in progress; taking the second-to-last player to zero completes and then rejects further
+adjustment) - 197 tests total. Version synced to 0.32.0 (App `.csproj` + installer `.iss`). Verified
+end-to-end: the existing "test chip" tournament still loaded after the migration ("3 chips each",
+backward-compatible); clicked **+** in its standings and a player went 3→5 with an "Added 1 chip"
+status; and on the Settings tab, selecting Chip Tournament + ticking skill chips showed the Fargo
+rating picker and the four pre-seeded example ranges with Add/remove controls.
+
 v0.31.1 complete (UI): **Round and section labels now sit on an opaque chip instead of relying on
 a text stroke, so they stay readable over any background.** The v0.31 `OutlinedTextBlock` stroke
 didn't give enough contrast where a label crossed the watermark's solid-white disc, so it's been

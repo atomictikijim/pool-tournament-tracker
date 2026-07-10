@@ -25,11 +25,15 @@ live results on a second screen.
     by wins, then head-to-head, then point differential, then games-won %.
   - **Ring Game** — a rotation-order money game (9-ball rules): players buy in, shoot
     in a fixed order, and cash out individually as the session runs.
-  - **Chip Tournament** — a buy-in "lives" tournament: every player starts with the
-    same chip count, loses a chip on a loss, and is eliminated at zero; last player
-    standing wins, with configurable 1st/2nd/3rd payouts. Players are shuffled and
-    seated at tables in rotation (winner stays, next player up takes the loser's
-    seat), with a live table board, Next Up queue, and per-player win-rate tracking.
+  - **Chip Tournament** — a buy-in "lives" tournament: every player starts with a
+    chip count, loses a chip on a loss, and is eliminated at zero; last player
+    standing wins, with configurable 1st/2nd/3rd payouts. Starting chips can be a
+    flat amount for everyone or assigned by skill range (e.g. Fargo 650+ get 3
+    chips, under 450 get 6), and the tournament director can add or remove a
+    player's chips on the fly during play (a penalty, or a bought chip). Players are
+    shuffled and seated at tables in rotation (winner stays, next player up takes the
+    loser's seat), with a live table board, Next Up queue, and per-player win-rate
+    tracking.
 - **Teams as entrants.** Single, Double, and Modified Single Elimination can be run
   with Teams instead of individual Players.
 - **Entry fees and prize payouts.** Every format except Ring Game can charge a

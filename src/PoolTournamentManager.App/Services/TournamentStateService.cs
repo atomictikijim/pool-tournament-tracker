@@ -69,6 +69,11 @@ public partial class TournamentStateService : ObservableObject
     [ObservableProperty]
     private bool _chipCanShuffle;
 
+    /// <summary>True while a chip tournament is still in progress - gates the director's per-player
+    /// add/remove-chip controls in the standings (see ChipGameService.AdjustChips).</summary>
+    [ObservableProperty]
+    private bool _chipCanAdjust;
+
     /// <summary>Shown for every format except Ring Game once at least one payout place is
     /// configured - see PrizePayoutService.</summary>
     [ObservableProperty]
@@ -273,6 +278,7 @@ public partial class TournamentStateService : ObservableObject
         ChipNextUp = new ObservableCollection<ChipNextUpRowViewModel>(
             board.NextUp.Select((e, i) => new ChipNextUpRowViewModel(i + 1, e)));
         ChipCanShuffle = tournament.ChipGame?.Entries.All(e => e.TableId is null) ?? true;
+        ChipCanAdjust = tournament.Status != TournamentStatus.Completed;
 
         var pot = PrizePayoutService.TotalEntryFees(tournament).ToString("C0");
         var total = tournament.Entrants.Count;
@@ -282,6 +288,11 @@ public partial class TournamentStateService : ObservableObject
         {
             var champion = rows.FirstOrDefault(r => r.Place == 1)?.Entrant.Player?.FullName ?? "-";
             ChipStatusLine = $"Finished  ·  Pot {pot}  ·  Winner: {champion}";
+        }
+        else if (tournament.ChipGame?.ChipRatingSystem is not null)
+        {
+            // Chips vary per player by skill range, so a single "N chips each" would be misleading.
+            ChipStatusLine = $"{active} of {total} left  ·  chips by {tournament.ChipGame.ChipRatingSystem} rating  ·  Pot {pot}";
         }
         else
         {
@@ -300,6 +311,7 @@ public partial class TournamentStateService : ObservableObject
         ChipTableBoard = new ObservableCollection<ChipTableBoardRowViewModel>();
         ChipNextUp = new ObservableCollection<ChipNextUpRowViewModel>();
         ChipCanShuffle = false;
+        ChipCanAdjust = false;
     }
 
     private void ClearPrizePayouts()
