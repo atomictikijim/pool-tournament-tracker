@@ -1,17 +1,23 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using PoolTournamentManager.App.Services;
 using PoolTournamentManager.Core.Enums;
 
 namespace PoolTournamentManager.App.ViewModels;
 
 /// <summary>
-/// Read-only by construction: this ViewModel exposes no ICommand mutators, only projections
-/// over the shared TournamentStateService, so there is nothing here for a bound control to
-/// invoke that would change tournament state from the display window.
+/// Read-only by construction with respect to tournament data: this ViewModel exposes no ICommand
+/// mutators that change tournament state, only projections over the shared
+/// TournamentStateService. The bracket zoom commands are the one exception - they only affect
+/// this window's own local display scale, never anything persisted or shared.
 /// </summary>
-public class DisplayWindowViewModel : ObservableObject
+public partial class DisplayWindowViewModel : ObservableObject
 {
+    private const double MinBracketZoom = 0.15;
+    private const double MaxBracketZoom = 2.0;
+    private const double BracketZoomStep = 0.1;
+
     public TournamentStateService State { get; }
 
     public DisplayWindowViewModel(TournamentStateService state)
@@ -19,6 +25,39 @@ public class DisplayWindowViewModel : ObservableObject
         State = state;
         State.PropertyChanged += OnStateChanged;
         RebuildBracket();
+    }
+
+    /// <summary>Scale factor applied to the bracket tree via a LayoutTransform. 1.0 = actual size.</summary>
+    [ObservableProperty]
+    private double _bracketZoom = 1.0;
+
+    /// <summary>"100%"-style text for the zoom control's readout.</summary>
+    public string BracketZoomDisplay => BracketZoom.ToString("P0");
+
+    partial void OnBracketZoomChanged(double value) => OnPropertyChanged(nameof(BracketZoomDisplay));
+
+    [RelayCommand]
+    private void ZoomBracketIn() => BracketZoom = Math.Min(MaxBracketZoom, Math.Round(BracketZoom + BracketZoomStep, 2));
+
+    [RelayCommand]
+    private void ZoomBracketOut() => BracketZoom = Math.Max(MinBracketZoom, Math.Round(BracketZoom - BracketZoomStep, 2));
+
+    [RelayCommand]
+    private void ResetBracketZoom() => BracketZoom = 1.0;
+
+    /// <summary>Sets the zoom to whatever scale fits the bracket's full extent into the given
+    /// viewport (clamped to the same range the +/- buttons respect). The viewport size is only
+    /// known to the view (a ScrollViewer's measured size), so the "Fit" button's code-behind
+    /// click handler computes it and calls this rather than a bare property setter.</summary>
+    public void FitBracketToViewport(double viewportWidth, double viewportHeight)
+    {
+        if (Bracket.Width <= 0 || Bracket.Height <= 0 || viewportWidth <= 0 || viewportHeight <= 0)
+        {
+            return;
+        }
+
+        var scale = Math.Min(viewportWidth / Bracket.Width, viewportHeight / Bracket.Height);
+        BracketZoom = Math.Clamp(Math.Round(scale, 2), MinBracketZoom, MaxBracketZoom);
     }
 
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)

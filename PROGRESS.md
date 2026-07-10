@@ -5,6 +5,29 @@ the top of each section.
 
 ## Current status
 
+v0.26 complete: **The elimination bracket can be zoomed in/out and fit-to-screen, in both the
+Tournament tab and the Display window.** A "Zoom: - 100% + Reset Fit" toolbar appears next to "Open
+Display Window" on the Tournament tab, and below "Now Playing" on the Display window, whenever an
+elimination bracket (Single/Double/Modified Single Elimination) is showing. `BracketZoom` (a
+clamped 0.15-2.0 double, default 1.0) lives independently on `TournamentViewModel` and
+`DisplayWindowViewModel`, and is applied via a `ScaleTransform` on the bracket `Grid`'s
+`LayoutTransform` - `LayoutTransform` rather than `RenderTransform` so the surrounding
+`ScrollViewer` re-measures at the scaled size and its scrollbars/extent stay correct at any zoom
+level, instead of the scaled content clipping or the scrollbar range staying stuck at the unscaled
+size (see NOTES.md). Ctrl+MouseWheel over the bracket zooms it too (mirrors the +/- buttons), while
+a plain wheel scroll still pans the `ScrollViewer` as before. The new **Fit** button (a code-behind
+click handler, since it needs the `ScrollViewer`'s measured viewport size, which the ViewModel has
+no way to know) computes `min(viewportWidth/Bracket.Width, viewportHeight/Bracket.Height)` and sets
+that as the zoom, so a bracket of any size - even one much larger than 100% would show on screen -
+scales down to fit entirely in the visible area with no scrolling. No test count change (pure
+UI/view-state addition, nothing in Core/Data). Verified end-to-end: zoomed the Tournament tab's
+live "Full Bracket Verify SE8" bracket to 150% (boxes/text scaled up cleanly, scrollbars appeared
+correctly), Reset back to 100%, then shrank the window so the 3-round bracket no longer fit and
+clicked **Fit** - it zoomed to 44% and the whole Round 1 -> Semifinals -> Final tree became visible
+with no scrollbars; separately opened the Display window and zoomed its own independent copy out to
+60% via the +/- buttons (whole bracket shrank and stayed readable, no clipping or broken
+connectors) - confirming the two windows' zoom levels are independent.
+
 v0.25 complete: **Finishing a bracket match no longer freezes the UI for several seconds.**
 `TournamentViewModel.FinishMatchAsync` used to call `State.SelectTournamentAsync(tournament.Id)`
 after every match result, which reloads the *entire* tournament graph via

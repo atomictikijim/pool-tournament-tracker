@@ -46,6 +46,33 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Ctrl+MouseWheel over the bracket zooms it, mirroring the +/- buttons; a plain
+    /// scroll is left alone so the ScrollViewer's normal panning still works.</summary>
+    private void BracketScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (e.Delta > 0)
+        {
+            _viewModel.Tournament.ZoomBracketInCommand.Execute(null);
+        }
+        else
+        {
+            _viewModel.Tournament.ZoomBracketOutCommand.Execute(null);
+        }
+    }
+
+    /// <summary>"Fit" zooms so the whole bracket - however large - fits inside the ScrollViewer's
+    /// currently visible area, useful for eyeballing a big bracket's overall shape/progress.</summary>
+    private void FitBracketButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _viewModel.Tournament.FitBracketToViewport(BracketScrollViewer.ViewportWidth, BracketScrollViewer.ViewportHeight);
+    }
+
     // ----- Players tab: create/edit in a modal window, multi-select delete with confirmation -----
 
     private async void NewPlayerButton_OnClick(object sender, RoutedEventArgs e)

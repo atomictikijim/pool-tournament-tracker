@@ -3,6 +3,26 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-10 — Bracket zoom: a ScaleTransform inside a ScrollViewer needs LayoutTransform, not RenderTransform
+
+**Issue:** Adding zoom to the bracket tree (a `Grid` sized to `Bracket.Width`/`Height`, hosting four
+Canvas-panel `ItemsControl`s, inside a `ScrollViewer`) needed a scale factor applied to the whole
+tree. `RenderTransform` is the more familiar/first-reached-for property for scaling an element, but
+it applies purely at render time, *after* layout - the `ScrollViewer` measures/arranges its content
+at the pre-transform size, so it never learns the content got bigger or smaller. At zoom > 100% that
+means the scaled-up bracket clips against the viewport with no scrollbar to reach the overflow; at
+zoom < 100% the `ScrollViewer` keeps reserving/allowing scroll range sized for the old (bigger)
+extent.
+
+**Fix:** Used `Grid.LayoutTransform` (a `ScaleTransform` bound to `ScaleX`/`ScaleY = BracketZoom`)
+instead. `LayoutTransform` is applied *before* measure/arrange, so the `ScrollViewer` sees the
+already-scaled size and computes correct scroll extents/scrollbar visibility at any zoom level.
+General lesson for this codebase (and WPF generally): any scale/rotate transform on content that
+lives inside a `ScrollViewer` (or any other layout-aware parent that needs to react to the
+transformed size) must be a `LayoutTransform`, not a `RenderTransform` - `RenderTransform` is only
+correct for purely cosmetic effects (e.g. a hover animation) that shouldn't perturb the parent's
+layout at all.
+
 ## 2026-07-10 — Finishing a match froze the UI: an unnecessary full-graph reload after every result
 
 **Issue:** Reporting a match result froze the app for several seconds. `TournamentViewModel

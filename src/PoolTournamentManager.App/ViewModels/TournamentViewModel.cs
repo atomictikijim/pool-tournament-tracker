@@ -419,6 +419,44 @@ public partial class TournamentViewModel : ObservableObject
     private const double EditableBoxHeight = 108;
     private const double EditableRowGap = 18;
 
+    private const double MinBracketZoom = 0.15;
+    private const double MaxBracketZoom = 2.0;
+    private const double BracketZoomStep = 0.1;
+
+    /// <summary>Scale factor applied to the bracket tree via a LayoutTransform - lets the operator
+    /// zoom in for readability or out to see the whole tree at once. 1.0 = actual size.</summary>
+    [ObservableProperty]
+    private double _bracketZoom = 1.0;
+
+    /// <summary>"100%"-style text for the zoom control's readout.</summary>
+    public string BracketZoomDisplay => BracketZoom.ToString("P0");
+
+    partial void OnBracketZoomChanged(double value) => OnPropertyChanged(nameof(BracketZoomDisplay));
+
+    [RelayCommand]
+    private void ZoomBracketIn() => BracketZoom = Math.Min(MaxBracketZoom, Math.Round(BracketZoom + BracketZoomStep, 2));
+
+    [RelayCommand]
+    private void ZoomBracketOut() => BracketZoom = Math.Max(MinBracketZoom, Math.Round(BracketZoom - BracketZoomStep, 2));
+
+    [RelayCommand]
+    private void ResetBracketZoom() => BracketZoom = 1.0;
+
+    /// <summary>Sets the zoom to whatever scale fits the bracket's full extent into the given
+    /// viewport (clamped to the same range the +/- buttons respect). The viewport size is only
+    /// known to the view (a ScrollViewer's measured size), so the "Fit" button's code-behind
+    /// click handler computes it and calls this rather than a bare property setter.</summary>
+    public void FitBracketToViewport(double viewportWidth, double viewportHeight)
+    {
+        if (Bracket.Width <= 0 || Bracket.Height <= 0 || viewportWidth <= 0 || viewportHeight <= 0)
+        {
+            return;
+        }
+
+        var scale = Math.Min(viewportWidth / Bracket.Width, viewportHeight / Bracket.Height);
+        BracketZoom = Math.Clamp(Math.Round(scale, 2), MinBracketZoom, MaxBracketZoom);
+    }
+
     /// <summary>The positioned bracket tree for elimination formats (empty otherwise).</summary>
     public BracketLayout Bracket { get; private set; } = new();
 

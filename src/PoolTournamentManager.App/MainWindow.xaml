@@ -305,6 +305,21 @@
                         <Button Content="Add Table" Command="{Binding AddTableCommand}" Padding="6,2" Margin="6,0,0,0" />
                         <Button Content="Save Table Assignments" Command="{Binding SaveAssignmentsCommand}" Padding="6,2" Margin="6,0,0,0" />
                         <Button x:Name="OpenDisplayWindowButton" Content="Open Display Window" Click="OpenDisplayWindowButton_OnClick" Padding="6,2" Margin="16,0,0,0" />
+
+                        <!-- Bracket zoom: scales the bracket tree via a LayoutTransform (see the
+                             ScrollViewer below). Only meaningful once an elimination bracket is
+                             showing. Ctrl+MouseWheel over the bracket does the same thing. -->
+                        <StackPanel Orientation="Horizontal" Margin="16,0,0,0"
+                                    Visibility="{Binding IsEliminationBracket, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="Zoom:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="Bold" />
+                            <Button Content="-" Command="{Binding ZoomBracketOutCommand}" Padding="0" Width="26" />
+                            <TextBlock Text="{Binding BracketZoomDisplay}" VerticalAlignment="Center" Width="48"
+                                       TextAlignment="Center" />
+                            <Button Content="+" Command="{Binding ZoomBracketInCommand}" Padding="0" Width="26" Margin="0,0,6,0" />
+                            <Button Content="Reset" Command="{Binding ResetBracketZoomCommand}" Padding="6,2" Margin="0,0,6,0" />
+                            <Button Content="Fit" Click="FitBracketButton_OnClick" Padding="6,2"
+                                    ToolTip="Zoom to fit the whole bracket on screen" />
+                        </StackPanel>
                     </StackPanel>
                     </ScrollViewer>
 
@@ -352,9 +367,13 @@
 
                     <!-- Elimination bracket: same tree as the read-only Display window, with
                          editable boxes (score inputs + table picker + Report on the live match). -->
-                    <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                                  Visibility="{Binding IsEliminationBracket, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ScrollViewer x:Name="BracketScrollViewer" Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding IsEliminationBracket, Converter={StaticResource BoolToVisibilityConverter}}"
+                                  PreviewMouseWheel="BracketScrollViewer_OnPreviewMouseWheel">
                         <Grid Width="{Binding Bracket.Width}" Height="{Binding Bracket.Height}" HorizontalAlignment="Left" VerticalAlignment="Top">
+                            <Grid.LayoutTransform>
+                                <ScaleTransform ScaleX="{Binding BracketZoom}" ScaleY="{Binding BracketZoom}" />
+                            </Grid.LayoutTransform>
                             <ItemsControl ItemsSource="{Binding Bracket.Connectors}" ItemTemplate="{StaticResource BracketConnectorTemplate}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
