@@ -2,6 +2,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
+using PoolTournamentManager.App.Help;
 using PoolTournamentManager.App.Services;
 using PoolTournamentManager.App.ViewModels;
 using PoolTournamentManager.Core.Entities;
@@ -229,6 +230,21 @@ public partial class MainWindow : Window
 
         _viewModel.Tournament.BeginEditTournament(selected);
         _viewModel.SelectedTabIndex = 3;
+    }
+
+    // ----- Contextual help: each tab's "?" button opens a modal guide for that tab -----
+
+    /// <summary>Opens the contextual help modal for the tab whose "?" button was clicked. The topic
+    /// is carried in the button's Tag (set in XAML to a HelpTopic name), keeping one handler for all
+    /// four tabs.</summary>
+    private void HelpButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string tag } &&
+            Enum.TryParse<HelpTopic>(tag, out var topic))
+        {
+            var window = new HelpWindow(topic, _themeService) { Owner = this };
+            window.ShowDialog();
+        }
     }
 
     private bool Confirm(string message) =>

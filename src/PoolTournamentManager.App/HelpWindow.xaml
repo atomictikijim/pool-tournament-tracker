@@ -1,0 +1,78 @@
+<Window x:Class="PoolTournamentManager.App.HelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="{Binding Title}"
+        Width="640" Height="620" MinWidth="420" MinHeight="320"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Icon="Assets/Logo.png"
+        Background="{DynamicResource AppBackgroundBrush}">
+    <!-- Renders a HelpDocument (see Help/HelpContentProvider): a title row, a scrolling body whose
+         blocks are styled purely by their HelpBlockKind, and a Close button. All colors are
+         DynamicResource brushes so it follows the app's live light/dark theme. -->
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="{Binding Title}" FontSize="20" FontWeight="Bold"
+                   Margin="0,0,0,10" TextWrapping="Wrap" />
+
+        <Border Grid.Row="1" Background="{DynamicResource SurfaceBackgroundBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="5">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Padding="16,12">
+                <ItemsControl ItemsSource="{Binding Blocks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid x:Name="Root" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock x:Name="Bullet" Grid.Column="0" Text="&#x2022;"
+                                           Visibility="Collapsed" Margin="0,0,8,0"
+                                           Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                <TextBlock x:Name="Body" Grid.Column="1" Text="{Binding Text}"
+                                           TextWrapping="Wrap" LineHeight="19"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                            </Grid>
+
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Kind}" Value="Heading">
+                                    <Setter TargetName="Root" Property="Margin" Value="0,2,0,10" />
+                                    <Setter TargetName="Body" Property="FontSize" Value="17" />
+                                    <Setter TargetName="Body" Property="FontWeight" Value="Bold" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Kind}" Value="Subheading">
+                                    <Setter TargetName="Root" Property="Margin" Value="0,12,0,5" />
+                                    <Setter TargetName="Body" Property="FontSize" Value="14" />
+                                    <Setter TargetName="Body" Property="FontWeight" Value="SemiBold" />
+                                    <Setter TargetName="Body" Property="Foreground" Value="{DynamicResource AccentSecondaryBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Kind}" Value="Bullet">
+                                    <Setter TargetName="Bullet" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="Root" Property="Margin" Value="6,0,0,6" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Kind}" Value="SubBullet">
+                                    <Setter TargetName="Bullet" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="Bullet" Property="Text" Value="&#x2013;" />
+                                    <Setter TargetName="Root" Property="Margin" Value="26,0,0,6" />
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <Button Grid.Row="2" Content="Close" Click="Close_Click" IsDefault="True" IsCancel="True"
+                MinWidth="90" Padding="8,4" Margin="0,12,0,0" HorizontalAlignment="Right" />
+    </Grid>
+</Window>

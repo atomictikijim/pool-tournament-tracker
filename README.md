@@ -48,6 +48,8 @@ live results on a second screen.
   (All / Not Started / In Progress / Completed).
 - **Second-screen Display window.** A read-only, projector-friendly window mirroring
   the live bracket/standings/rotation board, for the room to watch.
+- **Built-in contextual help.** Every tab has a **?** button that opens a pop-up guide
+  for that tab, so the instructions are available right inside the app.
 - **Follows Windows light/dark mode** automatically, live, with no in-app settings.
 
 See [FUNCTIONS.md](FUNCTIONS.md) for a full walkthrough of every screen and feature.

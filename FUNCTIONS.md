@@ -32,6 +32,13 @@ The app has four tabs across the top:
   start/finish matches, watch the bracket or standings.
 - **Tournament Settings** — where you create a new tournament and configure it.
 
+### Built-in help
+
+Every tab has a small round **?** button in its top-right corner. Click it to open a
+pop-up window with contextual help for that tab — the same walkthroughs covered in this
+guide, available right inside the app. The help window is read-only; close it (Close, the
+window's X, or the Esc key) to return to what you were doing.
+
 ## 2. Managing players (Players tab)
 
 The grid lists every player you've added. Above it is a toolbar with **New

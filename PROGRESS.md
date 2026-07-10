@@ -5,6 +5,29 @@ the top of each section.
 
 ## Current status
 
+v0.29 complete: **Each tab now has a contextual in-app help guide, opened by a small round "?"
+button in the tab's top-right corner.** The end-user manual (FUNCTIONS.md) is now surfaced inside
+the app itself, per-tab. A new `Help/HelpContent.cs` defines a tiny content model
+(`HelpTopic`/`HelpBlockKind`/`HelpBlock`/`HelpDocument`) and a static `HelpContentProvider.For(topic)`
+that returns the guide for one tab as an ordered list of styled blocks (heading, subheading,
+paragraph, bullet) - the content is authored in C# via a small fluent `Builder`, kept free of any
+presentation markup and mirroring the matching FUNCTIONS.md sections. `HelpWindow` (a themed modal
+in the same pattern as the Player/Team editors - `ThemeService.ApplyTitleBar` on `SourceInitialized`)
+renders a `HelpDocument`: a title, a scrolling body whose blocks are styled purely by their
+`HelpBlockKind` via `DataTrigger`s (accent subheadings, blue bullet glyphs), and a Close button, all
+in `DynamicResource` brushes so it follows the live light/dark theme. A keyed `HelpButtonStyle` (in
+Themes/Generic.xaml) draws the hollow accent-outlined "?" circle that fills on hover; one instance
+sits on each of the four tabs (Players/Teams toolbars, the Tournament tab's "Tournaments" heading,
+the Tournament Settings header), each carrying its `HelpTopic` in `Tag`. A single
+`MainWindow.HelpButton_OnClick` reads that `Tag` and opens the modal for the right topic.
++5 App tests (`HelpContentProviderTests`: every tab returns a non-empty document that opens with a
+heading and has no blank blocks; every defined `HelpTopic` is wired up, guarding against the empty
+default); 177 tests total. Verified end-to-end: launched the app, clicked the Players tab's "?" and
+confirmed the modal opened titled "Players Tab — Help" with a bold heading, accent-colored
+subheadings ("Adding a player" etc.), blue bulleted steps, a scrollbar, and a dark-themed title bar
+matching the app. The other three tabs' buttons use the identical handler and modal, differing only
+in the content string the provider returns.
+
 v0.28 complete: **Bracket/Round Robin tournaments now sit at a new NotStarted status until
 their first match actually starts, which unlocks reshuffling the bracket and editing the
 tournament's settings in place.** `TournamentStatus.Setup` (previously declared but never
