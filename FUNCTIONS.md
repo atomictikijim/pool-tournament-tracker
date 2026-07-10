@@ -485,8 +485,16 @@ needed:
   or 10 ball matching whichever game the tournament is set to (8-Ball, 9-Ball, or
   10-Ball).
 
-Nothing in the Display window is clickable/editable — it's purely for the audience
-to watch. All control stays on the main Tournament tab.
+For an elimination bracket **or** a Round Robin schedule, the Display window has its
+own **Zoom** controls (**−** / **+** / **Reset** / **Fit**, or **Ctrl + mouse wheel**
+over the content) so you can size the whole bracket or the full set of round columns
+to whatever screen or projector you're using — **Fit** scales it to fit the window.
+This only affects the Display window's own view; it changes nothing on the Tournament
+tab. (These controls don't appear for Ring Game or Chip Tournament, which have no
+scaled bracket/schedule.)
+
+Nothing else in the Display window is clickable/editable — it's purely for the
+audience to watch. All control of the tournament itself stays on the main Tournament tab.
 
 ## 9. Appearance
 

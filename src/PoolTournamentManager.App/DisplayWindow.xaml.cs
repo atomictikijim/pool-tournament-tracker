@@ -20,6 +20,13 @@ public partial class DisplayWindow : Window
     /// <summary>Ctrl+MouseWheel over the bracket zooms it, mirroring the +/- buttons; a plain
     /// scroll is left alone so the ScrollViewer's normal panning still works.</summary>
     private void BracketScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        => HandleZoomWheel(e);
+
+    /// <summary>Ctrl+MouseWheel over the round-robin columns zooms them, same as the bracket.</summary>
+    private void RoundRobinScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        => HandleZoomWheel(e);
+
+    private void HandleZoomWheel(MouseWheelEventArgs e)
     {
         if (Keyboard.Modifiers != ModifierKeys.Control)
         {
@@ -37,10 +44,20 @@ public partial class DisplayWindow : Window
         }
     }
 
-    /// <summary>"Fit" zooms so the whole bracket - however large - fits inside the ScrollViewer's
-    /// currently visible area, useful for eyeballing a big bracket's overall shape/progress.</summary>
+    /// <summary>"Fit" zooms so the whole bracket/schedule - however large - fits inside the visible
+    /// area, useful for eyeballing its overall shape/progress. The round-robin content has no
+    /// precomputed layout size, so its (unscaled) extent is read off the rendered element.</summary>
     private void FitBracketButton_OnClick(object sender, RoutedEventArgs e)
     {
-        _viewModel.FitBracketToViewport(BracketScrollViewer.ViewportWidth, BracketScrollViewer.ViewportHeight);
+        if (_viewModel.ShowFlatRounds)
+        {
+            _viewModel.FitToViewport(
+                RoundRobinContent.ActualWidth, RoundRobinContent.ActualHeight,
+                RoundRobinScrollViewer.ViewportWidth, RoundRobinScrollViewer.ViewportHeight);
+        }
+        else
+        {
+            _viewModel.FitBracketToViewport(BracketScrollViewer.ViewportWidth, BracketScrollViewer.ViewportHeight);
+        }
     }
 }

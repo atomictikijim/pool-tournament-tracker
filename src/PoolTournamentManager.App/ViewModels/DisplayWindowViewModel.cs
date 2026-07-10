@@ -50,13 +50,20 @@ public partial class DisplayWindowViewModel : ObservableObject
     /// known to the view (a ScrollViewer's measured size), so the "Fit" button's code-behind
     /// click handler computes it and calls this rather than a bare property setter.</summary>
     public void FitBracketToViewport(double viewportWidth, double viewportHeight)
+        => FitToViewport(Bracket.Width, Bracket.Height, viewportWidth, viewportHeight);
+
+    /// <summary>Sets the zoom so content of the given (unscaled) size fits into the given viewport,
+    /// clamped to the same range the +/- buttons respect. Shared by the elimination bracket (via
+    /// <see cref="FitBracketToViewport"/>) and the round-robin round columns, whose content size the
+    /// view measures off the rendered element rather than a precomputed layout.</summary>
+    public void FitToViewport(double contentWidth, double contentHeight, double viewportWidth, double viewportHeight)
     {
-        if (Bracket.Width <= 0 || Bracket.Height <= 0 || viewportWidth <= 0 || viewportHeight <= 0)
+        if (contentWidth <= 0 || contentHeight <= 0 || viewportWidth <= 0 || viewportHeight <= 0)
         {
             return;
         }
 
-        var scale = Math.Min(viewportWidth / Bracket.Width, viewportHeight / Bracket.Height);
+        var scale = Math.Min(viewportWidth / contentWidth, viewportHeight / contentHeight);
         BracketZoom = Math.Clamp(Math.Round(scale, 2), MinBracketZoom, MaxBracketZoom);
     }
 
@@ -80,6 +87,11 @@ public partial class DisplayWindowViewModel : ObservableObject
     /// <summary>True for round-robin, which falls back to the simple round-column list.</summary>
     public bool ShowFlatRounds { get; private set; }
 
+    /// <summary>The zoom controls apply to both the elimination bracket and the round-robin round
+    /// columns (both scale via a LayoutTransform bound to <see cref="BracketZoom"/>); hidden for the
+    /// ring/chip boards, which have no scaled canvas.</summary>
+    public bool ShowZoomControls => IsEliminationBracket || ShowFlatRounds;
+
     /// <summary>Which faded ball watermark (see the Grid behind the bracket in DisplayWindow.xaml)
     /// matches the active tournament's game - only one of these three is ever true at a time.</summary>
     public bool IsEightBallGame { get; private set; }
@@ -102,6 +114,7 @@ public partial class DisplayWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(Bracket));
         OnPropertyChanged(nameof(IsEliminationBracket));
         OnPropertyChanged(nameof(ShowFlatRounds));
+        OnPropertyChanged(nameof(ShowZoomControls));
         OnPropertyChanged(nameof(IsEightBallGame));
         OnPropertyChanged(nameof(IsNineBallGame));
         OnPropertyChanged(nameof(IsTenBallGame));

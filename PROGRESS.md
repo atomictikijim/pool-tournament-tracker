@@ -5,6 +5,38 @@ the top of each section.
 
 ## Current status
 
+v0.31 complete: **The Display window's zoom now works for Round Robin (not just elimination
+brackets), and the round-column titles get a stroke so they stay legible over the faded ball
+watermark.** The zoom controls (−/+/Reset/Fit and Ctrl+mouse-wheel) previously only showed for the
+elimination bracket; a new `DisplayWindowViewModel.ShowZoomControls` (`IsEliminationBracket ||
+ShowFlatRounds`) shows them for Round Robin too, and the round-robin `ItemsControl` now scales via a
+`LayoutTransform` bound to the same `BracketZoom`. `FitBracketToViewport` was generalized into a
+shared `FitToViewport(contentW, contentH, viewportW, viewportH)` (still clamped to the 0.15–2.0
+range); the round-robin "Fit" reads the content's unscaled extent off the rendered element
+(`RoundRobinContent.ActualWidth/Height`, which a `LayoutTransform` leaves untransformed) since it has
+no precomputed layout size like the bracket does. Ctrl+mouse-wheel zoom is wired to the round-robin
+`ScrollViewer` too (shared `HandleZoomWheel` in code-behind).
+
+The round-column title ("Round 1", …) sits directly over the full-window watermark with no card
+behind it, so in dark mode its light text vanished against the watermark's solid-white disc. A new
+`Controls/OutlinedTextBlock` (a `FrameworkElement` that draws the glyph geometry with both a fill
+`Brush` and a stroke `Pen`, since WPF's `TextBlock` has no text outline) renders the titles with a
+`Stroke` of `AppBackgroundBrush` (the theme's own background, so the outline contrasts the fill in
+both light and dark themes) — legible over the white disc, the colored stripe, and the dark
+surround alike. Font properties reuse the inherited `TextElement` attached properties so it reads
+like a normal `TextBlock` in XAML.
+
+Version synced to 0.31.0 across the App `.csproj` and the installer `.iss` (continuing the v0.30
+practice of keeping them in step with the release).
+
++9 App tests (`DisplayWindowZoomTests`: `ShowZoomControls` true for bracket/round-robin and false for
+ring/chip across a `[Theory]`; round robin shows flat rounds; `FitToViewport` scales to the limiting
+dimension, clamps to the 0.15 floor, and ignores non-positive inputs); 188 tests total. Verified
+end-to-end: opened the Display window for the live Round Robin "test 3", confirmed the Zoom controls
+now appear and the round titles ("Round 2"/"Round 3") render with a clear dark outline right where
+they cross the white ball disc; clicked **Fit** and watched the whole six-round schedule scale down
+to 41% to fit the window.
+
 v0.30 complete: **The app now has an About box, opened by an "About" button in the header that's
 visible on every tab.** A new `About/AboutInfo.cs` exposes the product metadata - app name, a short
 description, copyright, the GPL-3.0-or-later license line plus the commercial-licensing note, the

@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:PoolTournamentManager.App.Controls"
         mc:Ignorable="d"
         Title="Pool Tournament Manager - Display" Height="700" Width="1200"
         Icon="Assets/Logo.png"
@@ -88,10 +89,12 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <!-- Bracket zoom: scales the bracket tree below via a LayoutTransform. Ctrl+MouseWheel
-                 over the bracket does the same thing. -->
+            <!-- Zoom: scales the bracket tree OR the round-robin round columns below via a
+                 LayoutTransform (whichever is showing). Ctrl+MouseWheel over that content does the
+                 same thing. Shown for elimination brackets and round robin alike (see
+                 ShowZoomControls); hidden for the ring/chip boards, which have no scaled canvas. -->
             <StackPanel Orientation="Horizontal" Margin="0,10,0,0"
-                        Visibility="{Binding IsEliminationBracket, Converter={StaticResource BoolToVisibilityConverter}}">
+                        Visibility="{Binding ShowZoomControls, Converter={StaticResource BoolToVisibilityConverter}}">
                 <TextBlock Text="Zoom:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Bold" />
                 <Button Content="-" Command="{Binding ZoomBracketOutCommand}" Padding="0" Width="30" Height="26" />
                 <TextBlock Text="{Binding BracketZoomDisplay}" Foreground="{DynamicResource TextPrimaryBrush}"
@@ -99,7 +102,7 @@
                 <Button Content="+" Command="{Binding ZoomBracketInCommand}" Padding="0" Width="30" Height="26" Margin="0,0,8,0" />
                 <Button Content="Reset" Command="{Binding ResetBracketZoomCommand}" Padding="8,2" Margin="0,0,8,0" />
                 <Button Content="Fit" Click="FitBracketButton_OnClick" Padding="8,2"
-                        ToolTip="Zoom to fit the whole bracket on screen" />
+                        ToolTip="Zoom to fit the whole bracket/schedule on screen" />
             </StackPanel>
         </StackPanel>
 
@@ -149,10 +152,20 @@
             </Grid>
         </ScrollViewer>
 
-        <!-- Round-robin fallback: simple round-column list -->
-        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                      Visibility="{Binding ShowFlatRounds, Converter={StaticResource BoolToVisibilityConverter}}">
-            <ItemsControl ItemsSource="{Binding State.Rounds}">
+        <!-- Round-robin fallback: simple round-column list. Zoomable like the bracket - the
+             ItemsControl scales via a LayoutTransform bound to BracketZoom, and Ctrl+MouseWheel
+             zooms too (see code-behind). The round Title uses an OutlinedTextBlock: it sits directly
+             over the faded ball watermark with no card behind it, so a plain TextBlock's fill
+             vanishes against the watermark's solid-white disc; the stroke (AppBackgroundBrush, the
+             theme's own background) keeps it legible in both light and dark themes. -->
+        <ScrollViewer x:Name="RoundRobinScrollViewer" Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding ShowFlatRounds, Converter={StaticResource BoolToVisibilityConverter}}"
+                      PreviewMouseWheel="RoundRobinScrollViewer_OnPreviewMouseWheel">
+            <ItemsControl x:Name="RoundRobinContent" ItemsSource="{Binding State.Rounds}"
+                          HorizontalAlignment="Left" VerticalAlignment="Top">
+                <ItemsControl.LayoutTransform>
+                    <ScaleTransform ScaleX="{Binding BracketZoom}" ScaleY="{Binding BracketZoom}" />
+                </ItemsControl.LayoutTransform>
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Orientation="Horizontal" />
@@ -161,7 +174,9 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Margin="0,0,28,0" Width="280">
-                            <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold" FontSize="18" Margin="0,0,0,10" />
+                            <controls:OutlinedTextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="18" Margin="0,0,0,10"
+                                                        Fill="{DynamicResource TextPrimaryBrush}"
+                                                        Stroke="{DynamicResource AppBackgroundBrush}" StrokeThickness="3" />
                             <ItemsControl ItemsSource="{Binding Matches}" ItemTemplate="{StaticResource MatchCardTemplate}">
                                 <ItemsControl.ItemContainerStyle>
                                     <Style TargetType="ContentPresenter">
