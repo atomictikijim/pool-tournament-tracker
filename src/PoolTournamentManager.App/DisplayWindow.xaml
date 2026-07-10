@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:controls="clr-namespace:PoolTournamentManager.App.Controls"
         mc:Ignorable="d"
         Title="Pool Tournament Manager - Display" Height="700" Width="1200"
         Icon="Assets/Logo.png"
@@ -154,10 +153,11 @@
 
         <!-- Round-robin fallback: simple round-column list. Zoomable like the bracket - the
              ItemsControl scales via a LayoutTransform bound to BracketZoom, and Ctrl+MouseWheel
-             zooms too (see code-behind). The round Title uses an OutlinedTextBlock: it sits directly
-             over the faded ball watermark with no card behind it, so a plain TextBlock's fill
-             vanishes against the watermark's solid-white disc; the stroke (AppBackgroundBrush, the
-             theme's own background) keeps it legible in both light and dark themes. -->
+             zooms too (see code-behind). The round Title sits on an opaque chip (a Border in a
+             theme surface brush): it renders directly over the faded ball watermark with no card
+             behind it, so plain text washed out against the watermark's solid-white disc - the chip
+             gives it a consistent contrasting background in both light and dark themes. Same chip
+             treatment as the bracket round/section labels (see Themes/BracketTemplates.xaml). -->
         <ScrollViewer x:Name="RoundRobinScrollViewer" Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding ShowFlatRounds, Converter={StaticResource BoolToVisibilityConverter}}"
                       PreviewMouseWheel="RoundRobinScrollViewer_OnPreviewMouseWheel">
@@ -174,9 +174,10 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Margin="0,0,28,0" Width="280">
-                            <controls:OutlinedTextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="18" Margin="0,0,0,10"
-                                                        Fill="{DynamicResource TextPrimaryBrush}"
-                                                        Stroke="{DynamicResource AppBackgroundBrush}" StrokeThickness="3" />
+                            <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
+                                    BorderThickness="1" CornerRadius="4" Padding="8,3" Margin="0,0,0,10" HorizontalAlignment="Left">
+                                <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold" FontSize="18" />
+                            </Border>
                             <ItemsControl ItemsSource="{Binding Matches}" ItemTemplate="{StaticResource MatchCardTemplate}">
                                 <ItemsControl.ItemContainerStyle>
                                     <Style TargetType="ContentPresenter">

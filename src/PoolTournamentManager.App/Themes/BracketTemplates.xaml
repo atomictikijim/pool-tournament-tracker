@@ -96,17 +96,27 @@
               Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="1.5" />
     </DataTemplate>
 
-    <!-- Round header (e.g. "Semifinals", "WB Round 1"). -->
+    <!-- Round header (e.g. "Semifinals", "WB Round 1"). On an opaque chip centred in the round
+         column so it stays legible over the Display window's faded ball watermark - a bare label
+         washed out against the watermark's solid-white disc. -->
     <DataTemplate x:Key="BracketHeaderTemplate">
-        <TextBlock Text="{Binding Text}" Width="{Binding Width}"
-                   Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" FontWeight="SemiBold"
-                   TextAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <Grid Width="{Binding Width}">
+            <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
+                    BorderThickness="1" CornerRadius="3" Padding="6,2" HorizontalAlignment="Center" MaxWidth="{Binding Width}">
+                <TextBlock Text="{Binding Text}"
+                           Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" FontWeight="SemiBold"
+                           TextAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </Border>
+        </Grid>
     </DataTemplate>
 
-    <!-- Section label ("Winners Bracket" / "Losers Bracket"). -->
+    <!-- Section label ("Winners Bracket" / "Losers Bracket"), on the same opaque chip. -->
     <DataTemplate x:Key="BracketSectionLabelTemplate">
-        <TextBlock Text="{Binding Text}" Width="{Binding Width}"
-                   Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="17" FontWeight="Bold" />
+        <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
+                BorderThickness="1" CornerRadius="3" Padding="8,3" HorizontalAlignment="Left">
+            <TextBlock Text="{Binding Text}"
+                       Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="17" FontWeight="Bold" />
+        </Border>
     </DataTemplate>
 
     <!-- Places each canvas item at its computed (X, Y). -->

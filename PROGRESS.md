@@ -5,6 +5,22 @@ the top of each section.
 
 ## Current status
 
+v0.31.1 complete (UI): **Round and section labels now sit on an opaque chip instead of relying on
+a text stroke, so they stay readable over any background.** The v0.31 `OutlinedTextBlock` stroke
+didn't give enough contrast where a label crossed the watermark's solid-white disc, so it's been
+removed (control deleted) in favor of putting each label on a small rounded `Border` filled with
+`CardBackgroundBrush` (an opaque theme surface, 1px `AppBorderBrush` outline) - the chip blocks the
+watermark behind the text and guarantees the palette's text-on-surface contrast in both themes.
+Applied to all three label kinds: the round-robin round titles (DisplayWindow.xaml) and, in the
+shared Themes/BracketTemplates.xaml, the bracket round headers (`BracketHeaderTemplate`, chip centred
+in its column) and section labels (`BracketSectionLabelTemplate`, "Winners/Losers Bracket") - so the
+operator Tournament tab gets the same chips, not just the Display window. Version synced to 0.31.1
+(App `.csproj` + installer `.iss`). No test count change (pure XAML/presentation; the v0.31
+`DisplayWindowZoomTests` still cover the zoom logic) - 188 tests total. Verified end-to-end on the
+Display window: the Round Robin "test 3" round titles ("Round 2" over the white 9-ball disc) and the
+"Test Double Elimination" bracket labels ("Winners Bracket", "WB Round 1", and "WB Final" sitting
+right on the white 8-ball disc) all render on legible chips.
+
 v0.31 complete: **The Display window's zoom now works for Round Robin (not just elimination
 brackets), and the round-column titles get a stroke so they stay legible over the faded ball
 watermark.** The zoom controls (−/+/Reset/Fit and Ctrl+mouse-wheel) previously only showed for the
