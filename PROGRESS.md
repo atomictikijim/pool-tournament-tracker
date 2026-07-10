@@ -5,6 +5,24 @@ the top of each section.
 
 ## Current status
 
+v0.27.2 complete (UI): **The Display window now shows a large, faded ball graphic behind the
+bracket, filling the whole window.** Which ball shows - 8, 9, or 10 - depends on the active
+tournament's `GameType` (`DisplayWindowViewModel.IsEightBallGame`/`IsNineBallGame`/`IsTenBallGame`,
+recomputed in `RebuildBracket()` alongside the existing bracket-shape flags). Each ball is drawn as
+vector XAML (an `Ellipse` + a `Rectangle` stripe clipped to a circle via `Grid.Clip` for the 9/10
+ball, plus a white number-circle and `TextBlock`) rather than a bitmap asset, so it stays crisp at
+any window size; a `Viewbox` with `Stretch="Uniform"` scales it to fill the window without
+distorting it into an oval. Sits as the first (bottommost) child of the window's root `Grid` with
+`Grid.RowSpan="4"` and a `-20` margin to cancel the root `Grid`'s own margin, so it extends
+edge-to-edge behind the header, "Now Playing" board, and bracket/rounds/standings content, all of
+which render on top of it normally. Opacity is 0.28 (middle of the requested 25-30% range). No test
+count change (pure XAML/view-state addition, nothing in Core/Data). Verified end-to-end: opened the
+Display window for the live 8-ball "Full Bracket Verify SE8" tournament and confirmed the faded
+8-ball (black ring, white number-circle, "8") rendered behind the bracket tree with the Final
+round's match card correctly drawn on top of it; created a temporary "Nine Ball Watermark Test"
+tournament (GameType = NineBall), confirmed its Display window showed the yellow-striped 9-ball
+watermark instead, then deleted the test tournament.
+
 v0.27.1 complete (UI): **The app icon and header logo changed to a new alligator-with-pool-balls
 image** ("Alligator will pool balls in mouth (1).png" in `images/`, replacing the previous
 cue-holding alligator sourced from "You Chalkin To Me.png"). `Assets/AppIcon.ico` (16/32/48/256,

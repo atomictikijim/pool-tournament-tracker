@@ -15,6 +15,41 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <!-- Faded ball watermark behind everything else, filling the whole window - which ball
+             (8/9/10) shows depends on the active tournament's GameType (see
+             DisplayWindowViewModel.RebuildBracket). Uniform-stretch inside a Viewbox so the ball
+             stays circular instead of stretching to the window's aspect ratio. -->
+        <Viewbox Grid.Row="0" Grid.RowSpan="4" Margin="-20" Stretch="Uniform" Opacity="0.28" IsHitTestVisible="False">
+            <Grid Width="400" Height="400">
+                <Grid Visibility="{Binding IsEightBallGame, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Ellipse Width="400" Height="400" Fill="Black" />
+                    <Ellipse Width="150" Height="150" Fill="White" />
+                    <TextBlock Text="8" FontSize="90" FontWeight="Bold" Foreground="Black"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+                <Grid Visibility="{Binding IsNineBallGame, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.Clip>
+                        <EllipseGeometry Center="200,200" RadiusX="200" RadiusY="200" />
+                    </Grid.Clip>
+                    <Ellipse Width="400" Height="400" Fill="White" />
+                    <Rectangle Width="400" Height="160" Fill="#F5C518" VerticalAlignment="Center" />
+                    <Ellipse Width="150" Height="150" Fill="White" Stroke="Black" StrokeThickness="3" />
+                    <TextBlock Text="9" FontSize="90" FontWeight="Bold" Foreground="Black"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+                <Grid Visibility="{Binding IsTenBallGame, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.Clip>
+                        <EllipseGeometry Center="200,200" RadiusX="200" RadiusY="200" />
+                    </Grid.Clip>
+                    <Ellipse Width="400" Height="400" Fill="White" />
+                    <Rectangle Width="400" Height="160" Fill="#1E5FBF" VerticalAlignment="Center" />
+                    <Ellipse Width="150" Height="150" Fill="White" Stroke="Black" StrokeThickness="3" />
+                    <TextBlock Text="10" FontSize="76" FontWeight="Bold" Foreground="Black"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+            </Grid>
+        </Viewbox>
+
         <Border Grid.Row="0" Background="{DynamicResource WindowChromeBrush}" Margin="-20,-20,-20,16" Padding="20,16">
             <StackPanel Orientation="Horizontal">
                 <Image Source="Assets/Logo.png" Width="48" Height="48" Margin="0,0,14,0" />

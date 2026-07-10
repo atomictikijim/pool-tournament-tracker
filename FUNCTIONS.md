@@ -428,6 +428,9 @@ needed:
   Tournament) — completed matches' winners are highlighted.
 - The **Prize Payouts** panel, if the tournament has payouts configured (see
   [Section 6](#6-entry-fees-and-prize-payouts)) — not shown for Ring Game.
+- A large, faded ball graphic fills the background of the whole window — an 8, 9,
+  or 10 ball matching whichever game the tournament is set to (8-Ball, 9-Ball, or
+  10-Ball).
 
 Nothing in the Display window is clickable/editable — it's purely for the audience
 to watch. All control stays on the main Tournament tab.

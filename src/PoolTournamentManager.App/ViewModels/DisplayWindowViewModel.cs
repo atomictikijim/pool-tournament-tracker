@@ -80,6 +80,12 @@ public partial class DisplayWindowViewModel : ObservableObject
     /// <summary>True for round-robin, which falls back to the simple round-column list.</summary>
     public bool ShowFlatRounds { get; private set; }
 
+    /// <summary>Which faded ball watermark (see the Grid behind the bracket in DisplayWindow.xaml)
+    /// matches the active tournament's game - only one of these three is ever true at a time.</summary>
+    public bool IsEightBallGame { get; private set; }
+    public bool IsNineBallGame { get; private set; }
+    public bool IsTenBallGame { get; private set; }
+
     private void RebuildBracket()
     {
         var format = State.ActiveTournament?.Format;
@@ -88,9 +94,17 @@ public partial class DisplayWindowViewModel : ObservableObject
         ShowFlatRounds = format is TournamentFormat.RoundRobin;
         Bracket = IsEliminationBracket ? BracketLayoutBuilder.Build(State.Rounds) : new BracketLayout();
 
+        var gameType = State.ActiveTournament?.GameType;
+        IsEightBallGame = gameType == GameType.EightBall;
+        IsNineBallGame = gameType == GameType.NineBall;
+        IsTenBallGame = gameType == GameType.TenBall;
+
         OnPropertyChanged(nameof(Bracket));
         OnPropertyChanged(nameof(IsEliminationBracket));
         OnPropertyChanged(nameof(ShowFlatRounds));
+        OnPropertyChanged(nameof(IsEightBallGame));
+        OnPropertyChanged(nameof(IsNineBallGame));
+        OnPropertyChanged(nameof(IsTenBallGame));
     }
 
     public IEnumerable<TableAssignmentRow> TableAssignments =>
