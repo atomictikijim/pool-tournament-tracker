@@ -3,6 +3,23 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-10 — Binding a Hyperlink's NavigateUri / a Run.Text to a get-only property throws "TwoWay binding cannot work on the read-only property"
+
+**Issue:** The new About box (`AboutWindow`) binds a `<Hyperlink NavigateUri="{Binding
+RepositoryUrl}">` with a child `<Run Text="{Binding RepositoryUrl}" />` to
+`AboutInfo.RepositoryUrl`, a get-only (`=>`) property. At runtime, opening the window threw
+"A TwoWay or OneWayToSource binding cannot work on the read-only property 'RepositoryUrl'..."
+- caught by the global handler as an error dialog. Unlike `TextBlock.Text` (which defaults to
+OneWay and bound fine for every other AboutInfo field), `Run.Text` binds **TwoWay by default**,
+so it tried to write the displayed value back into a property with no setter and blew up.
+
+**Fix:** Pin those bindings to `Mode=OneWay` explicitly (`{Binding RepositoryUrl, Mode=OneWay}`
+on both the `NavigateUri` and the `Run.Text`). General lesson: for read-only (get-only) source
+properties, `Run.Text` - and any target DP whose metadata sets `BindsTwoWayByDefault` - needs an
+explicit `Mode=OneWay`, or WPF's default two-way write-back fails. When a bound value is display-
+only against an immutable source, prefer stating `Mode=OneWay` rather than relying on the target's
+default mode.
+
 ## 2026-07-10 — Clearing a tournament's owned entities in-place: dependents before principals, or EF throws "relationship... severed"
 
 **Issue:** Rebuilding an edited tournament's content in place (`TournamentViewModel

@@ -247,6 +247,14 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Opens the app-wide About modal. The button lives in the header, so this is reachable
+    /// from every tab.</summary>
+    private void AboutButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var window = new AboutWindow(_themeService) { Owner = this };
+        window.ShowDialog();
+    }
+
     private bool Confirm(string message) =>
         MessageBox.Show(this, message, "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning)
             == MessageBoxResult.Yes;

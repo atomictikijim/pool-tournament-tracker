@@ -5,6 +5,37 @@ the top of each section.
 
 ## Current status
 
+v0.30 complete: **The app now has an About box, opened by an "About" button in the header that's
+visible on every tab.** A new `About/AboutInfo.cs` exposes the product metadata - app name, a short
+description, copyright, the GPL-3.0-or-later license line plus the commercial-licensing note, the
+repository URL, and the runtime - with the **version read from the running assembly**
+(`Assembly.GetExecutingAssembly().GetName().Version`, formatted to the app's `0.<major>[.<ui>]`
+scheme) so it can never drift from the build. `AboutWindow` (a themed modal in the same pattern as
+the help/editor dialogs) shows the logo, name/version, description, copyright/license, a clickable
+repository `Hyperlink` (opens in the default browser via `Process.Start`/`UseShellExecute`), and the
+runtime, with a Close button. The launcher is a new keyed `SubtleButtonStyle` (quiet accent-outlined
+button, fills on hover) added to the header `DockPanel` next to the logo/title - the header sits in
+the window's Row 0 above the `TabControl`, so it's reachable from every tab, not per-tab like the
+"?" help buttons.
+
+As part of this the stale version numbers were synced to the real release: the App `.csproj`
+`<Version>`/`AssemblyVersion`/`FileVersion` and the installer's `PoolTournamentManager.iss`
+`MyAppVersion` were all `0.24.0` while the git tags had moved on to v0.29; all are now `0.30.0` so
+the About box, assembly metadata, and installer filename agree.
+
+Fixed one bug found during end-to-end verification: the repository `Hyperlink`'s `NavigateUri`/
+`Run.Text` bindings to the get-only `AboutInfo.RepositoryUrl` defaulted to a writable binding mode
+and threw "a TwoWay or OneWayToSource binding cannot work on the read-only property" at runtime;
+pinned both bindings to `Mode=OneWay`.
+
++2 App tests (`AboutInfoTests`: product metadata fields are populated and contain the expected
+copyright/license/URL markers; `VersionDisplay` reflects the assembly version in the app's scheme
+and is never the "unknown" fallback); 179 tests total. Verified end-to-end: launched the app,
+clicked **About** in the header and confirmed the modal opened titled "About Pool Tournament
+Manager" showing the logo, "Version 0.30" (read from the assembly), the description, copyright ©
+2026 James Milne, the GPL-3.0-or-later and commercial-licensing lines, the clickable GitHub link,
+and ".NET 8.0.28 · WPF", all dark-themed to match the app.
+
 v0.29 complete: **Each tab now has a contextual in-app help guide, opened by a small round "?"
 button in the tab's top-right corner.** The end-user manual (FUNCTIONS.md) is now surfaced inside
 the app itself, per-tab. A new `Help/HelpContent.cs` defines a tiny content model

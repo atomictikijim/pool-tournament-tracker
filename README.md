@@ -50,6 +50,8 @@ live results on a second screen.
   the live bracket/standings/rotation board, for the room to watch.
 - **Built-in contextual help.** Every tab has a **?** button that opens a pop-up guide
   for that tab, so the instructions are available right inside the app.
+- **About box.** An **About** button in the header (on every screen) shows the app
+  version, description, copyright/license, and a link to the project.
 - **Follows Windows light/dark mode** automatically, live, with no in-app settings.
 
 See [FUNCTIONS.md](FUNCTIONS.md) for a full walkthrough of every screen and feature.

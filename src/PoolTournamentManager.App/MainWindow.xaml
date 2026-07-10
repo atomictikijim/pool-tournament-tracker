@@ -132,11 +132,15 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <!-- App header, shown above the tabs on every screen. The About button lives here (rather
+             than per-tab) since it's app-global, so it's reachable from every tab. -->
         <Border Grid.Row="0" Background="{DynamicResource WindowChromeBrush}">
-            <StackPanel Orientation="Horizontal" Margin="14,10,14,4">
-                <Image Source="Assets/Logo.png" Width="36" Height="36" Margin="0,0,10,0" />
-                <TextBlock Text="Pool Tournament Manager" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
-            </StackPanel>
+            <DockPanel Margin="14,10,14,4" LastChildFill="False">
+                <Image DockPanel.Dock="Left" Source="Assets/Logo.png" Width="36" Height="36" Margin="0,0,10,0" />
+                <TextBlock DockPanel.Dock="Left" Text="Pool Tournament Manager" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                <Button DockPanel.Dock="Right" Content="About" Style="{StaticResource SubtleButtonStyle}"
+                        Click="AboutButton_OnClick" VerticalAlignment="Center" />
+            </DockPanel>
         </Border>
 
         <TabControl x:Name="MainTabControl" Grid.Row="1" Margin="10" SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">

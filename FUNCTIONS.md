@@ -39,6 +39,12 @@ pop-up window with contextual help for that tab — the same walkthroughs covere
 guide, available right inside the app. The help window is read-only; close it (Close, the
 window's X, or the Esc key) to return to what you were doing.
 
+### About
+
+The **About** button in the top-right of the app header (shown on every tab) opens a
+pop-up with the app's version, a short description, copyright and license information, and
+a link to the project page.
+
 ## 2. Managing players (Players tab)
 
 The grid lists every player you've added. Above it is a toolbar with **New
