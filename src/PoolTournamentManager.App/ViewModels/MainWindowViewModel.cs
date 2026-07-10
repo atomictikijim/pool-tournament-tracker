@@ -29,6 +29,14 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string? _statusMessage;
 
+    /// <summary>Index of the selected tab on the main window's TabControl (0=Players, 1=Teams,
+    /// 2=Tournament, 3=Tournament Settings). Set from code-behind when "Edit Tournament" is
+    /// clicked, and automatically to 2 whenever a tournament is created or saved (see
+    /// TournamentViewModel.TournamentReady) so the operator lands on the tournament they just
+    /// built without an extra manual click.</summary>
+    [ObservableProperty]
+    private int _selectedTabIndex;
+
     public MainWindowViewModel(
         IPlayerRepository playerRepository,
         ITeamRepository teamRepository,
@@ -39,6 +47,7 @@ public partial class MainWindowViewModel : ObservableObject
         _teamRepository = teamRepository;
         Tournament = tournamentViewModel;
         Theme = themeService;
+        Tournament.TournamentReady += () => SelectedTabIndex = 2;
     }
 
     [RelayCommand]

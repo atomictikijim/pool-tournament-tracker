@@ -2,7 +2,7 @@ namespace PoolTournamentManager.Core.Enums;
 
 public enum TournamentStatus
 {
-    Setup,
+    NotStarted,
     InProgress,
     Completed,
     Cancelled

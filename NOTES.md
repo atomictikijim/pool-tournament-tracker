@@ -3,6 +3,34 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-10 — Clearing a tournament's owned entities in-place: dependents before principals, or EF throws "relationship... severed"
+
+**Issue:** Rebuilding an edited tournament's content in place (`TournamentViewModel
+.ClearTournamentContent`, for the new "Edit Tournament" -> "Save Settings" flow) needs to wipe
+every child of the tournament - entrants, tables, matches, prize places, bracket+nodes, ring/chip
+detail+entries - before regenerating them fresh. The first attempt cleared `tournament.Entrants`
+first (mirroring the order fields are declared on the entity). Saving then threw: "The association
+between entity types 'TournamentEntrant' and 'Match' has been severed, but the relationship is
+either marked as required or is implicitly required... Consider using
+'DbContextOptionsBuilder.EnableSensitiveDataLogging'..." - even though every `Match` was *also*
+being marked deleted in the very same method, just a few lines later.
+
+**Fix:** `Match.Player1EntrantId`/`Player2EntrantId` (and `RingLedgerEntry.EntrantId`,
+`ChipGameEntry`'s winner/loser ids) are required (non-nullable) foreign keys to
+`TournamentEntrant`. Calling `tournament.Entrants.Clear()` runs EF's navigation-fixup logic
+immediately - as soon as an entrant is detached from the collection, EF checks whether anything
+still references it via a required FK and, seeing `Match.Player1Entrant` still populated (from the
+Include-heavy `GetByIdAsync` load) with the entrant not yet also marked deleted, throws right then
+rather than waiting for the Match's own removal a few statements later. General lesson: when
+clearing several related collections off one aggregate in one method, order the removals so every
+*dependent* holding a required FK to another collection's rows (Match/LedgerEntry/ChipGameEntry ->
+Entrant) is cleared *before* that referenced collection (Entrants) itself - the reverse order
+throws even though everything ends up marked deleted in the same `SaveChangesAsync` batch.
+`TournamentRepository.DeleteAsync` sidesteps this entirely by calling `_dbContext.Tournaments
+.Remove(tournament)`, which walks the *whole* graph and marks everything deleted in one shot before
+any fixup runs - that pattern only works when the whole aggregate is being deleted, not when
+some children need to survive (the case here, since the `Tournament` row itself must stay).
+
 ## 2026-07-10 — Bracket zoom: a ScaleTransform inside a ScrollViewer needs LayoutTransform, not RenderTransform
 
 **Issue:** Adding zoom to the bracket tree (a `Grid` sized to `Bracket.Width`/`Height`, hosting four

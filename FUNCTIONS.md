@@ -150,20 +150,35 @@ Entrant count requirements:
 If you pick an unsupported count, the app tells you exactly what's required instead
 of creating a broken bracket.
 
-Once created, switch to the **Tournament** tab — your new tournament appears in the
-list on the left.
+Once you click **Create Tournament**, the app switches to the **Tournament** tab
+automatically and opens your new tournament — there's no need to switch tabs
+yourself.
 
 ## 5. Running a tournament (Tournament tab)
 
 The left column lists every tournament you've created — click one to select it and
 work with it on the right.
 
+### Tournament status: Not Started, In Progress, Completed
+
+A Single/Double/Modified Single Elimination or Round Robin tournament starts out
+**Not Started** the moment you create it — its bracket/schedule already exists (so
+you can review the matchups) but nothing is locked in yet. It becomes **In
+Progress** the instant you click **Start** on its very first match, and
+**Completed** once the champion is decided. Ring Game and Chip Tournament skip
+straight to **In Progress** on creation, since there's no separate "not started"
+phase for them.
+
+While a tournament is still **Not Started**, two things are possible that stop
+being available the moment its first match starts — see **Reshuffle Bracket** and
+**Editing a tournament's settings** below.
+
 ### Filtering the list by status
 
 Above the list is a **Status** drop-down. Leave it on **All** to see every
-tournament, or pick **In Progress** or **Completed** to show only tournaments in
-that state. This just hides rows from view — it doesn't change or delete anything,
-and any selection you had is untouched when you change the filter.
+tournament, or pick **Not Started**, **In Progress**, or **Completed** to show only
+tournaments in that state. This just hides rows from view — it doesn't change or
+delete anything, and any selection you had is untouched when you change the filter.
 
 ### Deleting a tournament
 
@@ -174,6 +189,20 @@ entrant list, but it does **not** delete the Players or Teams themselves (they s
 on their rosters for use in other tournaments). The button is disabled until you've
 selected a tournament.
 
+### Editing a tournament's settings
+
+While the selected tournament is still **Not Started**, an **Edit Tournament**
+button appears next to **Delete Tournament**. Clicking it reopens the tournament on
+the Tournament Settings tab, with every field (name, game, format, teams, seeding,
+table count, entry fee/host fee/payout places, and the entrant/team checklist)
+pre-filled from its current settings — the **Create Tournament** button is replaced
+with **Save Settings** while you're editing. Changing anything and clicking **Save
+Settings** rebuilds the tournament's entrants, tables, and bracket/schedule from
+scratch, exactly as if you'd created it fresh, but keeps it as the same tournament
+(nothing new appears in the list) — the app then switches back to the Tournament
+tab automatically. Once any match has started, editing is no longer offered, since
+the field is locked in for the rest of the event.
+
 ### Tables
 
 The **Tables** row along the top shows how many tables you've added (e.g. "Tables: 4").
@@ -181,6 +210,17 @@ Click **Add Table** to add another one on the fly (useful if a table frees up fr
 another event, or you under-counted at creation). Assigning a table to a match in the
 bracket/round view below is saved automatically as soon as you start that match — there's
 no separate save step.
+
+### Reshuffle Bracket
+
+For Single/Double/Modified Single Elimination and Round Robin, a **Reshuffle
+Bracket** button appears next to **Add Table** while the tournament is still **Not
+Started**. Clicking it re-draws the bracket/schedule from a completely random
+shuffle of the same entrants — regardless of whether the tournament was set up to
+seed by rating, the reshuffle always ignores that and draws 100% at random.
+Reshuffle as many times as you like right up until the first match is started;
+after that, the button disappears and the matchups are locked in for the rest of
+the event.
 
 ### Adding entrants after creation
 

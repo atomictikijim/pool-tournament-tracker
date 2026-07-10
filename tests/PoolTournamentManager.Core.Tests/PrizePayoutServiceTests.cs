@@ -259,7 +259,7 @@ public class PrizePayoutServiceTests
         tournament.EntryFee = 10m;
         SetPrizePlaces(tournament, (1, 100m));
 
-        Assert.Equal(TournamentStatus.InProgress, tournament.Status);
+        Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
         Assert.Empty(PrizePayoutService.ComputePayouts(tournament));
     }
 }

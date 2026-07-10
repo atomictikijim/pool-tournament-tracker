@@ -31,16 +31,18 @@ public partial class TournamentViewModel : ObservableObject
     /// filter drop-downs.</summary>
     public const string AllFilterOption = "(All)";
 
-    // Options for the Tournament tab's status filter. Only In Progress and Completed occur in
-    // practice (a tournament goes straight to InProgress on creation and to Completed when it
-    // finishes), so those two plus an "All" pass-through are all the filter needs.
+    // Options for the Tournament tab's status filter. A bracket/round-robin tournament sits at
+    // NotStarted until its first match is actually started (see StartMatchAsync), then InProgress
+    // until it finishes - Ring Game/Chip Tournament skip straight to InProgress on creation, since
+    // they have no separate "not started" bracket/schedule phase.
     public const string StatusFilterAll = "All";
+    public const string StatusFilterNotStarted = "Not Started";
     public const string StatusFilterInProgress = "In Progress";
     public const string StatusFilterCompleted = "Completed";
 
     /// <summary>Choices for the tournament-list status filter on the Tournament tab.</summary>
     public ObservableCollection<string> AvailableStatusFilters { get; } =
-        new() { StatusFilterAll, StatusFilterInProgress, StatusFilterCompleted };
+        new() { StatusFilterAll, StatusFilterNotStarted, StatusFilterInProgress, StatusFilterCompleted };
 
     /// <summary>Distinct Division values currently in TeamCandidates, for the Division filter
     /// drop-down, plus the leading "(All)" option.</summary>
@@ -111,6 +113,34 @@ public partial class TournamentViewModel : ObservableObject
     /// entrant can be added and the bracket/schedule safely regenerated from scratch.
     /// </summary>
     public bool CanAddEntrant { get; private set; }
+
+    /// <summary>True while the active tournament is still NotStarted and is a format with a
+    /// seeded bracket/schedule (not Ring Game/Chip Tournament) - gates the "Reshuffle Bracket"
+    /// button, since once a match starts the field is locked in for good.</summary>
+    public bool CanReshuffleBracket { get; private set; }
+
+    /// <summary>Fired after a tournament is created or its settings are saved, so the app can
+    /// switch to the Tournament tab and show it - see MainWindowViewModel.</summary>
+    public event Action? TournamentReady;
+
+    /// <summary>The tournament currently being edited via "Edit Tournament" (null while the form
+    /// is in plain create mode) - see BeginEditTournament/SaveTournamentSettingsAsync.</summary>
+    private Tournament? _editingTournament;
+
+    /// <summary>True while the Tournament Settings form is editing an existing tournament rather
+    /// than building a new one - swaps "Create Tournament" for "Save Settings".</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCreatingNewTournament))]
+    [NotifyPropertyChangedFor(nameof(FormHeaderText))]
+    private bool _isEditingExistingTournament;
+
+    public bool IsCreatingNewTournament => !IsEditingExistingTournament;
+
+    public string FormHeaderText => IsEditingExistingTournament ? "Edit Tournament" : "Create Tournament";
+
+    /// <summary>True while the tournament selected in the Tournament tab's list is NotStarted,
+    /// so its settings can still be safely edited/rebuilt - gates the "Edit Tournament" button.</summary>
+    public bool CanEditSelectedTournament => SelectedTournamentSummary?.Status == TournamentStatus.NotStarted;
 
     public IEnumerable<GameType> GameTypes { get; } = Enum.GetValues<GameType>();
     public IEnumerable<TournamentFormat> Formats { get; } = Enum.GetValues<TournamentFormat>();
@@ -336,6 +366,7 @@ public partial class TournamentViewModel : ObservableObject
 
         return TournamentStatusFilter switch
         {
+            StatusFilterNotStarted => tournament.Status == TournamentStatus.NotStarted,
             StatusFilterInProgress => tournament.Status == TournamentStatus.InProgress,
             StatusFilterCompleted => tournament.Status == TournamentStatus.Completed,
             _ => true,
@@ -573,6 +604,14 @@ public partial class TournamentViewModel : ObservableObject
 
     partial void OnSelectedTournamentSummaryChanged(Tournament? value)
     {
+        // Picking a different tournament while mid-edit would otherwise leave the form showing
+        // one tournament's settings while "Save Settings" quietly writes into another.
+        if (IsEditingExistingTournament && _editingTournament?.Id != value?.Id)
+        {
+            ResetTournamentForm();
+        }
+
+        OnPropertyChanged(nameof(CanEditSelectedTournament));
         _ = SelectTournamentAsync(value?.Id);
     }
 
@@ -591,7 +630,7 @@ public partial class TournamentViewModel : ObservableObject
             await RefreshAddableTeamsAsync();
             OnPropertyChanged(nameof(ActiveTournamentUsesTeams));
             OnPropertyChanged(nameof(ActiveTournamentUsesPlayers));
-            RefreshCanAddEntrant();
+            RefreshTournamentLifecycleFlags();
         }
         catch (Exception ex)
         {
@@ -633,10 +672,24 @@ public partial class TournamentViewModel : ObservableObject
         }
     }
 
-    private void RefreshCanAddEntrant()
+    /// <summary>Recomputes every derived flag that depends on the active tournament's current
+    /// lifecycle state (CanAddEntrant, CanReshuffleBracket, CanEditSelectedTournament) - call
+    /// this anywhere that state could change: selecting a tournament, adding an entrant, or
+    /// starting a match.</summary>
+    private void RefreshTournamentLifecycleFlags()
     {
-        CanAddEntrant = ComputeCanAddEntrant(State.ActiveTournament);
+        var tournament = State.ActiveTournament;
+
+        CanAddEntrant = ComputeCanAddEntrant(tournament);
         OnPropertyChanged(nameof(CanAddEntrant));
+
+        CanReshuffleBracket = tournament is not null
+            && tournament.Status == TournamentStatus.NotStarted
+            && tournament.Format is TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination
+                or TournamentFormat.ModifiedSingleElimination or TournamentFormat.RoundRobin;
+        OnPropertyChanged(nameof(CanReshuffleBracket));
+
+        OnPropertyChanged(nameof(CanEditSelectedTournament));
     }
 
     private static bool ComputeCanAddEntrant(Tournament? tournament)
@@ -737,7 +790,7 @@ public partial class TournamentViewModel : ObservableObject
             await State.SelectTournamentAsync(tournament.Id);
             await RefreshAddablePlayersAsync();
             await RefreshAddableTeamsAsync();
-            RefreshCanAddEntrant();
+            RefreshTournamentLifecycleFlags();
             SelectedPlayerToAdd = null;
             SelectedTeamToAdd = null;
             StatusMessage = $"Added {addedName}.";
@@ -748,7 +801,7 @@ public partial class TournamentViewModel : ObservableObject
         }
     }
 
-    private void RegenerateRoundRobin(Tournament tournament)
+    private void RegenerateRoundRobin(Tournament tournament, bool forceRandomSeed = false)
     {
         foreach (var oldMatch in tournament.Matches.ToList())
         {
@@ -756,7 +809,14 @@ public partial class TournamentViewModel : ObservableObject
         }
         tournament.Matches.Clear();
 
-        SeedingService.AssignSeeds(tournament.Entrants, tournament.SeedingRatingSystem ?? RatingSystem.Fargo);
+        if (forceRandomSeed)
+        {
+            SeedingService.RandomDraw(tournament.Entrants);
+        }
+        else
+        {
+            SeedingService.AssignSeeds(tournament.Entrants, tournament.SeedingRatingSystem ?? RatingSystem.Fargo);
+        }
         _roundRobinService.GenerateSchedule(tournament);
 
         foreach (var newMatch in tournament.Matches)
@@ -765,7 +825,7 @@ public partial class TournamentViewModel : ObservableObject
         }
     }
 
-    private void RegenerateBracket(Tournament tournament, Func<Tournament, BracketDetail> generate)
+    private void RegenerateBracket(Tournament tournament, Func<Tournament, BracketDetail> generate, bool forceRandomSeed = false)
     {
         if (tournament.Bracket is not null)
         {
@@ -783,7 +843,14 @@ public partial class TournamentViewModel : ObservableObject
         }
         tournament.Matches.Clear();
 
-        SeedingService.AssignSeeds(tournament.Entrants, tournament.SeedingRatingSystem ?? RatingSystem.Fargo);
+        if (forceRandomSeed)
+        {
+            SeedingService.RandomDraw(tournament.Entrants);
+        }
+        else
+        {
+            SeedingService.AssignSeeds(tournament.Entrants, tournament.SeedingRatingSystem ?? RatingSystem.Fargo);
+        }
         var bracket = generate(tournament);
 
         _tournamentRepository.TrackNew(bracket);
@@ -795,6 +862,44 @@ public partial class TournamentViewModel : ObservableObject
         {
             _tournamentRepository.TrackNew(match);
         }
+    }
+
+    /// <summary>
+    /// Regenerates the active tournament's bracket/schedule from a fresh 100% random shuffle of
+    /// its existing entrants, ignoring the tournament's configured seeding entirely - only
+    /// available while the tournament is NotStarted (see CanReshuffleBracket); once a match has
+    /// actually started, the field is locked in for good.
+    /// </summary>
+    [RelayCommand]
+    private async Task ReshuffleBracketAsync()
+    {
+        var tournament = State.ActiveTournament;
+        if (tournament is null || tournament.Status != TournamentStatus.NotStarted)
+        {
+            return;
+        }
+
+        switch (tournament.Format)
+        {
+            case TournamentFormat.RoundRobin:
+                RegenerateRoundRobin(tournament, forceRandomSeed: true);
+                break;
+            case TournamentFormat.SingleElimination:
+                RegenerateBracket(tournament, _bracketService.GenerateSingleElimination, forceRandomSeed: true);
+                break;
+            case TournamentFormat.DoubleElimination:
+                RegenerateBracket(tournament, _bracketService.GenerateDoubleElimination, forceRandomSeed: true);
+                break;
+            case TournamentFormat.ModifiedSingleElimination:
+                RegenerateBracket(tournament, _bracketService.GenerateModifiedSingleElimination, forceRandomSeed: true);
+                break;
+            default:
+                return;
+        }
+
+        await _tournamentRepository.SaveChangesAsync();
+        await State.SelectTournamentAsync(tournament.Id);
+        StatusMessage = tournament.Format == TournamentFormat.RoundRobin ? "Schedule reshuffled." : "Bracket reshuffled.";
     }
 
     private void AddRingEntrant(Tournament tournament, TournamentEntrant newEntrant)
@@ -817,9 +922,94 @@ public partial class TournamentViewModel : ObservableObject
     [RelayCommand]
     private async Task CreateTournamentAsync()
     {
-        if (string.IsNullOrWhiteSpace(NewTournamentName))
+        var useTeams = UseTeams && IsTeamEligibleFormat;
+        var selectedPlayers = EntrantCandidates.Where(c => c.IsSelected).ToList();
+        var selectedTeams = TeamCandidates.Where(c => c.IsSelected).ToList();
+        var entrantCount = useTeams ? selectedTeams.Count : selectedPlayers.Count;
+
+        if (!ValidateTournamentForm(useTeams, entrantCount))
         {
-            StatusMessage = "Enter a tournament name.";
+            return;
+        }
+
+        var tournament = new Tournament { Name = NewTournamentName };
+        var missingRatingCount = PopulateTournamentContent(tournament, useTeams, selectedPlayers, selectedTeams);
+
+        await _tournamentRepository.AddAsync(tournament);
+
+        StatusMessage = missingRatingCount > 0
+            ? $"Created '{tournament.Name}' with {tournament.Entrants.Count} entrants ({missingRatingCount} missing a {NewTournamentRatingSystem} rating, seeded last)."
+            : $"Created '{tournament.Name}' with {tournament.Entrants.Count} entrants.";
+
+        await FinishCreateOrSaveAsync(tournament);
+    }
+
+    /// <summary>
+    /// Populates the Tournament Settings form from an existing NotStarted tournament so it can be
+    /// edited in place, and switches the form into "Save Settings" mode - called by the Tournament
+    /// tab's "Edit Tournament" button (see CanEditSelectedTournament).
+    /// </summary>
+    public void BeginEditTournament(Tournament tournament)
+    {
+        _editingTournament = tournament;
+        IsEditingExistingTournament = true;
+
+        NewTournamentName = tournament.Name;
+        NewTournamentGameType = tournament.GameType;
+        NewTournamentFormat = tournament.Format;
+        UseTeams = tournament.UsesTeams;
+        NewTournamentRatingSystem = tournament.SeedingRatingSystem ?? RatingSystem.Fargo;
+        NewTournamentTableCount = tournament.Tables.Count;
+        NewEntryFee = tournament.EntryFee;
+        NewHostFeePercentage = tournament.HostFeePercentage;
+
+        NewPayoutPlaceCount = tournament.PrizePlaces.Count;
+        foreach (var place in tournament.PrizePlaces)
+        {
+            var input = NewPrizePlaceInputs.FirstOrDefault(p => p.Place == place.Place);
+            if (input is not null)
+            {
+                input.Percentage = place.Percentage;
+            }
+        }
+
+        if (tournament.RingGame is not null)
+        {
+            NewRingBuyIn = tournament.RingGame.BuyInAmount;
+            NewRingFivePayout = tournament.RingGame.FiveBallPayout;
+            NewRingNinePayout = tournament.RingGame.NineBallPayout;
+        }
+        if (tournament.ChipGame is not null)
+        {
+            NewChipStartingChips = tournament.ChipGame.StartingChips;
+        }
+
+        var playerIds = tournament.Entrants.Where(e => e.PlayerId is not null).Select(e => e.PlayerId!.Value).ToHashSet();
+        var teamIds = tournament.Entrants.Where(e => e.TeamId is not null).Select(e => e.TeamId!.Value).ToHashSet();
+        foreach (var candidate in EntrantCandidates)
+        {
+            candidate.IsSelected = playerIds.Contains(candidate.Player.Id);
+        }
+        foreach (var candidate in TeamCandidates)
+        {
+            candidate.IsSelected = teamIds.Contains(candidate.Team.Id);
+        }
+
+        StatusMessage = $"Editing '{tournament.Name}'.";
+    }
+
+    /// <summary>
+    /// Saves the Tournament Settings form back onto the tournament currently being edited (see
+    /// BeginEditTournament) - wipes its existing entrants/tables/bracket/schedule/prize places/
+    /// ring or chip detail and rebuilds all of it fresh from the form, exactly like creating a
+    /// tournament from scratch, but reusing the same tournament record/Id.
+    /// </summary>
+    [RelayCommand]
+    private async Task SaveTournamentSettingsAsync()
+    {
+        var tournament = _editingTournament;
+        if (tournament is null)
+        {
             return;
         }
 
@@ -828,10 +1018,38 @@ public partial class TournamentViewModel : ObservableObject
         var selectedTeams = TeamCandidates.Where(c => c.IsSelected).ToList();
         var entrantCount = useTeams ? selectedTeams.Count : selectedPlayers.Count;
 
+        if (!ValidateTournamentForm(useTeams, entrantCount))
+        {
+            return;
+        }
+
+        ClearTournamentContent(tournament);
+        var missingRatingCount = PopulateTournamentContent(tournament, useTeams, selectedPlayers, selectedTeams);
+
+        await _tournamentRepository.SaveChangesAsync();
+
+        StatusMessage = missingRatingCount > 0
+            ? $"Saved '{tournament.Name}' with {tournament.Entrants.Count} entrants ({missingRatingCount} missing a {NewTournamentRatingSystem} rating, seeded last)."
+            : $"Saved '{tournament.Name}' with {tournament.Entrants.Count} entrants.";
+
+        await FinishCreateOrSaveAsync(tournament);
+    }
+
+    /// <summary>Validates the Tournament Settings form, setting StatusMessage and returning false
+    /// on the first failure - shared by both CreateTournamentAsync and SaveTournamentSettingsAsync
+    /// so the two stay in lockstep.</summary>
+    private bool ValidateTournamentForm(bool useTeams, int entrantCount)
+    {
+        if (string.IsNullOrWhiteSpace(NewTournamentName))
+        {
+            StatusMessage = "Enter a tournament name.";
+            return false;
+        }
+
         if (entrantCount < 2)
         {
             StatusMessage = useTeams ? "Select at least 2 teams." : "Select at least 2 players.";
-            return;
+            return false;
         }
 
         // Double Elimination accepts any count >= 2 - the bracket pads to the next power of two and
@@ -840,13 +1058,13 @@ public partial class TournamentViewModel : ObservableObject
         if (NewTournamentFormat == TournamentFormat.ModifiedSingleElimination && !BracketGenerationService.IsValidModifiedSingleEliminationCount(entrantCount))
         {
             StatusMessage = "Modified Single Elimination requires at least 8 entrants.";
-            return;
+            return false;
         }
 
         if (NewTournamentFormat != TournamentFormat.RingGame && NewTournamentTableCount < 1)
         {
             StatusMessage = "Enter the number of available tables.";
-            return;
+            return false;
         }
 
         if (ShowEntryFeeSection)
@@ -854,27 +1072,42 @@ public partial class TournamentViewModel : ObservableObject
             if (NewEntryFee < 0)
             {
                 StatusMessage = "Entry fee can't be negative.";
-                return;
+                return false;
             }
             if (NewHostFeePercentage < 0 || NewHostFeePercentage > 100)
             {
                 StatusMessage = "Host fee percentage must be between 0 and 100.";
-                return;
+                return false;
             }
             if (!IsPrizePlacePercentageValid)
             {
                 StatusMessage = $"Prize place percentages must add up to 100% (currently {PrizePlacePercentageTotal:0.##}%).";
-                return;
+                return false;
             }
         }
 
-        var tournament = new Tournament
-        {
-            Name = NewTournamentName,
-            GameType = NewTournamentGameType,
-            Format = NewTournamentFormat,
-            UsesTeams = useTeams
-        };
+        return true;
+    }
+
+    /// <summary>
+    /// Builds a tournament's full owned content (entrants, tables, prize places, and the
+    /// format-specific bracket/schedule/ring/chip setup) from the create/edit form fields, onto a
+    /// Tournament whose Id is already set - either a brand-new one about to be AddAsync'd (which
+    /// cascades every reachable new entity to Added automatically), or an existing tracked one
+    /// whose previous content was just cleared (see ClearTournamentContent). Either way every new
+    /// child gets an explicit TrackNew: for the existing-tournament case the parent is already
+    /// tracked (Unchanged), so EF can't infer that a child added to its navigation collection is
+    /// new - and doing the same for the brand-new case is harmless, since these child entities
+    /// only carry a plain Guid TournamentId (no Tournament navigation property), so marking them
+    /// Added early never accidentally graph-walks into (and re-adds) the parent.
+    /// </summary>
+    private int PopulateTournamentContent(Tournament tournament, bool useTeams, List<PlayerSelectionItem> selectedPlayers, List<TeamSelectionItem> selectedTeams)
+    {
+        tournament.Name = NewTournamentName;
+        tournament.GameType = NewTournamentGameType;
+        tournament.Format = NewTournamentFormat;
+        tournament.UsesTeams = useTeams;
+        tournament.SeedingRatingSystem = null;
 
         if (ShowEntryFeeSection)
         {
@@ -882,37 +1115,33 @@ public partial class TournamentViewModel : ObservableObject
             tournament.HostFeePercentage = NewHostFeePercentage;
             foreach (var place in NewPrizePlaceInputs)
             {
-                tournament.PrizePlaces.Add(new TournamentPrizePlace
-                {
-                    TournamentId = tournament.Id,
-                    Place = place.Place,
-                    Percentage = place.Percentage
-                });
+                var prizePlace = new TournamentPrizePlace { TournamentId = tournament.Id, Place = place.Place, Percentage = place.Percentage };
+                tournament.PrizePlaces.Add(prizePlace);
+                _tournamentRepository.TrackNew(prizePlace);
             }
+        }
+        else
+        {
+            tournament.EntryFee = 0m;
+            tournament.HostFeePercentage = 0m;
         }
 
         if (useTeams)
         {
             foreach (var candidate in selectedTeams)
             {
-                tournament.Entrants.Add(new TournamentEntrant
-                {
-                    TournamentId = tournament.Id,
-                    TeamId = candidate.Team.Id,
-                    Team = candidate.Team
-                });
+                var entrant = new TournamentEntrant { TournamentId = tournament.Id, TeamId = candidate.Team.Id, Team = candidate.Team };
+                tournament.Entrants.Add(entrant);
+                _tournamentRepository.TrackNew(entrant);
             }
         }
         else
         {
             foreach (var candidate in selectedPlayers)
             {
-                tournament.Entrants.Add(new TournamentEntrant
-                {
-                    TournamentId = tournament.Id,
-                    PlayerId = candidate.Player.Id,
-                    Player = candidate.Player
-                });
+                var entrant = new TournamentEntrant { TournamentId = tournament.Id, PlayerId = candidate.Player.Id, Player = candidate.Player };
+                tournament.Entrants.Add(entrant);
+                _tournamentRepository.TrackNew(entrant);
             }
         }
 
@@ -920,7 +1149,9 @@ public partial class TournamentViewModel : ObservableObject
         {
             for (var i = 1; i <= NewTournamentTableCount; i++)
             {
-                tournament.Tables.Add(new Table { TournamentId = tournament.Id, Label = $"Table {i}" });
+                var table = new Table { TournamentId = tournament.Id, Label = $"Table {i}" };
+                tournament.Tables.Add(table);
+                _tournamentRepository.TrackNew(table);
             }
         }
 
@@ -969,12 +1200,108 @@ public partial class TournamentViewModel : ObservableObject
             }
         }
 
-        await _tournamentRepository.AddAsync(tournament);
+        if (tournament.Bracket is not null)
+        {
+            _tournamentRepository.TrackNew(tournament.Bracket);
+            foreach (var node in tournament.Bracket.Nodes)
+            {
+                _tournamentRepository.TrackNew(node);
+            }
+        }
+        foreach (var match in tournament.Matches)
+        {
+            _tournamentRepository.TrackNew(match);
+        }
+        if (tournament.RingGame is not null)
+        {
+            _tournamentRepository.TrackNew(tournament.RingGame);
+            foreach (var entry in tournament.RingGame.LedgerEntries)
+            {
+                _tournamentRepository.TrackNew(entry);
+            }
+        }
+        if (tournament.ChipGame is not null)
+        {
+            _tournamentRepository.TrackNew(tournament.ChipGame);
+            foreach (var entry in tournament.ChipGame.Entries)
+            {
+                _tournamentRepository.TrackNew(entry);
+            }
+        }
 
-        StatusMessage = missingRatingCount > 0
-            ? $"Created '{tournament.Name}' with {tournament.Entrants.Count} entrants ({missingRatingCount} missing a {NewTournamentRatingSystem} rating, seeded last)."
-            : $"Created '{tournament.Name}' with {tournament.Entrants.Count} entrants.";
+        return missingRatingCount;
+    }
 
+    /// <summary>Wipes every owned child of a tournament (entrants, tables, matches, prize places,
+    /// bracket+nodes, ring/chip detail+entries) so PopulateTournamentContent can rebuild it from
+    /// scratch - the edit-in-place counterpart of a fresh Tournament having no children yet.</summary>
+    private void ClearTournamentContent(Tournament tournament)
+    {
+        // Matches/ledger/chip entries hold a required (non-nullable) FK to TournamentEntrant -
+        // clearing Entrants first would sever that relationship while EF still sees the
+        // dependent row as live, which throws ("association... has been severed") even though
+        // the dependent is *also* about to be deleted in this same batch. Removing every
+        // dependent before touching Entrants avoids that entirely.
+        if (tournament.Bracket is not null)
+        {
+            foreach (var node in tournament.Bracket.Nodes.ToList())
+            {
+                _tournamentRepository.TrackRemoved(node);
+            }
+            _tournamentRepository.TrackRemoved(tournament.Bracket);
+            tournament.Bracket = null;
+        }
+
+        foreach (var match in tournament.Matches.ToList())
+        {
+            _tournamentRepository.TrackRemoved(match);
+        }
+        tournament.Matches.Clear();
+
+        if (tournament.RingGame is not null)
+        {
+            foreach (var entry in tournament.RingGame.LedgerEntries.ToList())
+            {
+                _tournamentRepository.TrackRemoved(entry);
+            }
+            _tournamentRepository.TrackRemoved(tournament.RingGame);
+            tournament.RingGame = null;
+        }
+
+        if (tournament.ChipGame is not null)
+        {
+            foreach (var entry in tournament.ChipGame.Entries.ToList())
+            {
+                _tournamentRepository.TrackRemoved(entry);
+            }
+            _tournamentRepository.TrackRemoved(tournament.ChipGame);
+            tournament.ChipGame = null;
+        }
+
+        // Safe to clear now that every dependent referencing an Entrant is gone.
+        foreach (var entrant in tournament.Entrants.ToList())
+        {
+            _tournamentRepository.TrackRemoved(entrant);
+        }
+        tournament.Entrants.Clear();
+
+        foreach (var table in tournament.Tables.ToList())
+        {
+            _tournamentRepository.TrackRemoved(table);
+        }
+        tournament.Tables.Clear();
+
+        foreach (var place in tournament.PrizePlaces.ToList())
+        {
+            _tournamentRepository.TrackRemoved(place);
+        }
+        tournament.PrizePlaces.Clear();
+    }
+
+    /// <summary>Clears the create/edit form back to its blank-create-form default, including
+    /// dropping out of edit mode.</summary>
+    private void ResetTournamentForm()
+    {
         NewTournamentName = string.Empty;
         NewEntryFee = 0m;
         NewHostFeePercentage = 0m;
@@ -987,9 +1314,19 @@ public partial class TournamentViewModel : ObservableObject
         {
             candidate.IsSelected = false;
         }
+        _editingTournament = null;
+        IsEditingExistingTournament = false;
+    }
 
+    /// <summary>Shared tail of both CreateTournamentAsync and SaveTournamentSettingsAsync: resets
+    /// the form, reloads the tournament list, re-selects the tournament just built (which opens it
+    /// on the Tournament tab), and asks the app to switch to that tab.</summary>
+    private async Task FinishCreateOrSaveAsync(Tournament tournament)
+    {
+        ResetTournamentForm();
         await State.LoadTournamentsAsync();
         SelectedTournamentSummary = State.Tournaments.FirstOrDefault(t => t.Id == tournament.Id);
+        TournamentReady?.Invoke();
     }
 
     /// <summary>
@@ -1052,13 +1389,22 @@ public partial class TournamentViewModel : ObservableObject
             return;
         }
 
+        // The tournament sits at NotStarted (see BracketGenerationService/RoundRobinSchedulingService)
+        // until its very first match actually starts - that's also the point past which reshuffling
+        // the bracket and editing the tournament's settings are no longer allowed.
+        if (tournament.Status == TournamentStatus.NotStarted)
+        {
+            tournament.Status = TournamentStatus.InProgress;
+        }
+
         match.Status = MatchStatus.InProgress;
         match.StartedAtUtc = DateTime.UtcNow;
         // Persists match.TableId along with the status change - the table picker no longer
         // needs its own explicit "Save Table Assignments" step.
         await _tournamentRepository.SaveChangesAsync();
         State.RebuildRounds();
-        RefreshCanAddEntrant();
+        RefreshTournamentLifecycleFlags();
+        await RefreshTournamentSummaryAsync();
     }
 
     [RelayCommand]

@@ -24,6 +24,22 @@ public static class SeedingService
         return ordered;
     }
 
+    /// <summary>
+    /// Shuffles entrants into a uniformly random order and assigns SeedNumber 1..N accordingly -
+    /// ignores rating entirely. Used for Modified Single Elimination's round-1 draw, and for an
+    /// explicit bracket "reshuffle" that must stay random no matter how the tournament is
+    /// otherwise configured to seed.
+    /// </summary>
+    public static List<TournamentEntrant> RandomDraw(List<TournamentEntrant> entrants)
+    {
+        var shuffled = entrants.OrderBy(_ => Random.Shared.Next()).ToList();
+        for (var i = 0; i < shuffled.Count; i++)
+        {
+            shuffled[i].SeedNumber = i + 1;
+        }
+        return shuffled;
+    }
+
     public static bool HasRating(TournamentEntrant entrant, RatingSystem ratingSystem) =>
         GetRatingValue(entrant.Player, ratingSystem) is not null;
 

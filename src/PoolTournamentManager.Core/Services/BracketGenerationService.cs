@@ -41,7 +41,7 @@ public class BracketGenerationService
             PropagateWinner(tournament, bracket, byeNode, byeNode.Match!.WinnerEntrantId!.Value);
         }
 
-        tournament.Status = TournamentStatus.InProgress;
+        tournament.Status = TournamentStatus.NotStarted;
         return bracket;
     }
 
@@ -171,7 +171,7 @@ public class BracketGenerationService
 
         ResolveFirstRoundByes(tournament, bracket);
 
-        tournament.Status = TournamentStatus.InProgress;
+        tournament.Status = TournamentStatus.NotStarted;
         return bracket;
     }
 
@@ -242,7 +242,7 @@ public class BracketGenerationService
                 "Modified Single Elimination requires at least 8 entrants.");
         }
 
-        var drawn = RandomDraw(tournament.Entrants);
+        var drawn = SeedingService.RandomDraw(tournament.Entrants);
 
         var bracket = new BracketDetail
         {
@@ -282,7 +282,7 @@ public class BracketGenerationService
         // is mostly byes, on into the reps stage.
         ResolveFirstRoundByes(tournament, bracket);
 
-        tournament.Status = TournamentStatus.InProgress;
+        tournament.Status = TournamentStatus.NotStarted;
         return bracket;
     }
 
@@ -334,16 +334,6 @@ public class BracketGenerationService
         {
             target.Slot2IsBye = true;
         }
-    }
-
-    private static List<TournamentEntrant> RandomDraw(List<TournamentEntrant> entrants)
-    {
-        var shuffled = entrants.OrderBy(_ => Random.Shared.Next()).ToList();
-        for (var i = 0; i < shuffled.Count; i++)
-        {
-            shuffled[i].SeedNumber = i + 1;
-        }
-        return shuffled;
     }
 
     /// <summary>

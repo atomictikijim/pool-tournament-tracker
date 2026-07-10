@@ -146,7 +146,7 @@ public class DoubleEliminationBracketTests
         // LB final: winner(LB round1)=seed4 vs loser(WB final)=seed2.
         Play(tournament, 4, 2, winnerSeed: 4);
 
-        Assert.Equal(TournamentStatus.InProgress, tournament.Status);
+        Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
 
         // Grand Final: WB champion (seed1) vs LB champion (seed4). WB side wins outright.
         Play(tournament, 1, 4, winnerSeed: 1);
@@ -169,7 +169,7 @@ public class DoubleEliminationBracketTests
 
         // Grand Final: LB champion (seed4) upsets the WB champion (seed1) -> forces a reset.
         Play(tournament, 1, 4, winnerSeed: 4);
-        Assert.Equal(TournamentStatus.InProgress, tournament.Status);
+        Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
         Assert.Equal(7, tournament.Matches.Count); // reset match materialized
 
         var resetNode = tournament.Bracket!.Nodes.Single(n => n.IsGrandFinalReset);
@@ -217,7 +217,7 @@ public class DoubleEliminationBracketTests
         // LB final (round 4): survivor(5) vs loser(WB final)=2.
         Play(tournament, 5, 2, winnerSeed: 5);
 
-        Assert.Equal(TournamentStatus.InProgress, tournament.Status);
+        Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
 
         // Grand Final: WB champion (1) vs LB champion (5).
         Play(tournament, 1, 5, winnerSeed: 1);

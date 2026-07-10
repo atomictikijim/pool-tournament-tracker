@@ -217,6 +217,20 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Reopens the selected NotStarted tournament on the Tournament Settings tab for
+    /// editing - only visible while CanEditSelectedTournament is true.</summary>
+    private void EditTournamentButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var selected = _viewModel.Tournament.SelectedTournamentSummary;
+        if (selected is null)
+        {
+            return;
+        }
+
+        _viewModel.Tournament.BeginEditTournament(selected);
+        _viewModel.SelectedTabIndex = 3;
+    }
+
     private bool Confirm(string message) =>
         MessageBox.Show(this, message, "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning)
             == MessageBoxResult.Yes;

@@ -5,6 +5,50 @@ the top of each section.
 
 ## Current status
 
+v0.28 complete: **Bracket/Round Robin tournaments now sit at a new NotStarted status until
+their first match actually starts, which unlocks reshuffling the bracket and editing the
+tournament's settings in place.** `TournamentStatus.Setup` (previously declared but never
+actually reached - every generator set `InProgress` immediately) is renamed `NotStarted` and is
+now the real status a fresh Single/Double/Modified Single Elimination or Round Robin tournament
+sits at: `BracketGenerationService`'s three `Generate*` methods and
+`RoundRobinSchedulingService.GenerateSchedule` now set `NotStarted` instead of `InProgress`, and
+`TournamentViewModel.StartMatchAsync` flips it to `InProgress` the moment the tournament's first
+match is actually started (Ring Game/Chip Tournament are unaffected - they still go straight to
+`InProgress` on creation, since they have no bracket to review first). Three new capabilities
+hang off this:
+- **Reshuffle Bracket** (Tournament tab, next to Add Table) - regenerates the bracket/schedule
+  from a 100% random shuffle of the same entrants, `SeedingService.RandomDraw` (refactored out
+  of `BracketGenerationService`'s private Modified-Single-Elimination-only draw so it's reusable),
+  ignoring the tournament's configured rating-seeding entirely. Only shows while NotStarted;
+  disappears for good once a match starts.
+- **Edit Tournament** (Tournament tab list, next to Delete Tournament) - only shows for a
+  NotStarted tournament; reopens it on the Tournament Settings tab with every field pre-filled
+  (`TournamentViewModel.BeginEditTournament`), swapping **Create Tournament** for **Save
+  Settings**. Saving (`SaveTournamentSettingsAsync`) wipes the tournament's entrants/tables/
+  bracket/schedule/prize places/ring-or-chip detail (`ClearTournamentContent` - dependents with a
+  required FK to `TournamentEntrant`, like `Match`, must be cleared *before* `Entrants` itself, or
+  EF Core throws a "relationship... severed" error) and rebuilds everything fresh from the form
+  via a new shared `PopulateTournamentContent`/`ValidateTournamentForm` (extracted from
+  `CreateTournamentAsync`, which now just calls the same two methods on a brand-new `Tournament`) -
+  same tournament record/Id, no duplicate in the list.
+- **Auto-switch to the Tournament tab** after every create or save - `TournamentViewModel` fires a
+  `TournamentReady` event that `MainWindowViewModel` turns into `SelectedTabIndex = 2`, bound to
+  the main `TabControl`'s `SelectedIndex`; the Edit button's click handler sets the same property
+  directly (`= 3`) to jump to Tournament Settings.
+
+The Tournament tab's status filter gained a **Not Started** option alongside All/In Progress/
+Completed. +4 App tests (create leaves a bracket format NotStarted with Reshuffle/Edit available;
+starting the first match flips it to InProgress and hides both; Reshuffle ignores rating-seeding
+across repeated draws and is a no-op once a match started; edit-then-save rebuilds in place under
+the same Id); 8 renamed/updated Core test assertions that previously expected immediate
+`InProgress` after bracket/schedule generation now expect `NotStarted`; 172 tests total. Verified
+end-to-end: created a live 4-entrant Single Elimination tournament (auto-landed on the Tournament
+tab, NotStarted, Reshuffle Bracket and Edit Tournament both visible), reshuffled it and watched the
+rating-sorted seeding scramble, edited it (changed table count 4->6, auto-returned to the
+Tournament tab), started its first match and watched both buttons disappear and the sidebar status
+flip live to InProgress with no manual refresh, then confirmed a Chip Tournament still goes
+straight to InProgress with neither button ever appearing.
+
 v0.27.3 complete (UI): **Fixed the Display window's ball watermark (v0.27.2) rendering its white
 areas as see-through instead of solid white.** The watermark previously applied `Opacity="0.28"`
 once on the whole `Viewbox`, which faded every shape - including the white ones - toward whatever

@@ -114,14 +114,14 @@ public class BracketGenerationServiceTests
         PlayScheduledMatchBetweenSeeds(tournament, 4, 5, winnerSeed: 4);
         PlayScheduledMatchBetweenSeeds(tournament, 3, 6, winnerSeed: 3);
 
-        Assert.Equal(TournamentStatus.InProgress, tournament.Status);
+        Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
         Assert.Equal(6, tournament.Matches.Count); // 4 from round 1 + 2 newly materialized round-2 matches
 
         // Round 2: seed1 vs seed4, seed2 vs seed3.
         PlayScheduledMatchBetweenSeeds(tournament, 1, 4, winnerSeed: 1);
         PlayScheduledMatchBetweenSeeds(tournament, 2, 3, winnerSeed: 2);
 
-        Assert.Equal(TournamentStatus.InProgress, tournament.Status);
+        Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
         Assert.Equal(7, tournament.Matches.Count); // + the final
 
         // Final: seed1 vs seed2.

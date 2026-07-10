@@ -139,7 +139,7 @@
             </StackPanel>
         </Border>
 
-        <TabControl Grid.Row="1" Margin="10">
+        <TabControl x:Name="MainTabControl" Grid.Row="1" Margin="10" SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">
         <TabItem Header="Players">
             <Grid Margin="10">
                 <Grid.RowDefinitions>
@@ -265,10 +265,17 @@
 
                     <!-- Permanently deletes the selected tournament (with all its matches/bracket/
                          entrant links). Confirmation is handled in code-behind before anything is
-                         removed; only enabled once a tournament is selected. -->
-                    <Button Grid.Row="3" Content="Delete Tournament" Margin="0,8,0,0" Padding="8,4"
-                            HorizontalAlignment="Left" Click="DeleteTournamentButton_OnClick"
-                            IsEnabled="{Binding SelectedTournamentSummary, Converter={StaticResource NotNullToBoolConverter}}" />
+                         removed; only enabled once a tournament is selected. "Edit Tournament" only
+                         shows while the selected tournament is still NotStarted (see
+                         CanEditSelectedTournament) - reopens it on the Tournament Settings tab. -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="Delete Tournament" Padding="8,4"
+                                Click="DeleteTournamentButton_OnClick"
+                                IsEnabled="{Binding SelectedTournamentSummary, Converter={StaticResource NotNullToBoolConverter}}" />
+                        <Button Content="Edit Tournament" Padding="8,4" Margin="8,0,0,0"
+                                Click="EditTournamentButton_OnClick"
+                                Visibility="{Binding CanEditSelectedTournament, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    </StackPanel>
 
                     <TextBlock Grid.Row="4" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="11"
                                Foreground="{DynamicResource TextSecondaryBrush}"
@@ -289,6 +296,10 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding State.Tables.Count, StringFormat='Tables: {0}'}" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Bold" />
                         <Button Content="Add Table" Command="{Binding AddTableCommand}" Padding="6,2" Margin="6,0,0,0" />
+                        <!-- Only while the tournament is still NotStarted (see CanReshuffleBracket) -
+                             once any match starts, the field is locked in for good. -->
+                        <Button Content="Reshuffle Bracket" Command="{Binding ReshuffleBracketCommand}" Padding="6,2" Margin="6,0,0,0"
+                                Visibility="{Binding CanReshuffleBracket, Converter={StaticResource BoolToVisibilityConverter}}" />
                         <Button x:Name="OpenDisplayWindowButton" Content="Open Display Window" Click="OpenDisplayWindowButton_OnClick" Padding="6,2" Margin="16,0,0,0" />
 
                         <!-- Bracket zoom: scales the bracket tree via a LayoutTransform (see the
@@ -626,7 +637,7 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="Create Tournament" FontWeight="Bold" FontSize="14" Margin="0,0,0,10" />
+                <TextBlock Grid.Row="0" Text="{Binding FormHeaderText}" FontWeight="Bold" FontSize="14" Margin="0,0,0,10" />
 
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
@@ -716,7 +727,10 @@
                         </TextBlock>
                     </StackPanel>
 
-                    <Button Content="Create Tournament" Command="{Binding CreateTournamentCommand}" Padding="8,4" HorizontalAlignment="Left" />
+                    <Button Content="Create Tournament" Command="{Binding CreateTournamentCommand}" Padding="8,4" HorizontalAlignment="Left"
+                            Visibility="{Binding IsCreatingNewTournament, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    <Button Content="Save Settings" Command="{Binding SaveTournamentSettingsCommand}" Padding="8,4" HorizontalAlignment="Left"
+                            Visibility="{Binding IsEditingExistingTournament, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                     <!-- Create-tournament feedback (validation errors AND the success confirmation),
                          directly under the button so a rejected create - e.g. a non-power-of-2

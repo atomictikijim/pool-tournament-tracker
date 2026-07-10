@@ -8,7 +8,7 @@ public class Tournament
     public required string Name { get; set; }
     public GameType GameType { get; set; }
     public TournamentFormat Format { get; set; }
-    public TournamentStatus Status { get; set; } = TournamentStatus.Setup;
+    public TournamentStatus Status { get; set; } = TournamentStatus.NotStarted;
     public RatingSystem? SeedingRatingSystem { get; set; }
     public bool UsesTeams { get; set; }
 

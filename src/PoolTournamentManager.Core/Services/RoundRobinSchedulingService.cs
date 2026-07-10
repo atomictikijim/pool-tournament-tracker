@@ -62,6 +62,6 @@ public class RoundRobinSchedulingService
             slots[1] = last;
         }
 
-        tournament.Status = TournamentStatus.InProgress;
+        tournament.Status = TournamentStatus.NotStarted;
     }
 }

@@ -38,10 +38,14 @@ live results on a second screen.
   Tournament tab and Display window as entrants are decided.
 - **Live match operation.** Assign tables, start/finish matches with a live elapsed
   timer, and report scores — the bracket, standings, or ledger update immediately.
+- **Not Started tournaments can be reshuffled or edited.** A bracket/Round Robin
+  tournament sits at Not Started until its first match starts - until then, its
+  bracket can be reshuffled (a fresh 100% random draw) or its settings edited and
+  saved in place, both from the Tournament tab. Once a match starts, both lock in.
 - **Delete a tournament** you no longer need from the Tournament tab (with a
   confirmation prompt); its bracket/matches/tables are removed while the players and
   teams stay on their rosters. The tournament list can also be filtered by status
-  (All / In Progress / Completed).
+  (All / Not Started / In Progress / Completed).
 - **Second-screen Display window.** A read-only, projector-friendly window mirroring
   the live bracket/standings/rotation board, for the room to watch.
 - **Follows Windows light/dark mode** automatically, live, with no in-app settings.

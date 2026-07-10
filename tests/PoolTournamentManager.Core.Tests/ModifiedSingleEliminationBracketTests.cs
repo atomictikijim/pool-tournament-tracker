@@ -151,7 +151,7 @@ public class ModifiedSingleEliminationBracketTests
             PlayNode(tournament, node);
         }
         Assert.Equal(13, tournament.Matches.Count); // the Final now materializes
-        Assert.Equal(TournamentStatus.InProgress, tournament.Status);
+        Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
 
         // Final: sudden death, no bracket-reset decider.
         PlayNode(tournament, Node(tournament, BracketSide.Final, 2, 0));
@@ -214,7 +214,7 @@ public class ModifiedSingleEliminationBracketTests
 
         var final = Node(tournament, BracketSide.Final, 3, 0);
         Assert.NotNull(final.Match);
-        Assert.Equal(TournamentStatus.InProgress, tournament.Status);
+        Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
 
         PlayNode(tournament, final);
 

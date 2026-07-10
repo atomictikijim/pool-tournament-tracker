@@ -86,10 +86,10 @@ public class RoundRobinSchedulingServiceTests
     }
 
     [Fact]
-    public void GenerateSchedule_SetsTournamentInProgress()
+    public void GenerateSchedule_SetsTournamentNotStarted()
     {
         var tournament = BuildTournament(4);
         _service.GenerateSchedule(tournament);
-        Assert.Equal(TournamentStatus.InProgress, tournament.Status);
+        Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
     }
 }
