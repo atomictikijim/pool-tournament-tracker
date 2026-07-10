@@ -109,6 +109,30 @@ Core tournament logic (bracket generation for all three elimination formats,
 seeding, round-robin scheduling/standings, ring game, chip tournament) is covered by
 fast, UI-free unit tests in `tests/PoolTournamentManager.Core.Tests`.
 
+## License
+
+Copyright © 2026 James Milne.
+
+PoolTournamentManager is free software: you can redistribute it and/or modify it
+under the terms of the **GNU General Public License** as published by the Free
+Software Foundation, either **version 3** of the License, or (at your option) any
+later version. It is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the [LICENSE](LICENSE) file for the full text, or
+<https://www.gnu.org/licenses/>.
+
+In short: you may use, modify, and sell it, provided you keep the original copyright
+and attribution notices intact and release any modified/derivative versions under the
+same GPL-3.0 (or later) terms.
+
+### Commercial licensing
+
+The GPL requires that anything built on this project also be shared under the GPL. If
+you want to incorporate PoolTournamentManager into a proprietary/closed-source product,
+or otherwise use it on terms that are not compatible with the GPL, a separate
+**commercial license is available** — contact James Milne (<james.milne@prolocity.com>)
+to arrange one.
+
 ## More documentation
 
 - [FUNCTIONS.md](FUNCTIONS.md) — end-user instruction manual for every screen and

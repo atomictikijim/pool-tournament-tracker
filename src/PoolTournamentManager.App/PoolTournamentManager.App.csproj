@@ -26,6 +26,9 @@
     <FileVersion>0.24.0.0</FileVersion>
     <Product>Pool Tournament Manager</Product>
     <Company>Pool Tournament Manager</Company>
+    <Authors>James Milne</Authors>
+    <Copyright>Copyright © 2026 James Milne. Licensed under GPL-3.0-or-later; commercial licensing available.</Copyright>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
   </PropertyGroup>
 
 </Project>
