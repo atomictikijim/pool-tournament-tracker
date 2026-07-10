@@ -5,6 +5,27 @@ the top of each section.
 
 ## Current status
 
+v0.25 complete: **Finishing a bracket match no longer freezes the UI for several seconds.**
+`TournamentViewModel.FinishMatchAsync` used to call `State.SelectTournamentAsync(tournament.Id)`
+after every match result, which reloads the *entire* tournament graph via
+`TournamentRepository.GetByIdAsync`'s six-way `Include()` chain (Entrants, Tables, Matches x3,
+Bracket.Nodes, RingGame.LedgerEntries, ChipGame.Entries) - a single-query LEFT JOIN across six
+largely-unrelated sibling collections multiplies row counts together, so even a modest bracket
+returns many thousands of duplicated rows to de-dupe client-side, and this ran synchronously on the
+UI thread (SQLite has no true async I/O) on every single match finish. The only reason for the
+reload was that a newly-materialized advancing `Match` (from `BracketGenerationService
+.RecordMatchResult`) only has `Player1EntrantId`/`Player2EntrantId` set, not the
+`Player1Entrant`/`Player2Entrant` navigation properties `MatchRowViewModel` reads names from.
+Fixed by patching those two navigation properties in-memory from the already-loaded
+`tournament.Entrants` collection, then calling `State.RebuildRounds()` directly off the in-memory
+graph - the same pattern Ring Game/Chip Tournament already used for their own result-recording
+commands. Also added `.AsSplitQuery()` to `GetByIdAsync` itself as defense-in-depth for its
+remaining callers (opening/switching a tournament, deleting one), so that query no longer
+cartesian-explodes either. No test count change (pure perf/plumbing fix, behavior unchanged).
+Verified end-to-end: finished a semifinal match in a live 8-entrant Single Elimination bracket
+("Full Bracket Verify SE8") - the bracket updated (winner correctly advanced to the Final round)
+in ~0.5 seconds, down from several seconds of frozen UI.
+
 v0.24 complete: **Chip Tournament runs on shuffled table rotation with win-rate tracking.**
 `ChipGameEntry` gained a nullable `TableId` (mirrors `Match.TableId`). A new
 `ChipGameService.ShuffleAndSeatPlayers` randomly orders active entrants into

@@ -1057,10 +1057,24 @@ public partial class TournamentViewModel : ObservableObject
 
             await _tournamentRepository.SaveChangesAsync();
 
-            // Reload rather than RebuildRounds() off the in-memory graph: any newly-materialized
-            // advancing Match only has Player1EntrantId/Player2EntrantId set, not the
-            // Player1Entrant/Player2Entrant navigation MatchRowViewModel reads names from.
-            await State.SelectTournamentAsync(tournament.Id);
+            // Fix up navigation properties on newly-materialized matches in-memory instead of
+            // reloading the whole tournament: RecordMatchResult only sets
+            // Player1EntrantId/Player2EntrantId on a new Match, not the Player1Entrant/
+            // Player2Entrant navigation MatchRowViewModel reads names from. tournament.Entrants
+            // is always fully loaded (see TournamentStateService.RebuildRounds), so this is a
+            // cheap in-memory lookup - no need for GetByIdAsync's six-way Include() reload, which
+            // multiplies out into a huge duplicated-row result set and blocks the UI thread.
+            var entrantsById = tournament.Entrants.ToDictionary(e => e.Id);
+            foreach (var newMatch in newMatches)
+            {
+                newMatch.Player1Entrant = entrantsById.GetValueOrDefault(newMatch.Player1EntrantId);
+                if (newMatch.Player2EntrantId is { } player2EntrantId)
+                {
+                    newMatch.Player2Entrant = entrantsById.GetValueOrDefault(player2EntrantId);
+                }
+            }
+
+            State.RebuildRounds();
             await RefreshTournamentSummaryAsync();
 
             if (tournament.Status == TournamentStatus.Completed)

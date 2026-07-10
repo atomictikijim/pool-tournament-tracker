@@ -22,7 +22,15 @@ public class TournamentRepository : ITournamentRepository
 
     public async Task<Tournament?> GetByIdAsync(Guid id)
     {
+        // AsSplitQuery(): these Includes fan out across six largely-unrelated sibling
+        // collections (Entrants, Tables, Matches x3, Bracket.Nodes, RingGame.LedgerEntries,
+        // ChipGame.Entries). A single-query LEFT JOIN across all of them multiplies row counts
+        // together (entrants x matches x bracket nodes x ...), so a modest bracket returns many
+        // thousands of duplicated rows to de-dupe client-side. Splitting into one SQL query per
+        // collection avoids that blowup at the cost of extra round-trips, which is the right
+        // trade-off for a local SQLite file.
         return await _dbContext.Tournaments
+            .AsSplitQuery()
             .Include(t => t.Entrants).ThenInclude(e => e.Player)
             .Include(t => t.Tables)
             .Include(t => t.Matches).ThenInclude(m => m.Player1Entrant).ThenInclude(e => e!.Player)

@@ -3,6 +3,38 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-10 — Finishing a match froze the UI: an unnecessary full-graph reload after every result
+
+**Issue:** Reporting a match result froze the app for several seconds. `TournamentViewModel
+.FinishMatchAsync` called `await State.SelectTournamentAsync(tournament.Id)` after every save,
+which re-runs `TournamentRepository.GetByIdAsync` - a query with `Include()` chained across six
+largely-unrelated sibling collections (`Entrants`, `Tables`, `Matches` x3, `Bracket.Nodes`,
+`RingGame.LedgerEntries`, `ChipGame.Entries`). EF Core compiles that into one SQL statement with
+LEFT JOINs across all of them, so the row count roughly multiplies (entrants x matches x bracket
+nodes x ...) instead of adding - a modest bracket returns many thousands of duplicated rows that
+have to be transferred and de-duplicated client-side. Because Microsoft.Data.Sqlite has no true
+async I/O, that whole query executed synchronously on the WPF Dispatcher thread, freezing the UI
+for its full duration. The reload's only actual purpose (per the code comment removed in this fix)
+was that `BracketGenerationService.RecordMatchResult` only sets `Player1EntrantId`/
+`Player2EntrantId` on a newly-materialized advancing `Match`, not the `Player1Entrant`/
+`Player2Entrant` navigation properties `MatchRowViewModel` reads player names from - so a reload
+felt necessary to get those populated, when the `Ring Game`/`Chip Tournament` result-recording
+commands already proved a full reload isn't needed (they just call `State.RebuildRounds()`
+directly off the in-memory graph after saving).
+
+**Fix:** In `FinishMatchAsync`, after `SaveChangesAsync()`, patch `Player1Entrant`/
+`Player2Entrant` on each newly-materialized `Match` directly from `tournament.Entrants` (already
+fully loaded in memory - see `TournamentStateService.RebuildRounds`'s own `entrantsById` comment),
+then call `State.RebuildRounds()` instead of reloading. Also added `.AsSplitQuery()` to
+`GetByIdAsync` itself so its remaining callers (opening/switching a tournament, deleting one)
+don't pay the same cartesian-join cost - EF runs one SQL query per collection instead of one giant
+JOIN, which is the right trade-off for a local SQLite file. General lesson for this codebase: any
+`[RelayCommand]` that reloads the *entire* aggregate root just to refresh one or two navigation
+properties should instead patch those properties in-memory from data already loaded on the
+tracked graph - `GetByIdAsync`'s multi-collection `Include()` chain is expensive by construction
+(it's designed for a cold load, not a per-action refresh) and this app already had the correct
+in-memory-patch pattern living right next to the wrong one.
+
 ## 2026-07-09 — Chip Tournament table rotation: replay-from-scratch bug, and two documented simplifications
 
 **Issue found while building `ChipGameService.ComputeTableBoard`:** the initial seeding step
