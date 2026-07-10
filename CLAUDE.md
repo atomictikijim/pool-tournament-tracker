@@ -31,6 +31,49 @@ and commit policy below takes effect.
 - Keep secrets/connection strings out of source; use user secrets or a local
   untracked config file for anything environment-specific.
 
+## Windows & modal dialogs (theming consistency)
+
+Every WPF `Window` in the app — the main window, every modal dialog (the player/team
+editors, Help, About, and any future dialog), and the second-screen Display window — MUST be
+themed identically so it tracks the live Windows light/dark setting the same way the main
+window does. A new window that skips any part of this looks correct in light mode but shows a
+white body and/or a light native title bar in dark mode. When adding a window, follow this
+exact pattern (copy from `PlayerEditorWindow`, `HelpWindow`, or `AboutWindow`):
+
+- **Root `<Window>`:** set `Background="{DynamicResource AppBackgroundBrush}"` and
+  `Icon="Assets/Logo.png"`. Never hard-code a color — use the `DynamicResource` palette brushes
+  (`TextPrimaryBrush`, `TextSecondaryBrush`, `CardBackgroundBrush`, `SurfaceBackgroundBrush`,
+  `AppBorderBrush`, `AccentPrimaryBrush`, …) for every surface, text, and border, exactly as the
+  main window does. The implicit `Window`/`TextBlock` styles in `Themes/Generic.xaml` supply the
+  default foreground; keeping everything `DynamicResource` is what lets a live theme switch
+  repaint the window with no restart.
+- **Constructor:** take `ThemeService` as a parameter and colorize the native title bar once the
+  HWND exists:
+
+  ```csharp
+  public MyDialog(MyViewModel viewModel, ThemeService themeService)
+  {
+      InitializeComponent();
+      DataContext = viewModel;
+      SourceInitialized += (_, _) => themeService.ApplyTitleBar(this);
+  }
+  ```
+
+  The `SourceInitialized` hook is REQUIRED — WPF resources can't reach the native title bar, so a
+  window created after startup won't match dark mode without this call (see
+  `Services/ThemeService.ApplyTitleBar` and `Services/TitleBarColorizer`).
+- **Launching:** open it with `new MyDialog(viewModel, _themeService) { Owner = this }` from
+  code-behind that already holds the `ThemeService` (as the editor/Help/About handlers do), or
+  resolve it from DI. Always set `Owner` so it centers on and stays above the main window.
+- **Read-only bindings:** a get-only source property bound into `Run.Text` (or any other
+  two-way-by-default target, e.g. a `Hyperlink.NavigateUri`) needs an explicit `Mode=OneWay`, or
+  WPF throws "a TwoWay or OneWayToSource binding cannot work on the read-only property" at
+  runtime (see NOTES.md).
+
+For anything beyond straightforward brush usage — restyling a control, editing a palette brush
+key, or touching a `DataTrigger`/`Style` that sets `Foreground`/`Background`/`Visibility` — read
+the `wpf-theming` skill BEFORE editing anything under `Themes/`.
+
 ## Manual UI Testing (DPI awareness)
 
 When verifying a change by driving the running WPF app with synthetic input (screenshots +
