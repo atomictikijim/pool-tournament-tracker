@@ -56,6 +56,29 @@ Rules for any screenshot/click automation (PowerShell or otherwise):
 See NOTES.md ("Driving the app with synthetic mouse clicks") for the full worked example, and
 the `run-app` skill for the other UI-automation traps.
 
+### Batch steps into as few tool calls as possible
+
+Every separate PowerShell tool call is a point where the user's focus can get pulled away from
+whatever they were doing, and on a stricter permission mode each call can require the user to stop
+and approve it. A UI test that fires off ten single-click tool calls in a row (click, screenshot,
+click, screenshot, ...) asks for that interruption ten times for one logical test. Treat that as a
+cost to minimize, not a free action:
+
+- **Combine every step you can predict in advance into one PowerShell invocation.** A full
+  sequence — pin the window, click a tab, click a tournament row, open a dropdown, click an item,
+  click Start, type a score, click Finish — is one script with `Start-Sleep` pauses between steps,
+  not one tool call per click. Only split into a new tool call when a later step's coordinates or
+  choice genuinely depend on inspecting a screenshot first (i.e. real conditional branching you
+  can't predict), not out of habit.
+- **Take one screenshot at the end of a batch**, not after every intermediate click, unless you
+  actually need to *see* an intermediate state to decide the next action (e.g. confirming a
+  dropdown opened before you can know where its items landed).
+- **Reuse one `Add-Type` per tool call** for all the click/screenshot helpers that batch needs,
+  instead of separate tool calls each defining their own copy.
+- Only fall back to one-action-per-tool-call when a step is genuinely unpredictable ahead of time
+  (a modal whose exact layout you haven't seen yet, a value you must read off screen before
+  deciding where to click next) — otherwise, script the whole test end-to-end and let it run.
+
 ## User-Facing Documentation
 
 `README.md` (project overview) and `FUNCTIONS.md` (end-user instruction manual)
