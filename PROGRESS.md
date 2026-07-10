@@ -5,6 +5,41 @@ the top of each section.
 
 ## Current status
 
+v0.33 complete: **When a tournament completes, a "Final Results" column shows every entrant's
+finishing placement plus any prize their place earned — on both the Tournament tab and the Display
+window — and the Display window can now go full screen.** The existing `PrizePayoutService` was
+refactored: its placement→payout body was extracted into a private `ComputeRows`, and a new public
+`ComputeFinalResults(tournament)` returns a row for **every** placed entrant (prize `0` when no prize
+places are configured or the place isn't funded) — unlike `ComputePayouts`, which still returns empty
+with no prize places. Both return empty for Ring Game and for elimination brackets that haven't
+completed. `TournamentStateService` gained `ShowFinalResults` + a `FinalResults`
+(`FinalResultRowViewModel`) collection, rebuilt from `ComputeFinalResults` only once `Status ==
+Completed` (wired through the existing `RebuildPrizePayouts`/`ClearPrizePayouts`, so all three
+placement formats are covered), plus a derived `ShowPrizePayoutsPanel = ShowPrizePayouts &&
+!ShowFinalResults` so the standalone Prize Payouts panel yields to the fuller Final Results column at
+completion (no double-listing). `FinalResultRowViewModel` formats the place ("1st", tied "3rd-4th"),
+name, prize (blank when zero), and an `IsChampion` flag (1st row bold).
+
+UI: a right-hand Auto-width column added to the Tournament tab (`TournamentRoot` grid) and the
+Display window (outer grid), collapsed to zero width until `ShowFinalResults`. The Display window
+also got a **Full Screen (F11)** button (header) and `KeyDown` handling — F11 toggles borderless
+maximized true full screen (Normal→Maximized bounce so an already-maximized window still covers the
+taskbar), Esc exits; prior chrome/state is saved and restored. Contextual help (Tournament tab) gained
+a "How Round Robin standings are decided" section (wins → head-to-head → point differential/"Diff" →
+games-won %, applied strictly in order) and Final Results + full-screen notes; README/FUNCTIONS
+updated to match.
+
++3 Core tests (`PrizePayoutServiceTests`: `ComputeFinalResults` lists every entrant with zero payout
+when no prize places exist; includes unfunded places alongside funded ones; empty for Ring Game) —
+200 tests total. Version synced to 0.33.0 (App `.csproj` + installer `.iss`). Verified end-to-end:
+selected the completed Round Robin "test 3" and the Final Results column showed 1st–7th in standings
+order (champion bold); opened the Display window and confirmed the same column plus a working Full
+Screen toggle (borderless full-monitor, button flips to "Exit Full Screen"); and opened the Tournament
+help modal and confirmed the new Round Robin standings section renders. Fixed one real bug found in
+testing: the Tournament-tab Final Results name column had an explicit `<TextBlock.Style>` (for the
+champion-bold trigger) but no local `Foreground`, so it lost the implicit TextBlock style's foreground
+and rendered near-white on the light card — added an explicit `Foreground` (see NOTES.md).
+
 v0.32 complete: **Chip Tournaments can assign starting chips by skill range, and the tournament
 director can add/remove a player's chips mid-event.** Starting chips are no longer one flat number
 for everyone: on the Tournament Settings tab, ticking **Assign starting chips by skill rating**

@@ -398,6 +398,19 @@ each place's payout:
   entrants together (shown as e.g. "3rd-4th (tied)") and splits their
   combined payout evenly between them.
 
+### Final Results
+
+Once a tournament completes, a **Final Results** column appears on the right of the
+Tournament tab (and on the [Display window](#8-the-display-window)), listing **every**
+entrant in finishing order together with any prize their place earned. Unlike the
+Prize Payouts panel it appears even when no prizes are configured — the prize column
+is simply left blank in that case — so it always works as a plain finishing-order
+board. The finishing order is exact for Round Robin and Chip Tournament; for
+elimination brackets the champion and runner-up are exact and lower places follow
+win/loss record, with tied places shown as a range (e.g. "3rd-4th"). At completion
+the Final Results column replaces the Prize Payouts panel, so the same money isn't
+listed twice.
+
 ## 7. The tournament formats explained
 
 ### Single Elimination
@@ -451,15 +464,24 @@ are spread across the pod's four round-1 matches rather than clustered.
 
 ### Round Robin
 
-No elimination at all — every entrant plays every other entrant exactly once.
-Standings are ranked by:
+No elimination at all — every entrant plays every other entrant exactly once. The
+winner is simply whoever tops the standings once every match is played. Standings are
+ranked by these rules, applied strictly in order — each one is used only to break a
+tie the rule above it couldn't:
 
 1. Wins (most wins first).
 2. Among entrants tied on wins: head-to-head record against just the others they're
-   tied with.
-3. Still tied: point differential (points won minus points lost, across all
-   matches).
-4. Still tied: games-won percentage.
+   tied with. Beating the person you're level with counts before any score margin.
+3. Still tied: point differential — the "Diff" column: total games (racks) won minus
+   total games lost across all matches. It rewards winning by bigger margins, so a 5–1
+   record built on 7–2 wins outranks a 5–1 record built on 7–6 wins.
+4. Still tied: games-won percentage (then player name, so the order is always
+   deterministic).
+
+Because the order is strict, a player can finish ahead of someone with a better Diff
+and a higher games-won %: if the two are tied on wins and one beat the other
+head-to-head, that head-to-head result settles it and the later measures are never
+consulted.
 
 ### Ring Game
 
@@ -497,9 +519,15 @@ needed:
   Tournament) — completed matches' winners are highlighted.
 - The **Prize Payouts** panel, if the tournament has payouts configured (see
   [Section 6](#6-entry-fees-and-prize-payouts)) — not shown for Ring Game.
+- The **Final Results** column on the right, once the tournament completes — every
+  entrant in finishing order plus any prize (see [Section 6](#6-entry-fees-and-prize-payouts)).
 - A large, faded ball graphic fills the background of the whole window — an 8, 9,
   or 10 ball matching whichever game the tournament is set to (8-Ball, 9-Ball, or
   10-Ball).
+
+Click **Full Screen** (or press **F11**) to hide the window chrome and fill the whole
+screen — ideal for projecting to the room. Press **Esc** or the button again (now
+labelled **Exit Full Screen**) to return to a normal window.
 
 For an elimination bracket **or** a Round Robin schedule, the Display window has its
 own **Zoom** controls (**−** / **+** / **Reset** / **Fit**, or **Ctrl + mouse wheel**

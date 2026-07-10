@@ -50,8 +50,12 @@ live results on a second screen.
   confirmation prompt); its bracket/matches/tables are removed while the players and
   teams stay on their rosters. The tournament list can also be filtered by status
   (All / Not Started / In Progress / Completed).
+- **Final results and payouts.** When a tournament completes, a Final Results column
+  lists every entrant in finishing order with any prize their place earned — shown on
+  the Tournament tab and the Display window, and working even when no prizes are set.
 - **Second-screen Display window.** A read-only, projector-friendly window mirroring
-  the live bracket/standings/rotation board, for the room to watch.
+  the live bracket/standings/rotation board and final results, for the room to watch —
+  with a one-key (F11) full-screen mode for projecting.
 - **Built-in contextual help.** Every tab has a **?** button that opens a pop-up guide
   for that tab, so the instructions are available right inside the app.
 - **About box.** An **About** button in the header (on every screen) shows the app

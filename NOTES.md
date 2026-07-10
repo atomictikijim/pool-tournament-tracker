@@ -3,6 +3,24 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-10 — A TextBlock with its own inline `<TextBlock.Style>` loses the implicit theme foreground and renders near-white on a light surface
+
+**Issue:** The new Final Results column on the Tournament tab rendered the entrant-name text
+near-white (invisible on the light card), while the place and payout columns beside it were fine.
+The name TextBlock was the only one with an inline `<TextBlock.Style>` (added just to bold the
+champion row via a `DataTrigger`), and — unlike the others — it had no local `Foreground`. Giving a
+TextBlock its own `Style` (with no `BasedOn`) means it no longer picks up the implicit
+`TargetType="TextBlock"` style in `Themes/Generic.xaml` that sets `Foreground` to
+`TextPrimaryBrush`; with no local `Foreground` either, its color fell back to the inherited
+`TextElement.Foreground`, which here was a light value — so the text washed out. (The Display
+window's copy set `Foreground` explicitly and was unaffected.)
+
+**Fix:** Put an explicit `Foreground="{DynamicResource TextPrimaryBrush}"` (a real local value, which
+wins over everything) on that TextBlock. General lesson: any TextBlock that carries its own inline
+`Style` — even one that only sets a trigger — should also set `Foreground` locally (or use `BasedOn`
+the implicit style), or it silently drops the theme foreground. Same family of anonymous/implicit-
+style foreground traps already documented for Button/TabItem headers in Generic.xaml.
+
 ## 2026-07-10 — Binding a Hyperlink's NavigateUri / a Run.Text to a get-only property throws "TwoWay binding cannot work on the read-only property"
 
 **Issue:** The new About box (`AboutWindow`) binds a `<Hyperlink NavigateUri="{Binding

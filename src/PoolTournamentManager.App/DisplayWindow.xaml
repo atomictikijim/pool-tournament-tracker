@@ -6,6 +6,7 @@
         mc:Ignorable="d"
         Title="Pool Tournament Manager - Display" Height="700" Width="1200"
         Icon="Assets/Logo.png"
+        KeyDown="DisplayWindow_OnKeyDown"
         Background="{DynamicResource AppBackgroundBrush}">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -14,6 +15,11 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <!-- Right: Final Results column, sized to content and collapsed until completion. -->
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
 
         <!-- Faded ball watermark behind everything else, filling the whole window - which ball
              (8/9/10) shows depends on the active tournament's GameType (see
@@ -23,7 +29,7 @@
              (true white, so they read as a solid disc against any window/theme background)
              while the black/colored parts are faded individually - a group Opacity here would
              fade the whites into invisibility against a light background too. -->
-        <Viewbox Grid.Row="0" Grid.RowSpan="4" Margin="-20" Stretch="Uniform" IsHitTestVisible="False">
+        <Viewbox Grid.Row="0" Grid.RowSpan="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="-20" Stretch="Uniform" IsHitTestVisible="False">
             <Grid Width="400" Height="400">
                 <Grid Visibility="{Binding IsEightBallGame, Converter={StaticResource BoolToVisibilityConverter}}">
                     <Ellipse Width="400" Height="400" Fill="Black" Opacity="0.28" />
@@ -56,19 +62,22 @@
             </Grid>
         </Viewbox>
 
-        <Border Grid.Row="0" Background="{DynamicResource WindowChromeBrush}" Margin="-20,-20,-20,16" Padding="20,16">
-            <StackPanel Orientation="Horizontal">
-                <Image Source="Assets/Logo.png" Width="48" Height="48" Margin="0,0,14,0" />
-                <StackPanel>
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Background="{DynamicResource WindowChromeBrush}" Margin="-20,-20,-20,16" Padding="20,16">
+            <DockPanel LastChildFill="False">
+                <Button x:Name="FullScreenButton" DockPanel.Dock="Right" Content="Full Screen (F11)"
+                        Click="FullScreenButton_OnClick" Padding="12,6" VerticalAlignment="Center"
+                        ToolTip="Toggle full screen (F11; Esc to exit)" />
+                <Image DockPanel.Dock="Left" Source="Assets/Logo.png" Width="48" Height="48" Margin="0,0,14,0" />
+                <StackPanel DockPanel.Dock="Left">
                     <TextBlock Text="{Binding State.ActiveTournament.Name, TargetNullValue='No tournament selected'}"
                                Foreground="{DynamicResource TextPrimaryBrush}" FontSize="32" FontWeight="Bold" />
                     <TextBlock Text="{Binding State.ActiveTournament.Status}"
                                Foreground="{DynamicResource TextSecondaryBrush}" FontSize="16" />
                 </StackPanel>
-            </StackPanel>
+            </DockPanel>
         </Border>
 
-        <StackPanel Grid.Row="1" Margin="0,0,0,20">
+        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,20">
             <TextBlock Text="Now Playing" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="20" FontWeight="Bold" Margin="0,0,0,8" />
             <ItemsControl ItemsSource="{Binding TableAssignments}">
                 <ItemsControl.ItemsPanel>
@@ -316,9 +325,48 @@
             </ItemsControl>
         </StackPanel>
 
+        <!-- Final Results: full finishing order + prize per place, shown once the tournament
+             completes (State.ShowFinalResults). Read-only projector view - large type, scrolls if
+             the field is deep. The Auto-width column collapses while this is hidden. -->
+        <Border Grid.Row="2" Grid.Column="1" Margin="24,0,0,0" Padding="18,14"
+                Background="{DynamicResource CardBackgroundBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                MinWidth="320" MaxWidth="440"
+                Visibility="{Binding State.ShowFinalResults, Converter={StaticResource BoolToVisibilityConverter}}">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="Final Results" Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontSize="26" FontWeight="Bold" Margin="0,0,0,12" />
+                <TextBlock DockPanel.Dock="Top" Text="{Binding State.PrizePoolSummaryLine}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextSecondaryBrush}" FontSize="14" Margin="0,0,0,14"
+                           Visibility="{Binding State.ShowPrizePayouts, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding State.FinalResults}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding PlaceDisplay}" Width="80" FontSize="20" FontWeight="Bold"
+                                               Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding EntrantName}" FontSize="20" Margin="0,0,12,0"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Payout}" FontSize="20" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
         <!-- Prize payouts: entry-fee totals + per-place payouts, shared across every format
-             except Ring Game (see PrizePayoutService/TournamentStateService). -->
-        <StackPanel Grid.Row="3" Margin="0,20,0,0" Visibility="{Binding State.ShowPrizePayouts, Converter={StaticResource BoolToVisibilityConverter}}">
+             except Ring Game (see PrizePayoutService/TournamentStateService). Yields to the Final
+             Results column above once the tournament completes (ShowPrizePayoutsPanel). -->
+        <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,20,0,0" Visibility="{Binding State.ShowPrizePayoutsPanel, Converter={StaticResource BoolToVisibilityConverter}}">
             <TextBlock Text="Prize Payouts" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="20" FontWeight="Bold" Margin="0,0,0,8" />
             <TextBlock Text="{Binding State.PrizePoolSummaryLine}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="15" Margin="0,0,0,8" />
             <ItemsControl ItemsSource="{Binding State.PrizePayouts}">

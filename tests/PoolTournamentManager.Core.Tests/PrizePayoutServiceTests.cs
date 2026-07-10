@@ -262,4 +262,62 @@ public class PrizePayoutServiceTests
         Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
         Assert.Empty(PrizePayoutService.ComputePayouts(tournament));
     }
+
+    [Fact]
+    public void ComputeFinalResults_ListsEveryEntrant_WithZeroPayout_WhenNoPrizePlacesConfigured()
+    {
+        var tournament = new Tournament { Name = "Test", Format = TournamentFormat.RoundRobin };
+        var a = new TournamentEntrant { TournamentId = tournament.Id, PlayerId = Guid.NewGuid(), Player = new Player { FirstName = "A", LastName = "P" } };
+        var b = new TournamentEntrant { TournamentId = tournament.Id, PlayerId = Guid.NewGuid(), Player = new Player { FirstName = "B", LastName = "P" } };
+        var c = new TournamentEntrant { TournamentId = tournament.Id, PlayerId = Guid.NewGuid(), Player = new Player { FirstName = "C", LastName = "P" } };
+        tournament.Entrants.AddRange(new[] { a, b, c });
+
+        tournament.Matches.Add(new Match { TournamentId = tournament.Id, Player1EntrantId = a.Id, Player2EntrantId = b.Id, Player1Score = 7, Player2Score = 2, WinnerEntrantId = a.Id, Status = MatchStatus.Completed });
+        tournament.Matches.Add(new Match { TournamentId = tournament.Id, Player1EntrantId = a.Id, Player2EntrantId = c.Id, Player1Score = 7, Player2Score = 3, WinnerEntrantId = a.Id, Status = MatchStatus.Completed });
+        tournament.Matches.Add(new Match { TournamentId = tournament.Id, Player1EntrantId = b.Id, Player2EntrantId = c.Id, Player1Score = 7, Player2Score = 1, WinnerEntrantId = b.Id, Status = MatchStatus.Completed });
+
+        // No prize places configured at all - ComputePayouts is empty, but final placements still resolve.
+        Assert.Empty(PrizePayoutService.ComputePayouts(tournament));
+
+        var results = PrizePayoutService.ComputeFinalResults(tournament);
+
+        Assert.Equal(3, results.Count);
+        Assert.Equal(1, results[0].PlaceRangeStart);
+        Assert.Equal(a.Id, results[0].Entrant.Id);
+        Assert.Equal(b.Id, results[1].Entrant.Id);
+        Assert.Equal(c.Id, results[2].Entrant.Id);
+        Assert.All(results, r => Assert.Equal(0m, r.Payout));
+    }
+
+    [Fact]
+    public void ComputeFinalResults_IncludesUnfundedPlaces_AlongsideFundedOnes()
+    {
+        var service = new BracketGenerationService();
+        var tournament = BuildBracketTournament(TournamentFormat.SingleElimination, 4);
+        service.GenerateSingleElimination(tournament);
+
+        Play(service, tournament, 1, 4, winnerSeed: 1);
+        Play(service, tournament, 2, 3, winnerSeed: 2);
+        Play(service, tournament, 1, 2, winnerSeed: 1);
+
+        tournament.EntryFee = 10m; // pool 40
+        SetPrizePlaces(tournament, (1, 100m)); // only 1st is funded
+
+        var results = PrizePayoutService.ComputeFinalResults(tournament);
+
+        // All four entrants placed, even though only the champion earns money.
+        Assert.Equal(4, results.Count);
+        Assert.Equal(40m, results.Single(r => r.Entrant.Id == BySeed(tournament, 1).Id).Payout);
+        Assert.Equal(0m, results.Single(r => r.Entrant.Id == BySeed(tournament, 2).Id).Payout);
+        Assert.All(results.Where(r => r.PlaceRangeStart >= 3), r => Assert.Equal(0m, r.Payout));
+    }
+
+    [Fact]
+    public void ComputeFinalResults_ReturnsEmpty_ForRingGame()
+    {
+        var tournament = new Tournament { Name = "Test", Format = TournamentFormat.RingGame };
+        tournament.Entrants.Add(new TournamentEntrant { TournamentId = tournament.Id, PlayerId = Guid.NewGuid() });
+
+        Assert.Empty(PrizePayoutService.ComputeFinalResults(tournament));
+    }
 }

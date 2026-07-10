@@ -88,6 +88,25 @@ public partial class TournamentStateService : ObservableObject
     [ObservableProperty]
     private ObservableCollection<PrizePayoutRowViewModel> _prizePayouts = new();
 
+    /// <summary>True once the tournament has completed and a final finishing order exists - drives
+    /// the "Final Results" column (Tournament tab and Display window). See RebuildFinalResults.</summary>
+    [ObservableProperty]
+    private bool _showFinalResults;
+
+    /// <summary>Every entrant's final placement plus the prize their place earned, ordered by
+    /// finish. Populated only once the tournament is Completed (empty otherwise).</summary>
+    [ObservableProperty]
+    private ObservableCollection<FinalResultRowViewModel> _finalResults = new();
+
+    /// <summary>Whether to show the standalone "Prize Payouts" panel. It yields to the fuller
+    /// "Final Results" column once the tournament completes (which already lists every place and
+    /// its prize), so the two don't show the same money twice.</summary>
+    public bool ShowPrizePayoutsPanel => ShowPrizePayouts && !ShowFinalResults;
+
+    partial void OnShowPrizePayoutsChanged(bool value) => OnPropertyChanged(nameof(ShowPrizePayoutsPanel));
+
+    partial void OnShowFinalResultsChanged(bool value) => OnPropertyChanged(nameof(ShowPrizePayoutsPanel));
+
     private readonly DispatcherTimer _matchTickTimer = new() { Interval = TimeSpan.FromSeconds(1) };
 
     public TournamentStateService(ITournamentRepository tournamentRepository)
@@ -319,6 +338,31 @@ public partial class TournamentStateService : ObservableObject
         ShowPrizePayouts = false;
         PrizePoolSummaryLine = string.Empty;
         PrizePayouts = new ObservableCollection<PrizePayoutRowViewModel>();
+        ClearFinalResults();
+    }
+
+    private void ClearFinalResults()
+    {
+        ShowFinalResults = false;
+        FinalResults = new ObservableCollection<FinalResultRowViewModel>();
+    }
+
+    /// <summary>
+    /// Rebuilds the "Final Results" list - every entrant's final placement and the prize that
+    /// place earned - shown once the tournament is Completed. Reuses PrizePayoutService's placement
+    /// logic (exact for Round Robin/Chip; champion/runner-up exact and lower places approximated by
+    /// win/loss record for elimination brackets), but unlike the Prize Payouts panel it appears
+    /// even when no prize places are configured (prizes then simply read blank).
+    /// </summary>
+    private void RebuildFinalResults(Tournament tournament)
+    {
+        var rows = tournament.Status == TournamentStatus.Completed
+            ? PrizePayoutService.ComputeFinalResults(tournament)
+            : new List<PrizePayoutRow>();
+
+        FinalResults = new ObservableCollection<FinalResultRowViewModel>(
+            rows.OrderBy(r => r.PlaceRangeStart).Select(r => new FinalResultRowViewModel(r)));
+        ShowFinalResults = FinalResults.Count > 0;
     }
 
     /// <summary>
@@ -330,6 +374,7 @@ public partial class TournamentStateService : ObservableObject
     /// </summary>
     private void RebuildPrizePayouts(Tournament tournament)
     {
+        RebuildFinalResults(tournament);
         ShowPrizePayouts = tournament.Format != TournamentFormat.RingGame && tournament.PrizePlaces.Count > 0;
         if (!ShowPrizePayouts)
         {

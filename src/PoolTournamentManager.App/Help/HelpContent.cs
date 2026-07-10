@@ -126,6 +126,13 @@ public static class HelpContentProvider
         .B("Enter both scores, then click Finish. The winner is highlighted and advances automatically, and the box shows the final match duration.")
         .B("Round Robin shows round columns plus a live Standings panel instead of a bracket tree; Start/Finish and score entry work the same.")
         .B("For a large bracket, use the Zoom controls (or Ctrl+mouse-wheel over the bracket); Fit sizes the whole bracket to the screen.")
+        .Sub("How Round Robin standings are decided")
+        .P("Round Robin has no elimination — the winner is simply whoever tops the standings after everyone has played everyone once. The order is decided by applying these rules in sequence, each one used only to break a tie the rule above it couldn't separate:")
+        .B("Match wins — most wins first.")
+        .B("Head-to-head — among players tied on wins, whoever won the match(es) played between just those tied players ranks higher. Beating the person you're level with is treated as more meaningful than your scores against everyone else.")
+        .B("Point differential — the \"Diff\" column: total games (racks) won minus total games lost across all your matches. It rewards winning by bigger margins, so a 5–1 record built on 7–2 wins outranks a 5–1 record built on 7–6 wins.")
+        .B("Games-won % — games won out of all games played, as a final numeric tiebreak (then player name, purely so the order is always deterministic).")
+        .P("Because the rules are applied strictly in that order, a player can finish ahead of someone who has a better Diff and a higher games-won %: if the two are tied on match wins and one beat the other head-to-head, that head-to-head result settles it and the later measures are never even looked at.")
         .Sub("Running a Ring Game")
         .B("Made the 5 — the current shooter pockets the 5-ball, is paid the 5-ball payout, and keeps shooting.")
         .B("Made the 9 — the current shooter pockets the 9-ball, is paid, the rack ends, and the break passes to the next player.")
@@ -137,8 +144,11 @@ public static class HelpContentProvider
         .B("The Next Up list shows who's waiting; the standings grid shows finishing place, chip count, games won and win %. The last player holding chips wins.")
         .Sub("Prize Payouts")
         .P("If payouts are configured, a Prize Payouts panel shows the entry-fee, host-cut and prize-pool totals plus each place's payout. Round Robin and Chip Tournament update live; elimination formats show payouts once complete, grouping ties (e.g. \"3rd–4th (tied)\") and splitting their combined payout evenly.")
+        .Sub("Final Results")
+        .P("Once a tournament completes, a Final Results column appears on the right (and on the Display window), listing every entrant in finishing order along with any prize their place earned. It shows for all placement formats even when no prizes are configured — the prize column is simply blank then. Tied bracket places are shown as a range (e.g. \"3rd-4th\"). For Round Robin and Chip Tournament this order is exact; for elimination brackets the champion and runner-up are exact and lower places are ordered by win/loss record. It replaces the Prize Payouts panel at completion so the same information isn't shown twice.")
         .Sub("Display window")
-        .P("Open Display Window opens a read-only, projector-friendly second window that mirrors the live bracket/standings/board and prize payouts in real time, over a faded ball graphic matching the game. Everything on it is purely for the audience to watch — all control stays on this tab.")
+        .P("Open Display Window opens a read-only, projector-friendly second window that mirrors the live bracket/standings/board, prize payouts and final results in real time, over a faded ball graphic matching the game. Everything on it is purely for the audience to watch — all control stays on this tab.")
+        .B("Full Screen (or press F11) hides the window chrome and fills the whole screen for projecting to the room; press Esc or the button again to return to a normal window.")
         .Build());
 
     /// <summary>Tiny fluent helper so each document above reads as an ordered outline rather than a

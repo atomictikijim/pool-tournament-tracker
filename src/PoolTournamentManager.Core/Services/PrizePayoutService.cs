@@ -40,6 +40,11 @@ public static class PrizePayoutService
     /// <summary>What's left to award across the configured prize places.</summary>
     public static decimal PrizePool(Tournament tournament) => TotalEntryFees(tournament) - HostCut(tournament);
 
+    /// <summary>
+    /// The per-entrant prize breakdown for the configured prize places. Returns empty when no
+    /// prize places are configured (there's no money to split) - use <see cref="ComputeFinalResults"/>
+    /// when you want every entrant's finishing placement regardless of payouts.
+    /// </summary>
     public static List<PrizePayoutRow> ComputePayouts(Tournament tournament)
     {
         if (tournament.Format == TournamentFormat.RingGame || tournament.PrizePlaces.Count == 0)
@@ -47,6 +52,32 @@ public static class PrizePayoutService
             return new List<PrizePayoutRow>();
         }
 
+        return ComputeRows(tournament);
+    }
+
+    /// <summary>
+    /// Every entrant's final finishing placement plus the prize their place earned - the prize is
+    /// zero when no prize places are configured, or when their place isn't a funded one. Unlike
+    /// <see cref="ComputePayouts"/> this never returns empty just because no prize places exist;
+    /// it's the full "final standings" list shown when a tournament completes. Ordered by the
+    /// underlying placement. Empty for Ring Game (no discrete finishing order) and for elimination
+    /// brackets that haven't completed yet.
+    /// </summary>
+    public static List<PrizePayoutRow> ComputeFinalResults(Tournament tournament)
+    {
+        if (tournament.Format == TournamentFormat.RingGame)
+        {
+            return new List<PrizePayoutRow>();
+        }
+
+        return ComputeRows(tournament);
+    }
+
+    /// <summary>Shared placement-to-payout projection behind both public entry points: turns each
+    /// placement group into one row per entrant, splitting the group's combined funded percentage
+    /// evenly across its members (zero when none of the group's places are funded).</summary>
+    private static List<PrizePayoutRow> ComputeRows(Tournament tournament)
+    {
         var placements = ComputePlacements(tournament);
         if (placements.Count == 0)
         {
@@ -65,7 +96,7 @@ public static class PrizePayoutService
                 groupPercentage += percentageByPlace.GetValueOrDefault(place);
             }
 
-            var perEntrant = pool * groupPercentage / 100m / group.Entrants.Count;
+            var perEntrant = group.Entrants.Count > 0 ? pool * groupPercentage / 100m / group.Entrants.Count : 0m;
             rows.AddRange(group.Entrants.Select(entrant => new PrizePayoutRow
             {
                 Entrant = entrant,
