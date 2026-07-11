@@ -5,6 +5,24 @@ the top of each section.
 
 ## Current status
 
+v0.33.1 complete: **The Display window no longer leaves stale tournament chrome on screen when no
+tournament is selected or the one it was showing is deleted.** Investigation (driving the running
+app, capturing the Display window via `PrintWindow` so an occluded window still renders) confirmed
+the bracket itself already cleared on both the Tournament screen and the Display window in every
+case — the only leftover was the Display window's always-visible **"Now Playing"** section, which
+lingered over an empty body. Gated that section on a new `DisplayWindowViewModel.HasActiveTournament`
+flag (set in `RebuildBracket`, notified alongside the other bracket flags), so the whole section
+disappears when `State.ActiveTournament` is null. Also added `FallbackValue='No tournament selected'`
+to the header title binding (its existing `TargetNullValue` never fired: with no tournament the whole
+`ActiveTournament` source is null, a broken binding path, which resolves via `FallbackValue` not
+`TargetNullValue`). Net effect: with nothing selected the Display window shows a clean "No tournament
+selected" header and nothing else. Regression guard: `BracketAutoClearTests` (2 tests) asserts
+`IsEliminationBracket`/`Bracket.Boxes`/`HasActiveTournament` all clear on both view models after both
+delete and deselect. Verified end-to-end live via `PrintWindow` before/after: 9-Ball bracket showing →
+delete → clean "No tournament selected" empty state, and opening the Display window with nothing
+selected shows the same clean state. Version synced to 0.33.1 (App `.csproj` + installer `.iss`);
+FUNCTIONS.md Display-window section documents the auto-clear behavior.
+
 v0.33 complete: **When a tournament completes, a "Final Results" column shows every entrant's
 finishing placement plus any prize their place earned — on both the Tournament tab and the Display
 window — and the Display window can now go full screen.** The existing `PrizePayoutService` was
@@ -529,6 +547,16 @@ sections for double elimination.
 
 ## Next steps
 
+- [x] Auto-clear the Display window when no tournament is selected / the shown one is deleted
+  (done in v0.33.1). Investigation found the **bracket itself already cleared** on both windows
+  (confirmed live via `PrintWindow`, which renders an occluded window — the tournament screen and
+  the Display bracket both collapse on delete and when nothing is selected). The real leftover was
+  the Display window's **"Now Playing" section**, which was always visible and lingered over an
+  empty body when no tournament was active. Fixed by gating that section on a new
+  `DisplayWindowViewModel.HasActiveTournament` flag, and adding `FallbackValue='No tournament
+  selected'` to the header (its `TargetNullValue` never fired because the whole `ActiveTournament`
+  source is null — a broken path uses `FallbackValue`, not `TargetNullValue`). The Display window
+  now falls back to a clean "No tournament selected" header with nothing else shown.
 - [x] Modal editor windows + New/Edit/Delete toolbars with confirmed, multi-row,
   reference-protected deletion for Players and Teams (done in v0.19).
 - [ ] Deletion is blocked (not cascaded) for a player/team entered in any

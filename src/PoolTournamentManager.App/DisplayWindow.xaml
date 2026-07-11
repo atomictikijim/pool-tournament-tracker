@@ -69,7 +69,11 @@
                         ToolTip="Toggle full screen (F11; Esc to exit)" />
                 <Image DockPanel.Dock="Left" Source="Assets/Logo.png" Width="48" Height="48" Margin="0,0,14,0" />
                 <StackPanel DockPanel.Dock="Left">
-                    <TextBlock Text="{Binding State.ActiveTournament.Name, TargetNullValue='No tournament selected'}"
+                    <!-- FallbackValue as well as TargetNullValue: when no tournament is selected the
+                         whole ActiveTournament source is null (a broken binding path, which uses
+                         FallbackValue), not just a null Name - so both are needed for the empty state
+                         to read "No tournament selected" rather than blank. -->
+                    <TextBlock Text="{Binding State.ActiveTournament.Name, TargetNullValue='No tournament selected', FallbackValue='No tournament selected'}"
                                Foreground="{DynamicResource TextPrimaryBrush}" FontSize="32" FontWeight="Bold" />
                     <TextBlock Text="{Binding State.ActiveTournament.Status}"
                                Foreground="{DynamicResource TextSecondaryBrush}" FontSize="16" />
@@ -77,7 +81,8 @@
             </DockPanel>
         </Border>
 
-        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,20">
+        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,20"
+                    Visibility="{Binding HasActiveTournament, Converter={StaticResource BoolToVisibilityConverter}}">
             <TextBlock Text="Now Playing" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="20" FontWeight="Bold" Margin="0,0,0,8" />
             <ItemsControl ItemsSource="{Binding TableAssignments}">
                 <ItemsControl.ItemsPanel>

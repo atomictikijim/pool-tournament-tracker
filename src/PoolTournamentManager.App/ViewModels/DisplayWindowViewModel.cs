@@ -81,6 +81,12 @@ public partial class DisplayWindowViewModel : ObservableObject
     /// <summary>The positioned bracket tree for elimination formats (empty otherwise).</summary>
     public BracketLayout Bracket { get; private set; } = new();
 
+    /// <summary>True while a tournament is open. Gates the "Now Playing" section so the Display
+    /// window falls back to a clean empty state (just the "No tournament selected" header) when
+    /// nothing is selected or the tournament it was showing has just been deleted - otherwise the
+    /// "Now Playing" heading lingers over an empty body.</summary>
+    public bool HasActiveTournament { get; private set; }
+
     /// <summary>True when the active tournament is a single/double-elimination bracket.</summary>
     public bool IsEliminationBracket { get; private set; }
 
@@ -101,6 +107,7 @@ public partial class DisplayWindowViewModel : ObservableObject
     private void RebuildBracket()
     {
         var format = State.ActiveTournament?.Format;
+        HasActiveTournament = State.ActiveTournament is not null;
         IsEliminationBracket = format is TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination
             or TournamentFormat.ModifiedSingleElimination;
         ShowFlatRounds = format is TournamentFormat.RoundRobin;
@@ -112,6 +119,7 @@ public partial class DisplayWindowViewModel : ObservableObject
         IsTenBallGame = gameType == GameType.TenBall;
 
         OnPropertyChanged(nameof(Bracket));
+        OnPropertyChanged(nameof(HasActiveTournament));
         OnPropertyChanged(nameof(IsEliminationBracket));
         OnPropertyChanged(nameof(ShowFlatRounds));
         OnPropertyChanged(nameof(ShowZoomControls));

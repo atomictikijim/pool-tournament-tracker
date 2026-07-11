@@ -525,6 +525,11 @@ needed:
   or 10 ball matching whichever game the tournament is set to (8-Ball, 9-Ball, or
   10-Ball).
 
+When no tournament is selected — or the one being shown is deleted — the Display window
+(and the Tournament tab) clears itself automatically: the bracket and the "Now Playing"
+board disappear and the header reads **"No tournament selected"**, so a stale bracket is
+never left on screen.
+
 Click **Full Screen** (or press **F11**) to hide the window chrome and fill the whole
 screen — ideal for projecting to the room. Press **Esc** or the button again (now
 labelled **Exit Full Screen**) to return to a normal window.
