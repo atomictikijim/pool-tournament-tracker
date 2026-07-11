@@ -5,6 +5,29 @@ the top of each section.
 
 ## Current status
 
+v0.35 complete (Major): **Double Elimination now accepts any entrant count ≥2 and automatically
+waitlists the overflow — any entrants beyond the largest power of two that fits sit on the waitlist
+until the field grows to the next power of two, at which point the whole bracket (active + waitlist)
+is regenerated at the new size.** Previously Double Elimination blocked non-power-of-two counts
+entirely. The implementation adds `IsWaitlisted` boolean to `TournamentEntrant` (EF migration added);
+rewrites `GenerateDoubleElimination` to compute `bracketSize = DoubleEliminationBracketSize(count)`,
+mark entrants with `seed > bracketSize` as waitlisted, and feed only non-waitlisted seeds into the
+bracket graph (so the bracket is always a perfect power of two — never padded with byes). The
+`TournamentViewModel.AddEntrant` path removes the power-of-two guard and now reports waitlist status:
+"Added [name]. X playing, Y waitlisted — add Z more to fill a [next-power-of-two]-player bracket."
+`TournamentStateService` surfaces the waitlist as a new observable `Waitlist` collection (entrant
+display names, sorted by seed), and `MainWindow.xaml` renders a collapsible "Waitlist" panel (only
+shows when non-empty) with help text on the Tournament tab. `PrizePayoutService` excludes waitlisted
+entrants from entry-fee counts and finishing placements (they didn't compete). Tests: new helpers
+`DoubleEliminationBracketSize()` and `DoubleEliminationWaitlistCount()`; rewritten
+`DoubleEliminationBracketTests` with 3 tests covering waitlist membership (lowest seeds), bracket
+composition (power of two, no byes), and the "exactly 2 losses" property; new `PrizePayoutServiceTests`
+case verifying waitlisted entrants are uncharged and unplaced; new `TournamentEntrantAdditionTests`
+verifying end-to-end state wiring. 229 tests green (was 216; net +13 — the old non-power-of-two
+tests replaced with new waitlist tests). Verified end-to-end in the rebuilt app on a 5-entrant
+tournament (bracket of 4, 1 waitlisted). Version bumped to 0.35; EF migration
+`20260711134213_AddEntrantWaitlist` added; app and installer versions updated.
+
 v0.34.1 complete (UI-only): **Double Elimination and Modified Single Elimination brackets now use a
 centre-out "bowtie" layout — the first round is generated in the middle column, the Winners side
 progresses rightward to the final match, and the Losers side progresses leftward.** Previously the

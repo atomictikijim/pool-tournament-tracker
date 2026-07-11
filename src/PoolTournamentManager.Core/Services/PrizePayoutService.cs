@@ -31,8 +31,11 @@ public class PrizePayoutRow
 /// </summary>
 public static class PrizePayoutService
 {
-    /// <summary>Gross money collected: entry fee times entrant count.</summary>
-    public static decimal TotalEntryFees(Tournament tournament) => tournament.EntryFee * tournament.Entrants.Count;
+    /// <summary>Gross money collected: entry fee times the number of entrants who actually play.
+    /// Waitlisted entrants (double elimination's overflow past a power of two) don't compete in this
+    /// tournament, so they're excluded from the pool.</summary>
+    public static decimal TotalEntryFees(Tournament tournament) =>
+        tournament.EntryFee * tournament.Entrants.Count(e => !e.IsWaitlisted);
 
     /// <summary>The portion of total entry fees kept by the tournament host.</summary>
     public static decimal HostCut(Tournament tournament) => TotalEntryFees(tournament) * (tournament.HostFeePercentage / 100m);
@@ -195,7 +198,8 @@ public static class PrizePayoutService
             new(new List<TournamentEntrant> { tournament.Entrants.First(e => e.Id == championId.Value) }, 1, 1)
         };
 
-        var remaining = tournament.Entrants.Where(e => e.Id != championId.Value).ToList();
+        // Waitlisted entrants never played, so they take no finishing place at all.
+        var remaining = tournament.Entrants.Where(e => e.Id != championId.Value && !e.IsWaitlisted).ToList();
         var nextPlace = 2;
 
         if (runnerUpId is not null)

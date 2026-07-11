@@ -779,11 +779,9 @@ public partial class TournamentViewModel : ObservableObject
         }
 
         var newTotal = tournament.Entrants.Count + 1;
-        if (tournament.Format == TournamentFormat.DoubleElimination && (newTotal & (newTotal - 1)) != 0)
-        {
-            StatusMessage = "Double elimination currently requires a power-of-2 number of entrants (2, 4, 8, 16, 32...).";
-            return;
-        }
+        // Double elimination accepts any count >= 2: the bracket plays the largest power of two that
+        // fits and the overflow (lowest seeds) is waitlisted until the field reaches the next power
+        // of two (see BracketGenerationService.GenerateDoubleElimination). No count is rejected here.
 
         if (tournament.Format == TournamentFormat.ModifiedSingleElimination && !BracketGenerationService.IsValidModifiedSingleEliminationCount(newTotal))
         {
@@ -831,7 +829,7 @@ public partial class TournamentViewModel : ObservableObject
             RefreshTournamentLifecycleFlags();
             SelectedPlayerToAdd = null;
             SelectedTeamToAdd = null;
-            StatusMessage = $"Added {addedName}.";
+            StatusMessage = $"Added {addedName}.{DoubleEliminationWaitlistSuffix(tournament)}";
         }
         catch (InvalidOperationException ex)
         {
@@ -861,6 +859,30 @@ public partial class TournamentViewModel : ObservableObject
         {
             _tournamentRepository.TrackNew(newMatch);
         }
+    }
+
+    /// <summary>A trailing " N playing, M waitlisted ..." note for a double-elimination tournament
+    /// whose field isn't yet a power of two, or empty otherwise (any other format, or a field that
+    /// exactly fills the bracket). Appended to the "Added ..." status so the director sees at a
+    /// glance who's in the bracket and how many more entrants would admit the whole waitlist.</summary>
+    private static string DoubleEliminationWaitlistSuffix(Tournament tournament)
+    {
+        if (tournament.Format != TournamentFormat.DoubleElimination)
+        {
+            return string.Empty;
+        }
+
+        var count = tournament.Entrants.Count;
+        var waitlisted = BracketGenerationService.DoubleEliminationWaitlistCount(count);
+        if (waitlisted == 0)
+        {
+            return string.Empty;
+        }
+
+        var playing = BracketGenerationService.DoubleEliminationBracketSize(count);
+        var nextSize = playing * 2;
+        var needed = nextSize - count;
+        return $" {playing} playing, {waitlisted} on the waitlist - add {needed} more to fill a {nextSize}-player bracket.";
     }
 
     private void RegenerateBracket(Tournament tournament, Func<Tournament, BracketDetail> generate, bool forceRandomSeed = false)
@@ -1097,8 +1119,8 @@ public partial class TournamentViewModel : ObservableObject
             return false;
         }
 
-        // Double Elimination accepts any count >= 2 - the bracket pads to the next power of two and
-        // the top seeds get first-round byes (see BracketGenerationService.GenerateDoubleElimination).
+        // Double Elimination accepts any count >= 2: the bracket runs the largest power of two that
+        // fits and waitlists the overflow (see BracketGenerationService.GenerateDoubleElimination).
 
         if (NewTournamentFormat == TournamentFormat.ModifiedSingleElimination && !BracketGenerationService.IsValidModifiedSingleEliminationCount(entrantCount))
         {

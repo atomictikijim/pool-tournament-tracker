@@ -46,16 +46,45 @@ public class BracketGenerationService
     }
 
     /// <summary>
+    /// The number of entrants that actually play in a double-elimination bracket for the given field
+    /// size: the largest power of two that is at most <paramref name="entrantCount"/> (minimum 2), or
+    /// 0 if there are too few to run. The bracket always runs at a power of two so it is never padded
+    /// with byes; any entrants beyond this count are waitlisted (see
+    /// <see cref="DoubleEliminationWaitlistCount"/> and <see cref="GenerateDoubleElimination"/>).
+    /// </summary>
+    public static int DoubleEliminationBracketSize(int entrantCount)
+    {
+        if (entrantCount < 2)
+        {
+            return 0;
+        }
+
+        var size = 1;
+        while (size * 2 <= entrantCount)
+        {
+            size *= 2;
+        }
+        return size;
+    }
+
+    /// <summary>How many entrants sit on the waitlist for a double-elimination field of the given
+    /// size: everyone above the largest power of two that fits (see
+    /// <see cref="DoubleEliminationBracketSize"/>). Zero when the count is itself a power of two.</summary>
+    public static int DoubleEliminationWaitlistCount(int entrantCount) =>
+        entrantCount < 2 ? 0 : entrantCount - DoubleEliminationBracketSize(entrantCount);
+
+    /// <summary>
     /// Builds a double-elimination bracket: a winners bracket identical in shape to
     /// GenerateSingleElimination's, a losers bracket that receives each winners-bracket round's
     /// losers at the correct point (round 1's losers seed the losers bracket directly; every
     /// later round's losers merge in after a "consolidation" round has caught the losers bracket
     /// back down to a matching player count), and a Grand Final between the two bracket champions
     /// with a single bracket-reset rematch if the losers-bracket champion wins it.
-    /// Any entrant count >= 2 is supported: the bracket is padded to the next power of two and the
-    /// top seeds receive first-round byes, which cascade into the losers bracket as byes (a
-    /// winners-bracket bye produces no loser to drop down, so that losers-bracket slot is itself a
-    /// bye - see the bye-resolution pass below and <see cref="AdvanceInto"/>).
+    /// The playing field is always a power of two (<see cref="DoubleEliminationBracketSize"/>) so the
+    /// bracket is never padded: no first-round byes, no byes dropping into the losers bracket, and
+    /// every entrant is eliminated only after a genuine second loss. Any entrants beyond that power
+    /// of two - the lowest seeds - are flagged <see cref="TournamentEntrant.IsWaitlisted"/> and left
+    /// out of the bracket until enough more join to reach the next power of two.
     /// </summary>
     public BracketDetail GenerateDoubleElimination(Tournament tournament)
     {
@@ -65,11 +94,21 @@ public class BracketGenerationService
             throw new InvalidOperationException("A double-elimination bracket requires at least 2 entrants.");
         }
 
+        var bracketSize = DoubleEliminationBracketSize(entrantCount);
+
+        // The top `bracketSize` seeds play; the rest wait. Recomputed every regeneration so removing
+        // an entrant (shrinking the field back below a power of two) re-admits a waitlisted seed.
+        foreach (var entrant in tournament.Entrants)
+        {
+            entrant.IsWaitlisted = entrant.SeedNumber is { } seed && seed > bracketSize;
+        }
+
+        // Only the active (non-waitlisted) seeds fill the bracket. Because the field is exactly a
+        // power of two, every slot 1..bracketSize is a real entrant - no byes are ever produced.
         var entrantsBySeed = tournament.Entrants
-            .Where(e => e.SeedNumber is not null)
+            .Where(e => e.SeedNumber is not null && !e.IsWaitlisted)
             .ToDictionary(e => e.SeedNumber!.Value);
 
-        var bracketSize = NextPowerOfTwo(entrantCount);
         var totalWbRounds = (int)Math.Log2(bracketSize);
 
         var bracket = new BracketDetail

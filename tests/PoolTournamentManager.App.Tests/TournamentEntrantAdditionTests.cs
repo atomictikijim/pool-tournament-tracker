@@ -78,6 +78,49 @@ public class TournamentEntrantAdditionTests : IDisposable
         Assert.True(state.ActiveTournament.Bracket!.Nodes.Count > 0);
     }
 
+    [Fact]
+    public async Task CreateDoubleElimination_WithNonPowerOfTwoField_WaitlistsOverflowAndSurfacesItInState()
+    {
+        using var ctx = NewContext();
+        var tournamentRepo = new TournamentRepository(ctx);
+        var playerRepo = new PlayerRepository(ctx);
+        var teamRepo = new TeamRepository(ctx);
+        var state = new TournamentStateService(tournamentRepo);
+        var vm = new TournamentViewModel(
+            tournamentRepo, playerRepo, teamRepo,
+            new BracketGenerationService(), new RoundRobinSchedulingService(),
+            new RingGameService(), new ChipGameService(), state);
+
+        foreach (var name in new[] { "Al Anderson,700", "Ben Baker,650", "Cara Chen,600", "Dan Diaz,550", "Eve Evans,500" })
+        {
+            var parts = name.Split(',');
+            var full = parts[0].Split(' ');
+            await playerRepo.AddAsync(new Player { FirstName = full[0], LastName = full[1], FargoRate = int.Parse(parts[1]) });
+        }
+
+        await vm.InitializeAsync();
+
+        vm.NewTournamentName = "Test Double Elim";
+        vm.NewTournamentFormat = TournamentFormat.DoubleElimination;
+        vm.NewTournamentTableCount = 2;
+        foreach (var candidate in vm.EntrantCandidates)
+        {
+            candidate.IsSelected = true; // all 5
+        }
+
+        await ((IAsyncRelayCommand)vm.CreateTournamentCommand).ExecuteAsync(null);
+
+        // 5 entrants -> a 4-player bracket, with the lowest seed (Eve, Fargo 500) waitlisted.
+        Assert.Equal(5, state.ActiveTournament!.Entrants.Count);
+        Assert.Equal(1, state.ActiveTournament.Entrants.Count(e => e.IsWaitlisted));
+        var waitlisted = state.ActiveTournament.Entrants.Single(e => e.IsWaitlisted);
+        Assert.Equal("Eve Evans", waitlisted.DisplayName);
+
+        // The waitlist is surfaced to the UI (single name), and the bracket only holds the 4 players.
+        Assert.Single(state.Waitlist);
+        Assert.Equal("Eve Evans", state.Waitlist[0]);
+    }
+
     public void Dispose()
     {
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();

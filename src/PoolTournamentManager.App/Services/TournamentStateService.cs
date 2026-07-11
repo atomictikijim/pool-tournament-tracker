@@ -35,6 +35,13 @@ public partial class TournamentStateService : ObservableObject
     [ObservableProperty]
     private ObservableCollection<StandingsRowViewModel> _standings = new();
 
+    /// <summary>Names of entrants currently on the double-elimination waitlist (the overflow past the
+    /// largest power of two that fits), lowest seed first. Empty for every other format and for a
+    /// double-elimination field that exactly fills its bracket. See
+    /// BracketGenerationService.GenerateDoubleElimination.</summary>
+    [ObservableProperty]
+    private ObservableCollection<string> _waitlist = new();
+
     [ObservableProperty]
     private ObservableCollection<RingSeatViewModel> _ringSeats = new();
 
@@ -144,6 +151,7 @@ public partial class TournamentStateService : ObservableObject
             Rounds = new ObservableCollection<RoundGroupViewModel>();
             Tables = new ObservableCollection<Table>();
             Standings = new ObservableCollection<StandingsRowViewModel>();
+            Waitlist = new ObservableCollection<string>();
             RingSeats = new ObservableCollection<RingSeatViewModel>();
             IsRingGame = false;
             RingStatusLine = string.Empty;
@@ -162,6 +170,7 @@ public partial class TournamentStateService : ObservableObject
         {
             Rounds = new ObservableCollection<RoundGroupViewModel>();
             Standings = new ObservableCollection<StandingsRowViewModel>();
+            Waitlist = new ObservableCollection<string>();
             RingSeats = new ObservableCollection<RingSeatViewModel>();
             IsRingGame = false;
             RingStatusLine = string.Empty;
@@ -169,6 +178,10 @@ public partial class TournamentStateService : ObservableObject
             ClearPrizePayouts();
             return;
         }
+
+        // Only elimination brackets can have a waitlist (double elimination's overflow); clear it up
+        // front so the ring/chip/round-robin early returns below never show a stale list.
+        Waitlist = new ObservableCollection<string>();
 
         if (tournament.Format == TournamentFormat.RingGame)
         {
@@ -195,6 +208,12 @@ public partial class TournamentStateService : ObservableObject
 
         Standings = new ObservableCollection<StandingsRowViewModel>();
         RebuildPrizePayouts(tournament);
+
+        Waitlist = new ObservableCollection<string>(
+            tournament.Entrants
+                .Where(e => e.IsWaitlisted)
+                .OrderBy(e => e.SeedNumber ?? int.MaxValue)
+                .Select(e => e.DisplayName));
 
         var rounds = new ObservableCollection<RoundGroupViewModel>();
         var bracket = tournament.Bracket;

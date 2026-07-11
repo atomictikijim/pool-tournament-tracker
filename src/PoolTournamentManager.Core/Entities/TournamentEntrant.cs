@@ -11,6 +11,14 @@ public class TournamentEntrant
     public int? SeedNumber { get; set; }
     public bool IsEliminated { get; set; }
 
+    /// <summary>Double elimination only: true when this entrant is currently on the waitlist rather
+    /// than in the playing bracket. The bracket always runs at a power of two, so any entrants above
+    /// the largest power of two that fits sit here (the lowest seeds) until enough more join to reach
+    /// the next power of two, at which point the whole field is admitted. Recomputed on every bracket
+    /// regeneration (see BracketGenerationService.GenerateDoubleElimination); always false for other
+    /// formats, which never waitlist.</summary>
+    public bool IsWaitlisted { get; set; }
+
     /// <summary>Chip tournaments only: the chips this entrant was given at the start, snapshotted
     /// when the tournament was created/edited (see ChipGameDetail / ChipGameService). Null for
     /// non-chip formats and for chip tournaments created before per-player chips existed, in which

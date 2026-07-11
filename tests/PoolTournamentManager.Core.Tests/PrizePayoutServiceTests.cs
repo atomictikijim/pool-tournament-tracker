@@ -195,6 +195,38 @@ public class PrizePayoutServiceTests
     }
 
     [Fact]
+    public void DoubleElimination_WaitlistedEntrant_IsExcludedFromThePoolAndTakesNoPlace()
+    {
+        var service = new BracketGenerationService();
+        // 5 entrants -> a 4-player bracket with seed 5 waitlisted.
+        var tournament = BuildBracketTournament(TournamentFormat.DoubleElimination, 5);
+        service.GenerateDoubleElimination(tournament);
+
+        var waitlisted = BySeed(tournament, 5);
+        Assert.True(waitlisted.IsWaitlisted);
+
+        // Entry fees count only the 4 who play, not the waitlisted 5th.
+        tournament.EntryFee = 10m;
+        Assert.Equal(40m, PrizePayoutService.TotalEntryFees(tournament));
+
+        Play(service, tournament, 1, 4, winnerSeed: 1); // WB R1
+        Play(service, tournament, 2, 3, winnerSeed: 2); // WB R1
+        Play(service, tournament, 4, 3, winnerSeed: 4); // LB R1
+        Play(service, tournament, 1, 2, winnerSeed: 1); // WB final
+        Play(service, tournament, 4, 2, winnerSeed: 4); // LB final
+        Play(service, tournament, 1, 4, winnerSeed: 1); // Grand Final
+
+        Assert.Equal(TournamentStatus.Completed, tournament.Status);
+        SetPrizePlaces(tournament, (1, 50m), (2, 30m), (3, 15m), (4, 5m));
+
+        var results = PrizePayoutService.ComputeFinalResults(tournament);
+
+        // The waitlisted entrant appears in no finishing place at all.
+        Assert.DoesNotContain(results, r => r.Entrant.Id == waitlisted.Id);
+        Assert.Equal(4, results.Count);
+    }
+
+    [Fact]
     public void ModifiedSingleElimination_IsAQualifierFormat_NoPayoutsAndOneWinnerPerBracket()
     {
         var service = new BracketGenerationService();

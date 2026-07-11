@@ -383,6 +383,32 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Double-elimination waitlist: the entrants above the largest power of two that
+                         fits sit here until enough more join to reach the next power of two (see
+                         BracketGenerationService.GenerateDoubleElimination). Shares Row 2 with the
+                         Standings panel, which is always empty for elimination brackets, so the two
+                         never show at once. -->
+                    <Border Grid.Row="2" Margin="0,0,0,10" Padding="8"
+                            Background="{DynamicResource CardBackgroundBrush}"
+                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                            Visibility="{Binding State.Waitlist.Count, Converter={StaticResource CountToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock Text="Waitlist" FontWeight="Bold" FontSize="13" Margin="0,0,0,4"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Margin="0,0,0,6"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Text="Not in the bracket yet - add enough entrants to reach the next power of two (2, 4, 8, 16...) and the whole waitlist joins." />
+                            <ItemsControl ItemsSource="{Binding State.Waitlist}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" Margin="0,1,0,1"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Elimination bracket: same tree as the read-only Display window, with
                          editable boxes (score inputs + table picker + Report on the live match). -->
                     <ScrollViewer x:Name="BracketScrollViewer" Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"

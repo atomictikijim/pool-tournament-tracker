@@ -67,50 +67,90 @@ public class DoubleEliminationBracketTests
     }
 
     [Theory]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(5)]
-    [InlineData(6)]
-    [InlineData(7)]
-    [InlineData(9)]
-    [InlineData(11)]
-    [InlineData(13)]
-    public void GenerateDoubleElimination_NonPowerOfTwo_PlaysToCompletionWithTopSeedWinning(int entrantCount)
+    [InlineData(2, 2, 0)]
+    [InlineData(3, 2, 1)]
+    [InlineData(4, 4, 0)]
+    [InlineData(5, 4, 1)]
+    [InlineData(7, 4, 3)]
+    [InlineData(8, 8, 0)]
+    [InlineData(11, 8, 3)]
+    [InlineData(15, 8, 7)]
+    [InlineData(16, 16, 0)]
+    [InlineData(17, 16, 1)]
+    public void DoubleEliminationBracketSize_AndWaitlist_TrimToLargestPowerOfTwoThatFits(
+        int entrantCount, int expectedBracketSize, int expectedWaitlist)
+    {
+        Assert.Equal(expectedBracketSize, BracketGenerationService.DoubleEliminationBracketSize(entrantCount));
+        Assert.Equal(expectedWaitlist, BracketGenerationService.DoubleEliminationWaitlistCount(entrantCount));
+    }
+
+    [Theory]
+    [InlineData(3)]  // bracket of 2, 1 waiting
+    [InlineData(5)]  // bracket of 4, 1 waiting
+    [InlineData(6)]  // bracket of 4, 2 waiting
+    [InlineData(7)]  // bracket of 4, 3 waiting
+    [InlineData(11)] // bracket of 8, 3 waiting
+    [InlineData(13)] // bracket of 8, 5 waiting
+    public void GenerateDoubleElimination_NonPowerOfTwo_WaitlistsLowestSeedsAndRunsAPowerOfTwoBracket(int entrantCount)
     {
         var tournament = BuildTournament(entrantCount);
         _service.GenerateDoubleElimination(tournament);
+
+        var bracketSize = BracketGenerationService.DoubleEliminationBracketSize(entrantCount);
+
+        // Exactly the overflow past the largest power of two is waitlisted, and it's the LOWEST seeds
+        // (seed > bracketSize) - the top seeds are guaranteed a spot.
+        Assert.Equal(entrantCount - bracketSize, tournament.Entrants.Count(e => e.IsWaitlisted));
+        Assert.All(tournament.Entrants.Where(e => e.IsWaitlisted), e => Assert.True(e.SeedNumber > bracketSize));
+        Assert.All(tournament.Entrants.Where(e => !e.IsWaitlisted), e => Assert.True(e.SeedNumber <= bracketSize));
+
+        // Waitlisted entrants are in no bracket node and play no match.
+        var waitlistedIds = tournament.Entrants.Where(e => e.IsWaitlisted).Select(e => e.Id).ToHashSet();
+        Assert.DoesNotContain(tournament.Matches, m =>
+            waitlistedIds.Contains(m.Player1EntrantId) || (m.Player2EntrantId is { } p2 && waitlistedIds.Contains(p2)));
+
+        // The bracket itself is a clean power of two: no byes anywhere.
+        Assert.DoesNotContain(tournament.Matches, m => m.IsBye);
+
+        PlayOutLowerSeedWins(tournament);
+        Assert.Equal(TournamentStatus.Completed, tournament.Status);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(8)]
+    [InlineData(16)]
+    public void GenerateDoubleElimination_PowerOfTwo_HasNoByesNoWaitlistAndEliminatesEveryoneAfterExactlyTwoLosses(int entrantCount)
+    {
+        var tournament = BuildTournament(entrantCount);
+        _service.GenerateDoubleElimination(tournament);
+
+        // A power-of-two field is never padded and nobody waits - every entrant plays from round 1.
+        Assert.DoesNotContain(tournament.Matches, m => m.IsBye);
+        Assert.DoesNotContain(tournament.Entrants, e => e.IsWaitlisted);
 
         PlayOutLowerSeedWins(tournament);
 
         Assert.Equal(TournamentStatus.Completed, tournament.Status);
         Assert.DoesNotContain(tournament.Matches, m => m.Status == MatchStatus.Scheduled);
 
-        // With the lower seed always winning, seed 1 is undefeated - it must never appear as the
-        // loser of any completed match, and it must be the eventual champion.
-        var seed1 = BySeed(tournament, 1).Id;
-        Assert.DoesNotContain(tournament.Matches, m =>
-            m.Status == MatchStatus.Completed && m.WinnerEntrantId is not null &&
-            (m.Player1EntrantId == seed1 || m.Player2EntrantId == seed1) && m.WinnerEntrantId != seed1);
-    }
+        // Count each entrant's losses across every decided match (byes have no loser). Double
+        // elimination must eliminate everyone on their second loss: nobody exceeds two losses, and
+        // exactly one entrant (the champion) survives with fewer than two.
+        var losses = tournament.Entrants.ToDictionary(e => e.Id, _ => 0);
+        foreach (var m in tournament.Matches.Where(m =>
+                     m.Status == MatchStatus.Completed && m.WinnerEntrantId is not null && m.Player2EntrantId is not null))
+        {
+            var loserId = m.WinnerEntrantId == m.Player1EntrantId ? m.Player2EntrantId!.Value : m.Player1EntrantId;
+            losses[loserId]++;
+        }
 
-    [Fact]
-    public void GenerateDoubleElimination_Size3_TopSeedGetsRoundOneByeAndItsLoserSlotBecomesABye()
-    {
-        var tournament = BuildTournament(3); // bracketSize 4: seeds [1,4],[2,3] -> seed 4 missing
-        _service.GenerateDoubleElimination(tournament);
+        Assert.All(losses.Values, l => Assert.True(l <= 2, "no entrant may lose more than twice"));
+        Assert.Equal(entrantCount - 1, losses.Values.Count(l => l == 2));
 
-        // Round 1: seed 1 has a bye (a Completed one-player match), seed2 vs seed3 is real.
-        var round1 = tournament.Bracket!.Nodes.Where(n => n.Side == BracketSide.Winners && n.RoundNumber == 1).ToList();
-        var byeNode = round1.Single(n => n.Match is { IsBye: true });
-        Assert.Equal(BySeed(tournament, 1).Id, byeNode.Match!.WinnerEntrantId);
-
-        // The losers-bracket slot that bye would have fed is itself marked a bye.
-        var lbNode = tournament.Bracket.Nodes.First(n => n.Id == byeNode.FeedsIntoLoserNodeId);
-        var byeSlot = byeNode.FeedsIntoLoserSlot ?? 2;
-        Assert.True(byeSlot == 1 ? lbNode.Slot1IsBye : lbNode.Slot2IsBye);
-
-        PlayOutLowerSeedWins(tournament);
-        Assert.Equal(TournamentStatus.Completed, tournament.Status);
+        // With the lower seed always winning, seed 1 is undefeated - it must be the survivor.
+        Assert.Equal(0, losses[BySeed(tournament, 1).Id]);
     }
 
     [Fact]
