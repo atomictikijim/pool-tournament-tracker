@@ -3,6 +3,27 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-11 — Centre-out "bowtie" bracket layout: losers progresses leftward, so mind connector direction
+
+**Context:** Reworked `BracketLayoutBuilder` (v0.34.1) so Double/Modified-Single Elimination put
+round 1 in the middle, winners fanning right and losers fanning **left**. Two things to remember:
+
+- **Connectors are direction-aware now.** The losers side lays its columns out from the centre
+  outward to the left (`columnStep = -1`), which means a feeder sits to the *right* of the box it
+  feeds. `AddConnector` takes a `leftward` flag: when true the elbow exits the feeder's **left** edge
+  into the target's **right** edge (mirrored from the normal rightward elbow). Passing the wrong
+  flag draws elbows that back-track across the box instead of between columns.
+- **The losers-champion → Grand Final hand-off is routed under the bracket, not straight across.**
+  In the bowtie the losers final is at the far left and the grand final at the far right, so a
+  normal elbow between them would cross every winners box. `AddFeedbackLane` instead drops out the
+  bottom of the losers final, runs one horizontal segment along a lane below *all* boxes
+  (`laneY = max(box.Bottom) + LaneGap`), and rises into the grand final — which is why
+  `PositionedMatchViewModel` grew `CenterX`/`Bottom` and `layout.Height` extends to the lane.
+- **Centre column index = losers-round count.** Winners round 1 is placed at column
+  `losers.Count`; the losers rounds occupy columns `0 … losers.Count-1` (LB Final leftmost, LB
+  Round 1 adjacent to centre). Single Elimination has no losers, so the centre is column 0 and the
+  whole thing degrades to the old left-to-right layout with zero special-casing.
+
 ## 2026-07-11 — Modified Single Elimination reworked into independent per-bracket qualifiers: watch the completion gate
 
 **Context:** Reworked MSE (v0.34) so every group of 8 is its own bracket with its own winner (no

@@ -70,7 +70,7 @@ public class BracketLayoutBuilderTests
     }
 
     [Fact]
-    public void DoubleElimination_StacksWinnersAboveLosersWithSectionLabels()
+    public void DoubleElimination_PutsFirstRoundInMiddle_LosersLeft_WinnersRight()
     {
         var rounds = new List<RoundGroupViewModel>
         {
@@ -84,13 +84,43 @@ public class BracketLayoutBuilderTests
         Assert.Contains(layout.SectionLabels, l => l.Text == "Winners Bracket");
         Assert.Contains(layout.SectionLabels, l => l.Text == "Losers Bracket");
 
-        var winnersBottom = layout.Boxes.Take(6).Max(b => b.Y + b.Height);
-        var losersTop = layout.Boxes.Skip(6).Min(b => b.Y);
-        Assert.True(losersTop > winnersBottom, "Losers band should sit entirely below the winners band.");
+        // Boxes are added winners-first: [0..3] WB R1 (centre), [4..5] WB Final (right), [6..7] LB R1 (left).
+        var winnersRound1X = layout.Boxes.Take(4).Min(b => b.X);
+        var winnersFinalX = layout.Boxes.Skip(4).Take(2).Min(b => b.X);
+        var losersBoxes = layout.Boxes.Skip(6).Take(2).ToList();
+
+        Assert.All(losersBoxes, b => Assert.True(b.X < winnersRound1X, "Losers bracket should sit left of the central first round."));
+        Assert.True(winnersFinalX > winnersRound1X, "Winners bracket should progress rightward from the middle.");
+        Assert.Equal(losersBoxes.Min(b => b.X), layout.Boxes.Min(b => b.X), precision: 3); // losers side is leftmost
     }
 
     [Fact]
-    public void ModifiedSingleElimination_FoldsFinalStageIntoWinnersBand_NotItsOwnSection()
+    public void DoubleElimination_GrandFinalIsRightmost_WithLosersChampionFeedbackLane()
+    {
+        var rounds = new List<RoundGroupViewModel>
+        {
+            Round(1, "WB Round 1", 4, BracketSide.Winners),
+            Round(2, "WB Semifinals", 2, BracketSide.Winners),
+            Round(3, "WB Final", 1, BracketSide.Winners),
+            Round(1, "LB Round 1", 2, BracketSide.Losers),
+            Round(2, "LB Round 2", 2, BracketSide.Losers),
+            Round(3, "LB Final", 1, BracketSide.Losers),
+            Round(1, "Grand Final", 1, BracketSide.GrandFinal),
+        };
+
+        var layout = BracketLayoutBuilder.Build(rounds);
+
+        var grandFinal = layout.Boxes.Last(); // GF is placed after all winners/losers boxes
+        Assert.Equal(layout.Boxes.Max(b => b.X), grandFinal.X, precision: 3); // rightmost column
+
+        // The losers champion is routed under the whole bracket back into the grand final:
+        // a horizontal connector segment below every match box.
+        var maxBottom = layout.Boxes.Max(b => b.Bottom);
+        Assert.Contains(layout.Connectors, c => c.Y1 == c.Y2 && c.Y1 > maxBottom);
+    }
+
+    [Fact]
+    public void ModifiedSingleElimination_FoldsFinalStageIntoWinnersProgression_LosersToTheLeft()
     {
         var rounds = new List<RoundGroupViewModel>
         {
@@ -108,23 +138,19 @@ public class BracketLayoutBuilderTests
         Assert.Contains(layout.SectionLabels, l => l.Text == "Winners Bracket");
         Assert.Contains(layout.SectionLabels, l => l.Text == "Losers Bracket");
 
-        // Final-side boxes sit in the same row/band as the Winners boxes (same Y range as the
-        // Winners Round 1 box), as trailing columns after Winners Round 1/2.
-        var winnersRound1Top = layout.Boxes.Take(4).Min(b => b.Y);
-        var winnersRound1Bottom = layout.Boxes.Take(4).Max(b => b.Y + b.Height);
-        var finalBoxes = layout.Boxes.Skip(6).Take(3).ToList(); // after 4 (WR1) + 2 (WR2) winners boxes, before Losers
-        Assert.Equal(3, finalBoxes.Count); // 2 semifinal + 1 final
-        Assert.All(finalBoxes, b => Assert.InRange(b.Y, winnersRound1Top, winnersRound1Bottom));
+        // Box order: [0..3] WR1 (centre), [4..5] WR2, [6..7] Semifinals, [8] Final, [9..10] Losers R1.
+        var winnersRound1X = layout.Boxes.Take(4).Min(b => b.X);
+        var winnersMaxX = layout.Boxes.Take(6).Max(b => b.X);
+        var finalBoxes = layout.Boxes.Skip(6).Take(3).ToList(); // 2 semifinal + 1 final
 
-        // Final-side columns trail after both Winners columns (2), i.e. columns 2 and 3.
-        var winnersColumns = layout.Boxes.Take(6).Select(b => b.X).Distinct().Count();
-        Assert.Equal(2, winnersColumns);
-        var finalColumns = finalBoxes.Select(b => b.X).Distinct().OrderBy(x => x).ToList();
-        Assert.Equal(2, finalColumns.Count);
+        // Final stage continues the winners progression as trailing columns to the RIGHT.
+        Assert.Equal(3, finalBoxes.Count);
+        Assert.All(finalBoxes, b => Assert.True(b.X > winnersMaxX, "Final stage should trail to the right of the winners columns."));
+        Assert.Equal(2, finalBoxes.Select(b => b.X).Distinct().Count());
 
-        // Losers band still stacks below the combined Winners+Final band.
-        var combinedBottom = layout.Boxes.Take(9).Max(b => b.Y + b.Height);
-        var losersTop = layout.Boxes.Skip(9).Min(b => b.Y);
-        Assert.True(losersTop > combinedBottom, "Losers band should sit entirely below the winners+final band.");
+        // Losers bracket sits to the LEFT of the central first winners round.
+        var losersBoxes = layout.Boxes.Skip(9).Take(2).ToList();
+        Assert.Equal(2, losersBoxes.Count);
+        Assert.All(losersBoxes, b => Assert.True(b.X < winnersRound1X, "Losers bracket should sit left of the central first round."));
     }
 }

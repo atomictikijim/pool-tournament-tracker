@@ -256,8 +256,14 @@ entrants are locked in for the rest of the event.
 
 ### Playing an elimination bracket (Single/Double/Modified Single Elimination)
 
-The bracket displays as a tree, rounds running left to right. Each match box shows
-both entrants (with their seed number, if seeded) and a score field for each. If the
+The bracket displays as a tree. Single Elimination runs left to right, one column
+per round. Double Elimination and Modified Single Elimination use a **centre-out**
+layout: the first round sits in the middle column, the Winners side progresses
+rightward to the final match, and the Losers side progresses leftward — so the two
+halves fan out from the opening round. In Double Elimination the Losers-side champion
+is then routed back along a lane under the bracket into the Grand Final on the right.
+Each match box shows both entrants (with their seed number, if seeded) and a score
+field for each. If the
 tournament was seeded by a rating (see [Section 4](#4-creating-a-tournament-tournament-settings-tab)), each entrant's rating for that
 same system also shows next to their name - in this bracket view and on the
 [Display window](#8-the-display-window). Random-draw and Team tournaments show no rating, since

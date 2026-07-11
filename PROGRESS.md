@@ -5,6 +5,29 @@ the top of each section.
 
 ## Current status
 
+v0.34.1 complete (UI-only): **Double Elimination and Modified Single Elimination brackets now use a
+centre-out "bowtie" layout — the first round is generated in the middle column, the Winners side
+progresses rightward to the final match, and the Losers side progresses leftward.** Previously the
+winners and losers halves were stacked as two separate horizontal bands (winners on top, losers
+below), both marching left-to-right, with the grand final trailing on the right. The rewrite of
+`BracketLayoutBuilder` places the losers bracket in the columns to the *left* of the central first
+round (one column per losers round, so the centre column index = losers-round count) and lays them
+out leftward with mirrored connector elbows; the winners bracket (plus the MSE Final Four → Bracket
+Final continuation) fans rightward as before. The losers champion is "added back to the winners
+side" via a feedback lane routed *under* the whole bracket up into the Grand Final, so that long
+hand-off reads clearly without crossing any match boxes (new `AddFeedbackLane`; `PositionedMatchViewModel`
+gained `CenterX`/`Bottom`). Single Elimination is unchanged (no losers side → centre column is
+column 0 → runs left-to-right exactly as before). `LayoutSide` gained `columnStep`/`leftward`/
+`firstColumnCenterY` params to serve both directions from one algorithm; the losers side is centred
+vertically on the (tallest) first-round column. `BracketLayoutBuilderTests` rewritten: the old
+"losers band sits below winners" assertions are replaced by centre-out geometry checks (losers left
+of the central first round, winners/final trailing right, grand final rightmost, feedback-lane
+segment below every box); 216 tests green (was 215; net +1 App test). Verified end-to-end in the
+app: opened the existing "9 Ball de" Double Elimination and, at Fit zoom, confirmed WB Round 1 as
+the tall central column, WB rounds → WB Final → Grand Final fanning right, LB Round 1 → … → LB Final
+fanning left, and the losers-champion lane spanning under the bracket into the Grand Final. Version
+bumped to 0.34.1 (App `.csproj` + installer `.iss`); FUNCTIONS.md bracket-view section updated.
+
 v0.34 complete: **Modified Single Elimination is now a true qualifier format — every group of 8 is
 its own independent bracket that crowns its own winner, so a field of 24 finishes with three
 winners (one per bracket), not one overall champion.** This replaces the old behavior, where every

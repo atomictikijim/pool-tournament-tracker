@@ -28,7 +28,9 @@ public sealed class PositionedMatchViewModel
     public double Height { get; }
 
     public double CenterY => Y + Height / 2;
+    public double CenterX => X + Width / 2;
     public double RightX => X + Width;
+    public double Bottom => Y + Height;
 
     public PositionedMatchViewModel(MatchRowViewModel match, double x, double y, double width, double height)
     {
