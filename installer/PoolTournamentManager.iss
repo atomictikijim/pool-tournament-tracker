@@ -3,7 +3,7 @@
 ; compiles this script. Do not run ISCC directly against a stale/missing publish folder.
 
 #define MyAppName "Pool Tournament Manager"
-#define MyAppVersion "0.33.1"
+#define MyAppVersion "0.34"
 #define MyAppPublisher "Pool Tournament Manager"
 #define MyAppExeName "PoolTournamentManager.App.exe"
 #define MyPublishDir "..\publish\win-x64"

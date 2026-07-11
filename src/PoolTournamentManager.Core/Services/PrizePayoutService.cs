@@ -47,12 +47,40 @@ public static class PrizePayoutService
     /// </summary>
     public static List<PrizePayoutRow> ComputePayouts(Tournament tournament)
     {
-        if (tournament.Format == TournamentFormat.RingGame || tournament.PrizePlaces.Count == 0)
+        // Modified Single Elimination is a qualifier format (each pod crowns a winner who advances
+        // to a higher event) with no prize-pool concept - see ComputeQualifiers. Ring Game has its
+        // own separate money model.
+        if (tournament.Format is TournamentFormat.RingGame or TournamentFormat.ModifiedSingleElimination
+            || tournament.PrizePlaces.Count == 0)
         {
             return new List<PrizePayoutRow>();
         }
 
         return ComputeRows(tournament);
+    }
+
+    /// <summary>
+    /// The winning entrant of each independent bracket in a Modified Single Elimination tournament
+    /// (one per pod) - the entrants who "qualified". These are co-equal (there is no single overall
+    /// champion), ordered by bracket. Empty for any other format, or until the tournament completes.
+    /// </summary>
+    public static List<TournamentEntrant> ComputeQualifiers(Tournament tournament)
+    {
+        if (tournament.Format != TournamentFormat.ModifiedSingleElimination
+            || tournament.Status != TournamentStatus.Completed
+            || tournament.Bracket is null)
+        {
+            return new List<TournamentEntrant>();
+        }
+
+        var entrantsById = tournament.Entrants.ToDictionary(e => e.Id);
+        return tournament.Bracket.Nodes
+            .Where(n => n.Side == BracketSide.Final
+                        && n.FeedsIntoWinnerNodeId is null
+                        && n.Match is { Status: MatchStatus.Completed, WinnerEntrantId: not null })
+            .OrderBy(n => n.PositionInRound)
+            .Select(n => entrantsById[n.Match!.WinnerEntrantId!.Value])
+            .ToList();
     }
 
     /// <summary>
@@ -68,6 +96,22 @@ public static class PrizePayoutService
         if (tournament.Format == TournamentFormat.RingGame)
         {
             return new List<PrizePayoutRow>();
+        }
+
+        // Modified Single Elimination is a qualifier format: its final results are simply each
+        // independent bracket's winner (co-equal 1st places), never a prize order - see
+        // ComputeQualifiers. Any configured prize places are ignored for this format.
+        if (tournament.Format == TournamentFormat.ModifiedSingleElimination)
+        {
+            return ComputeQualifiers(tournament)
+                .Select(entrant => new PrizePayoutRow
+                {
+                    Entrant = entrant,
+                    PlaceRangeStart = 1,
+                    PlaceRangeEnd = 1,
+                    Payout = 0m
+                })
+                .ToList();
         }
 
         return ComputeRows(tournament);
@@ -111,11 +155,13 @@ public static class PrizePayoutService
 
     private sealed record PlacementGroup(List<TournamentEntrant> Entrants, int RangeStart, int RangeEnd);
 
+    // Modified Single Elimination isn't listed here: it never reaches ComputeRows/ComputePlacements
+    // (ComputePayouts and ComputeFinalResults both short-circuit it as a qualifier format above).
     private static List<PlacementGroup> ComputePlacements(Tournament tournament) => tournament.Format switch
     {
         TournamentFormat.RoundRobin => RoundRobinPlacements(tournament),
         TournamentFormat.ChipTournament => ChipPlacements(tournament),
-        TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination or TournamentFormat.ModifiedSingleElimination
+        TournamentFormat.SingleElimination or TournamentFormat.DoubleElimination
             => BracketPlacements(tournament),
         _ => new List<PlacementGroup>()
     };
@@ -217,9 +263,10 @@ public static class PrizePayoutService
 
     /// <summary>
     /// Finds the tournament-deciding match's winner/loser, per BracketKind: the top Winners-side
-    /// node for Single Elimination, the top Final-side node for Modified Single Elimination, or
-    /// the Grand Final (preferring its bracket-reset rematch if one was played) for Double
-    /// Elimination. Returns (null, null) if the deciding match hasn't completed yet.
+    /// node for Single Elimination, or the Grand Final (preferring its bracket-reset rematch if one
+    /// was played) for Double Elimination. Returns (null, null) if the deciding match hasn't
+    /// completed yet. Not used for Modified Single Elimination, which has no single champion - its
+    /// per-pod winners come from <see cref="ComputeQualifiers"/> instead.
     /// </summary>
     private static (Guid? Champion, Guid? RunnerUp) FindFinalists(BracketDetail bracket)
     {
@@ -227,8 +274,6 @@ public static class PrizePayoutService
         {
             BracketKind.SingleElimination =>
                 bracket.Nodes.FirstOrDefault(n => n.Side == BracketSide.Winners && n.FeedsIntoWinnerNodeId is null),
-            BracketKind.ModifiedSingleElimination =>
-                bracket.Nodes.FirstOrDefault(n => n.Side == BracketSide.Final && n.FeedsIntoWinnerNodeId is null),
             BracketKind.DoubleElimination => bracket.Nodes
                 .Where(n => n.Side == BracketSide.GrandFinal && n.Match is { Status: MatchStatus.Completed })
                 .OrderByDescending(n => n.IsGrandFinalReset)

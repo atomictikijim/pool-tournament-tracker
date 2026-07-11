@@ -195,59 +195,39 @@ public class PrizePayoutServiceTests
     }
 
     [Fact]
-    public void ModifiedSingleElimination_Size8_ThreeTiersOfTiedPodExits()
+    public void ModifiedSingleElimination_IsAQualifierFormat_NoPayoutsAndOneWinnerPerBracket()
     {
         var service = new BracketGenerationService();
-        var tournament = BuildBracketTournament(TournamentFormat.ModifiedSingleElimination, 8);
+        var tournament = BuildBracketTournament(TournamentFormat.ModifiedSingleElimination, 16);
         service.GenerateModifiedSingleElimination(tournament);
 
-        // Round 1: seed(2i+1) v seed(2i+2) per pod-building order.
-        Play(service, tournament, 1, 2, winnerSeed: 1);
-        Play(service, tournament, 3, 4, winnerSeed: 3);
-        Play(service, tournament, 5, 6, winnerSeed: 5);
-        Play(service, tournament, 7, 8, winnerSeed: 7);
-
-        // Losers Round 1 (eliminates outright): lane0 = R1 losers {2,4}; lane1 = {6,8}.
-        Play(service, tournament, 2, 4, winnerSeed: 2); // 4 eliminated (worst tier)
-        Play(service, tournament, 6, 8, winnerSeed: 6); // 8 eliminated (worst tier)
-
-        // Winners Round 2: lane0 = R1 winners {1,3}; lane1 = {5,7}.
-        Play(service, tournament, 1, 3, winnerSeed: 1); // 3 drops to Losers Round 2
-        Play(service, tournament, 5, 7, winnerSeed: 5); // 7 drops to Losers Round 2
-
-        // Losers Round 2 ("receiving"): lane0 = {2 (LR1 survivor), 3 (WR2 loser)}; lane1 = {6, 7}.
-        Play(service, tournament, 2, 3, winnerSeed: 2); // 3 eliminated (middle tier)
-        Play(service, tournament, 6, 7, winnerSeed: 6); // 7 eliminated (middle tier)
-
-        // Final Four: lane0 = {1 (WR2 winner), 2 (LR2 survivor)}; lane1 = {5, 6}.
-        Play(service, tournament, 1, 2, winnerSeed: 1); // 2 eliminated (best non-rep tier)
-        Play(service, tournament, 5, 6, winnerSeed: 5); // 6 eliminated (best non-rep tier)
-
-        // Final: the pod's 2 reps.
-        Play(service, tournament, 1, 5, winnerSeed: 1); // champion=1, runner-up=5
+        // Play every scheduled match to completion (always crowning Player1) - the specific winners
+        // don't matter here, only that each of the two brackets ends with its own single winner.
+        for (var guard = 0; guard < 2000 && tournament.Status != TournamentStatus.Completed; guard++)
+        {
+            var match = tournament.Matches.FirstOrDefault(m => m.Status == MatchStatus.Scheduled);
+            if (match is null) break;
+            match.Status = MatchStatus.InProgress;
+            service.RecordMatchResult(tournament, match, 7, 3);
+        }
 
         Assert.Equal(TournamentStatus.Completed, tournament.Status);
 
-        tournament.EntryFee = 10m; // 8 entrants -> total 80, no host cut, pool 80
-        SetPrizePlaces(tournament, (1, 60m), (2, 30m), (3, 10m)); // no 4th place and below funded
+        // Even if prize places are somehow configured, this format never pays out - it's a
+        // qualifier (each bracket winner advances to a higher event).
+        tournament.EntryFee = 10m;
+        SetPrizePlaces(tournament, (1, 60m), (2, 30m), (3, 10m));
+        Assert.Empty(PrizePayoutService.ComputePayouts(tournament));
 
-        var rows = PrizePayoutService.ComputePayouts(tournament);
+        // Its "final results" are the two co-equal bracket winners, all at 1st place with no prize.
+        var qualifiers = PrizePayoutService.ComputeQualifiers(tournament);
+        Assert.Equal(2, qualifiers.Count);
+        Assert.Equal(2, qualifiers.Select(q => q.Id).Distinct().Count());
 
-        Assert.Equal(48m, PayoutFor(rows, BySeed(tournament, 1))); // champion: 60% of 80
-        Assert.Equal(24m, PayoutFor(rows, BySeed(tournament, 5))); // runner-up: 30% of 80
-
-        // Final Four losers {2, 6}: both 2W-2L, tied for 3rd-4th, splitting just the funded
-        // 3rd-place cut (10% of 80 = 8) since no 4th place is configured.
-        Assert.Equal(4m, PayoutFor(rows, BySeed(tournament, 2)));
-        Assert.Equal(4m, PayoutFor(rows, BySeed(tournament, 6)));
-
-        // Losers Round 2 losers {3, 7}: both 1W-2L, tied for 5th-6th - unfunded.
-        Assert.Equal(0m, PayoutFor(rows, BySeed(tournament, 3)));
-        Assert.Equal(0m, PayoutFor(rows, BySeed(tournament, 7)));
-
-        // Losers Round 1 losers {4, 8}: both 0W-2L, tied for 7th-8th (last) - unfunded.
-        Assert.Equal(0m, PayoutFor(rows, BySeed(tournament, 4)));
-        Assert.Equal(0m, PayoutFor(rows, BySeed(tournament, 8)));
+        var results = PrizePayoutService.ComputeFinalResults(tournament);
+        Assert.Equal(2, results.Count);
+        Assert.All(results, r => Assert.Equal(1, r.PlaceRangeStart));
+        Assert.All(results, r => Assert.Equal(0m, r.Payout));
     }
 
     [Fact]

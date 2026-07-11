@@ -5,6 +5,35 @@ the top of each section.
 
 ## Current status
 
+v0.34 complete: **Modified Single Elimination is now a true qualifier format — every group of 8 is
+its own independent bracket that crowns its own winner, so a field of 24 finishes with three
+winners (one per bracket), not one overall champion.** This replaces the old behavior, where every
+pod produced 2 "reps" that fed a single cross-pod single-elimination stage down to one champion.
+Now each pod runs its full ladder (Round 1 → Losers/Winners rounds → Final Four) and then a new
+**Bracket Final** between its two Final-Four winners; there is no cross-pod stage at all —
+`GenerateModifiedSingleElimination` lost the interleave/`BuildRepsStage`/`WireRepIntoSlot` code, and
+`BuildModifiedEliminationPod` now wires its Final Four into a terminal `Final` round-2 node
+(`PositionInRound = podIndex`). Completion is multi-terminal: `PropagateWinner` no longer marks the
+tournament Completed the instant one champion node finishes; a new `AllChampionNodesComplete` gates
+completion on *every* no-onward-feed node (one per pod for MSE, exactly one for Single Elimination,
+never reached for Double Elimination's Grand-Final path) having a completed match. Valid entrant
+counts changed from "≥8" to "splits into brackets of 6-8": `IsValidModifiedSingleEliminationCount`
+now requires `count ≥ 6 && 6·ceil(count/8) ≤ count`, so 6/7 (single bracket) are allowed and
+9/10/11/17 are rejected (a bracket would fall under 6). Per the user's choice this is a
+**qualifier format with no prize pool**: `PrizePayoutService.ComputePayouts` returns empty for MSE,
+a new `ComputeQualifiers` returns each pod's winning entrant, and `ComputeFinalResults` returns
+those winners as zero-prize 1st-place rows. The UI lists each bracket winner as **"Qualified"**
+(new `FinalResultRowViewModel.Qualifier`), hides the Prize Payouts panel for MSE, and titles the
+Final-side rounds "Final Four" / "Bracket Final". Byes are unchanged (random draw already places
+them on random entrants and reshuffles them with the field). Tests: `ModifiedSingleEliminationBracketTests`
+and the MSE case in `PrizePayoutServiceTests` were rewritten for independent brackets/qualifiers
+(valid/invalid count coverage, one-winner-per-bracket play-to-completion, a 16-entrant playthrough
+proving a bracket finishing early does NOT end the tournament and that two co-equal winners result);
+215 tests green. Verified end-to-end in the app: created a 16-entrant MSE, and the bracket rendered
+as two independent mini-brackets — a "Final Four" column of 4 boxes feeding a "Bracket Final" column
+of exactly 2 boxes (one winner per bracket) with no column beyond it. Version synced to 0.34 (App
+`.csproj` + installer `.iss`); README/FUNCTIONS updated.
+
 v0.33.1 complete: **The Display window no longer leaves stale tournament chrome on screen when no
 tournament is selected or the one it was showing is deleted.** Investigation (driving the running
 app, capturing the Display window via `PrintWindow` so an occluded window still renders) confirmed

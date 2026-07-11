@@ -1,3 +1,4 @@
+using PoolTournamentManager.Core.Entities;
 using PoolTournamentManager.Core.Services;
 
 namespace PoolTournamentManager.App.ViewModels;
@@ -5,10 +6,12 @@ namespace PoolTournamentManager.App.ViewModels;
 /// <summary>One entrant's row in the "Final Results" panel shown when a tournament completes:
 /// finishing placement, name, and the prize their place earned (blank when the place earned
 /// nothing). Built from a <see cref="PrizePayoutRow"/> (see PrizePayoutService.ComputeFinalResults),
-/// so tied bracket places render as a range (e.g. "3rd-4th").</summary>
+/// so tied bracket places render as a range (e.g. "3rd-4th"). Modified Single Elimination instead
+/// uses <see cref="Qualifier"/>, listing each independent bracket's winner as "Qualified".</summary>
 public class FinalResultRowViewModel
 {
-    /// <summary>"1st", "2nd", or "3rd-4th" when this entrant shares a tied place range.</summary>
+    /// <summary>"1st", "2nd", or "3rd-4th" when this entrant shares a tied place range; "Qualified"
+    /// for a Modified Single Elimination bracket winner.</summary>
     public string PlaceDisplay { get; }
 
     public string EntrantName { get; }
@@ -31,6 +34,20 @@ public class FinalResultRowViewModel
             ? Ordinal(row.PlaceRangeStart)
             : $"{Ordinal(row.PlaceRangeStart)}-{Ordinal(row.PlaceRangeEnd)}";
     }
+
+    private FinalResultRowViewModel(string placeDisplay, string entrantName, bool isChampion)
+    {
+        PlaceDisplay = placeDisplay;
+        EntrantName = entrantName;
+        IsChampion = isChampion;
+        Payout = string.Empty;
+        HasPayout = false;
+    }
+
+    /// <summary>A row for a Modified Single Elimination bracket winner - one of the tournament's
+    /// several co-equal winners, each shown as "Qualified" with no prize (it's a qualifier format).</summary>
+    public static FinalResultRowViewModel Qualifier(TournamentEntrant entrant) =>
+        new("Qualified", entrant.DisplayName, isChampion: true);
 
     private static string Ordinal(int place) => place switch
     {

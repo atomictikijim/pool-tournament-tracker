@@ -356,6 +356,21 @@ public partial class TournamentStateService : ObservableObject
     /// </summary>
     private void RebuildFinalResults(Tournament tournament)
     {
+        // Modified Single Elimination is a qualifier format: each independent bracket crowns its own
+        // winner (there is no single champion or prize order), so its Final Results simply list
+        // every bracket winner as "Qualified".
+        if (tournament.Format == TournamentFormat.ModifiedSingleElimination)
+        {
+            var qualifiers = tournament.Status == TournamentStatus.Completed
+                ? PrizePayoutService.ComputeQualifiers(tournament)
+                : new List<TournamentEntrant>();
+
+            FinalResults = new ObservableCollection<FinalResultRowViewModel>(
+                qualifiers.Select(FinalResultRowViewModel.Qualifier));
+            ShowFinalResults = FinalResults.Count > 0;
+            return;
+        }
+
         var rows = tournament.Status == TournamentStatus.Completed
             ? PrizePayoutService.ComputeFinalResults(tournament)
             : new List<PrizePayoutRow>();
@@ -375,7 +390,10 @@ public partial class TournamentStateService : ObservableObject
     private void RebuildPrizePayouts(Tournament tournament)
     {
         RebuildFinalResults(tournament);
-        ShowPrizePayouts = tournament.Format != TournamentFormat.RingGame && tournament.PrizePlaces.Count > 0;
+        // Ring Game has its own money model; Modified Single Elimination is a qualifier format with
+        // no prize pool (its Final Results list "Qualified" winners instead) - neither shows payouts.
+        ShowPrizePayouts = tournament.Format is not (TournamentFormat.RingGame or TournamentFormat.ModifiedSingleElimination)
+            && tournament.PrizePlaces.Count > 0;
         if (!ShowPrizePayouts)
         {
             PrizePoolSummaryLine = string.Empty;
@@ -430,9 +448,9 @@ public partial class TournamentStateService : ObservableObject
         {
             if (side == BracketSide.Final)
             {
-                if (roundNumber == maxRoundForSide) return "Final";
-                if (roundNumber == maxRoundForSide - 1) return "Semifinals";
-                return $"Round {roundNumber}";
+                // Each pod is an independent bracket: its Final Four (Final round 1) feeds its own
+                // Bracket Final (Final round 2, one per pod - never a cross-pod stage).
+                return roundNumber == maxRoundForSide ? "Bracket Final" : "Final Four";
             }
 
             var podPrefix = side == BracketSide.Winners ? "Winners" : "Losers";

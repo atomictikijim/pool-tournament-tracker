@@ -787,7 +787,7 @@ public partial class TournamentViewModel : ObservableObject
 
         if (tournament.Format == TournamentFormat.ModifiedSingleElimination && !BracketGenerationService.IsValidModifiedSingleEliminationCount(newTotal))
         {
-            StatusMessage = "Modified Single Elimination currently requires a multiple-of-8 power-of-2 entrant count (8, 16, 32, 64...).";
+            StatusMessage = "Modified Single Elimination needs entrants that split into brackets of 6-8 (6-8, 12-16, 18-24, ...) - 9-11 and 17 can't fill a second bracket to 6.";
             return;
         }
 
@@ -1102,7 +1102,7 @@ public partial class TournamentViewModel : ObservableObject
 
         if (NewTournamentFormat == TournamentFormat.ModifiedSingleElimination && !BracketGenerationService.IsValidModifiedSingleEliminationCount(entrantCount))
         {
-            StatusMessage = "Modified Single Elimination requires at least 8 entrants.";
+            StatusMessage = "Modified Single Elimination needs entrants that split into brackets of 6-8 (6-8, 12-16, 18-24, ...).";
             return false;
         }
 

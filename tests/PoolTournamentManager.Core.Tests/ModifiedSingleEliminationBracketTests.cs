@@ -32,27 +32,47 @@ public class ModifiedSingleEliminationBracketTests
     }
 
     [Theory]
-    [InlineData(1)]
+    [InlineData(1)]  // below the 6-entrant floor
     [InlineData(4)]
-    [InlineData(7)]
-    public void GenerateModifiedSingleElimination_ThrowsForFewerThanOneFullPod(int entrantCount)
+    [InlineData(5)]
+    [InlineData(9)]  // a second bracket couldn't reach 6
+    [InlineData(10)]
+    [InlineData(11)]
+    [InlineData(17)] // a third bracket couldn't reach 6 (9-11 and 17 are the only invalid counts >= 6)
+    public void GenerateModifiedSingleElimination_ThrowsForCountsThatCannotSplitIntoBracketsOfSixToEight(int entrantCount)
     {
+        Assert.False(BracketGenerationService.IsValidModifiedSingleEliminationCount(entrantCount));
         var tournament = BuildTournament(entrantCount);
         Assert.Throws<InvalidOperationException>(() => _service.GenerateModifiedSingleElimination(tournament));
     }
 
     [Theory]
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(8)]
+    [InlineData(12)]
+    [InlineData(16)]
+    [InlineData(18)]
+    [InlineData(24)]
+    public void IsValidModifiedSingleEliminationCount_AcceptsCountsThatSplitIntoBracketsOfSixToEight(int entrantCount)
+    {
+        Assert.True(BracketGenerationService.IsValidModifiedSingleEliminationCount(entrantCount));
+    }
+
+    [Theory]
+    [InlineData(6, new[] { 6 })]
+    [InlineData(7, new[] { 7 })]
     [InlineData(8, new[] { 8 })]
-    [InlineData(9, new[] { 5, 4 })]
     [InlineData(12, new[] { 6, 6 })]
     [InlineData(15, new[] { 8, 7 })]
     [InlineData(16, new[] { 8, 8 })]
-    [InlineData(17, new[] { 6, 6, 5 })]
+    [InlineData(18, new[] { 6, 6, 6 })]
     [InlineData(20, new[] { 7, 7, 6 })]
     [InlineData(24, new[] { 8, 8, 8 })]
     public void ModifiedSingleEliminationPodSizes_SplitsEvenlyAcrossFewestPods(int entrantCount, int[] expected)
     {
         Assert.Equal(expected, BracketGenerationService.ModifiedSingleEliminationPodSizes(entrantCount));
+        Assert.All(expected, size => Assert.InRange(size, 6, 8));
     }
 
     /// <summary>Plays every scheduled match (crowning Player1) until the tournament ends. Byes are
@@ -72,27 +92,37 @@ public class ModifiedSingleEliminationBracketTests
     }
 
     [Theory]
-    [InlineData(9)]
-    [InlineData(10)]
     [InlineData(12)]
+    [InlineData(13)]
+    [InlineData(14)]
     [InlineData(15)]
-    [InlineData(17)]
+    [InlineData(18)]
     [InlineData(20)]
+    [InlineData(22)]
     [InlineData(24)]
     [InlineData(30)]
-    public void GenerateModifiedSingleElimination_NonPowerOfTwo_PlaysToCompletion(int entrantCount)
+    public void GenerateModifiedSingleElimination_MultiBracket_PlaysToCompletionWithOneWinnerPerBracket(int entrantCount)
     {
         var tournament = BuildTournament(entrantCount);
         _service.GenerateModifiedSingleElimination(tournament);
 
-        // Every pod contributes exactly 2 reps (Final-side round-1 nodes).
         var expectedPods = BracketGenerationService.ModifiedSingleEliminationPodSizes(entrantCount).Length;
+
+        // Every pod contributes 2 Final Four nodes (Final round 1) and exactly one terminal
+        // Bracket Final (Final round 2 with no onward winner feed).
         Assert.Equal(expectedPods * 2, tournament.Bracket!.Nodes.Count(n => n.Side == BracketSide.Final && n.RoundNumber == 1));
+        var championNodes = tournament.Bracket!.Nodes
+            .Where(n => n.Side == BracketSide.Final && n.FeedsIntoWinnerNodeId is null)
+            .ToList();
+        Assert.Equal(expectedPods, championNodes.Count);
 
         PlayOut(tournament);
 
         Assert.Equal(TournamentStatus.Completed, tournament.Status);
         Assert.DoesNotContain(tournament.Matches, m => m.Status == MatchStatus.Scheduled);
+
+        // One winner per independent bracket - no cross-pod stage merges them into a single champion.
+        Assert.Equal(expectedPods, PrizePayoutService.ComputeQualifiers(tournament).Count);
     }
 
     [Fact]
@@ -104,7 +134,7 @@ public class ModifiedSingleEliminationBracketTests
         Assert.Equal(BracketKind.ModifiedSingleElimination, bracket.Kind);
         Assert.Equal(6, bracket.Nodes.Count(n => n.Side == BracketSide.Winners)); // R1 (4) + WB R2 (2)
         Assert.Equal(4, bracket.Nodes.Count(n => n.Side == BracketSide.Losers));  // LB R1 (2) + LB R2 (2)
-        Assert.Equal(3, bracket.Nodes.Count(n => n.Side == BracketSide.Final));   // Final Four (2) + Final (1)
+        Assert.Equal(3, bracket.Nodes.Count(n => n.Side == BracketSide.Final));   // Final Four (2) + Bracket Final (1)
         Assert.Equal(4, tournament.Matches.Count); // only round 1 materializes up front
 
         // Round 1 is a random draw, not a rating seed, but SeedNumber still records the draw order.
@@ -162,14 +192,21 @@ public class ModifiedSingleEliminationBracketTests
     }
 
     [Fact]
-    public void PlayThrough16Entrants_TwoPodsEachContributeExactlyTwoRepsToARealSemifinal()
+    public void PlayThrough16Entrants_TwoIndependentBrackets_EachCrownsItsOwnWinner()
     {
         var tournament = BuildTournament(16);
         _service.GenerateModifiedSingleElimination(tournament);
 
         Assert.Equal(8, tournament.Matches.Count); // both pods' Round 1 (4 each) materialize up front
 
-        void PlayPodThroughFinalFour(int podIndex)
+        // Each pod is a fully independent bracket: no cross-pod nodes exist. Its Final side is just
+        // its own Final Four (round 1) and its single Bracket Final (round 2, position = podIndex).
+        Assert.Equal(4, tournament.Bracket!.Nodes.Count(n => n.Side == BracketSide.Final && n.RoundNumber == 1)); // 2 per pod
+        Assert.Equal(2, tournament.Bracket!.Nodes.Count(n => n.Side == BracketSide.Final && n.RoundNumber == 2)); // 1 per pod
+        Assert.Empty(tournament.Bracket!.Nodes.Where(n => n.Side == BracketSide.Final && n.RoundNumber > 2)); // no cross-pod stage
+
+        // Plays a whole pod, right through its Bracket Final, crowning that bracket's one winner.
+        void PlayPodFully(int podIndex)
         {
             foreach (var node in Enumerable.Range(podIndex * 4, 4).Select(i => Node(tournament, BracketSide.Winners, 1, i)))
             {
@@ -191,34 +228,25 @@ public class ModifiedSingleEliminationBracketTests
             {
                 PlayNode(tournament, node);
             }
+            PlayNode(tournament, Node(tournament, BracketSide.Final, 2, podIndex)); // Bracket Final
         }
 
-        PlayPodThroughFinalFour(0);
-        // 8 initial (both pods' Round 1) + pod 0's 8 further internal matches (LB R1, WB R2,
-        // LB R2, Final Four - its own Round 1 matches were already counted in the initial 8).
-        Assert.Equal(16, tournament.Matches.Count);
+        PlayPodFully(0);
+        // Pod 0 is fully decided (its own 13-match diagram) but pod 1 hasn't been touched, so the
+        // tournament is NOT complete - a bracket finishing early doesn't end it. The count is 17:
+        // pod 0's 13 matches plus pod 1's 4 round-1 matches, which materialized up front.
+        Assert.Equal(17, tournament.Matches.Count);
+        Assert.NotEqual(TournamentStatus.Completed, tournament.Status);
 
-        PlayPodThroughFinalFour(1);
-        // Both pods done (12 internal matches each = 24), and now that both pods' Final-Four
-        // winners are known, the 2 semifinal matches (pairing reps from DIFFERENT pods) materialize.
+        PlayPodFully(1);
+
+        // Both brackets done: 13 matches each, no cross-pod matches at all.
         Assert.Equal(26, tournament.Matches.Count);
-
-        var semifinal = Enumerable.Range(0, 2).Select(i => Node(tournament, BracketSide.Final, 2, i)).ToList();
-        Assert.Equal(2, semifinal.Count);
-        Assert.All(semifinal, n => Assert.NotNull(n.Match));
-
-        foreach (var node in semifinal)
-        {
-            PlayNode(tournament, node);
-        }
-
-        var final = Node(tournament, BracketSide.Final, 3, 0);
-        Assert.NotNull(final.Match);
-        Assert.Equal(TournamentStatus.NotStarted, tournament.Status);
-
-        PlayNode(tournament, final);
-
         Assert.Equal(TournamentStatus.Completed, tournament.Status);
-        Assert.Equal(27, tournament.Matches.Count); // 2 pods x 12 internal + 2 semifinal + 1 final
+
+        // Two co-equal winners, one per bracket, in bracket order.
+        var qualifiers = PrizePayoutService.ComputeQualifiers(tournament);
+        Assert.Equal(2, qualifiers.Count);
+        Assert.Equal(2, qualifiers.Select(q => q.Id).Distinct().Count());
     }
 }

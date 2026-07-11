@@ -17,10 +17,14 @@ live results on a second screen.
   - **Double Elimination** — winners/losers brackets with a grand final and
     bracket-reset rematch if the losers'-bracket champion wins it; also supports
     non-power-of-2 entrant counts via first-round byes.
-  - **Modified Single Elimination** — APA's format: every entrant is guaranteed at
-    least two matches before elimination is possible, run in pods of up to 8 (entrants
-    split as evenly as possible, byes fill short pods) that feed a single-elimination
-    semifinal/final stage. Faster than double elimination; any field of 8 or more.
+  - **Modified Single Elimination** — APA's qualifier format: every entrant is
+    guaranteed at least two matches before elimination is possible. The field splits
+    into independent brackets of 6-8 (as evenly as possible, byes fill short brackets),
+    and **each bracket crowns its own winner** — so a field of 24 produces three
+    winners. Brackets never cross; entrants stay in the bracket they were drawn into.
+    Winners are listed as "Qualified" (it's a qualifier for higher-level play, so there
+    is no prize pool). Needs a count that divides into brackets of 6-8 (6-8, 12-16,
+    18-24, ...).
   - **Round Robin** — every entrant plays every other entrant once; standings ranked
     by wins, then head-to-head, then point differential, then games-won %.
   - **Ring Game** — a rotation-order money game (9-ball rules): players buy in, shoot
@@ -36,10 +40,11 @@ live results on a second screen.
     tracking.
 - **Teams as entrants.** Single, Double, and Modified Single Elimination can be run
   with Teams instead of individual Players.
-- **Entry fees and prize payouts.** Every format except Ring Game can charge a
-  per-entrant entry fee, take a percentage host cut, and split the remaining prize
-  pool across any number of finishing places by percentage - shown live on the
-  Tournament tab and Display window as entrants are decided.
+- **Entry fees and prize payouts.** Every format except Ring Game and Modified Single
+  Elimination (a no-prize qualifier) can charge a per-entrant entry fee, take a
+  percentage host cut, and split the remaining prize pool across any number of
+  finishing places by percentage - shown live on the Tournament tab and Display window
+  as entrants are decided.
 - **Live match operation.** Assign tables, start/finish matches with a live elapsed
   timer, and report scores — the bracket, standings, or ledger update immediately.
 - **Not Started tournaments can be reshuffled or edited.** A bracket/Round Robin

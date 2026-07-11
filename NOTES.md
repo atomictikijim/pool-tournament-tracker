@@ -3,6 +3,30 @@
 Running log of issues discovered during development and the fixes used.
 Newest entries at the top.
 
+## 2026-07-11 — Modified Single Elimination reworked into independent per-bracket qualifiers: watch the completion gate
+
+**Context:** Reworked MSE (v0.34) so every group of 8 is its own bracket with its own winner (no
+cross-pod stage). Two non-obvious traps:
+
+- **`PropagateWinner` marked the whole tournament Completed the instant *any* terminal node
+  finished.** That was fine when there was exactly one champion node (Single Elimination's final,
+  or the old MSE cross-pod final), but with one terminal `Bracket Final` per pod, the first pod to
+  finish would end the tournament while other pods were still playing. Fix: gate completion on
+  `AllChampionNodesComplete` — *every* node with no onward winner feed (`FeedsIntoWinnerNodeId is
+  null`, excluding Losers side) must have a completed match. This is only reached from
+  `PropagateWinner`'s null-feed branch; Double Elimination decides completion in its own Grand-Final
+  branch and never hits it, and any premature Completed set during bye-resolution is harmless because
+  generation overwrites `Status = NotStarted` at the end.
+- **A single 8-entrant pod's structure is byte-for-byte identical under the old and new code** (the
+  old cross-pod "stage" over one pod's 2 reps *is* a single final match = the new Bracket Final), so
+  the size-8 shape test and 13-match diagram test needed no changes. The divergence only appears at
+  2+ pods. When updating the 16-entrant playthrough count: after fully playing pod 0 the match count
+  is **17, not 13** — pod 0's own 13 plus pod 1's 4 round-1 matches, which materialize up front.
+
+- **Valid-count rule:** `count ≥ 6 && 6·ceil(count/8) ≤ count`. The only invalid counts ≥ 6 are
+  9, 10, 11 and 17 (a second/third bracket can't reach the 6 floor); everything from 18 up is valid
+  because for `k ≥ 4` pods, `6k ≤ 8(k-1)+1`. 25 *is* valid (→ [7,6,6,6]).
+
 ## 2026-07-10 — A TextBlock with its own inline `<TextBlock.Style>` loses the implicit theme foreground and renders near-white on a light surface
 
 **Issue:** The new Final Results column on the Tournament tab rendered the entrant-name text

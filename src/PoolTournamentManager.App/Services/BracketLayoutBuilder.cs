@@ -59,11 +59,11 @@ public static class BracketLayoutBuilder
         var winnersBandTop = winnersHeaderY + HeaderHeight;
         var winnersBoxes = LayoutSide(layout, m, winners, columnBase: 0, bandTop: winnersBandTop, headerY: winnersHeaderY);
 
-        // Final stage (Modified Single Elimination's cross-pod bracket) is a continuation of the
-        // winners progression once every pod's reps converge into one shared bracket, so it
-        // renders as trailing columns in the same Winners Bracket band/section rather than its
-        // own - same treatment as Grand Final below, just via LayoutSide since it can span
-        // multiple rounds (semifinal/final for 2 pods, quarterfinal onward for 4+).
+        // Final stage (each Modified Single Elimination pod's Final Four -> Bracket Final) is a
+        // continuation of the winners progression, so it renders as trailing columns in the same
+        // Winners Bracket band/section rather than its own - same treatment as Grand Final below,
+        // via LayoutSide. Every pod stacks vertically in these columns as its own independent
+        // mini-bracket; the Bracket Final column holds one final per pod.
         if (finals.Count > 0)
         {
             var finalsBoxes = LayoutSide(layout, m, finals, columnBase: winners.Count, bandTop: winnersBandTop, headerY: winnersHeaderY);

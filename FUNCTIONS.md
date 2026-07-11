@@ -163,8 +163,10 @@ Entrant count requirements:
 
 - **Double Elimination** requires an exact power-of-2 entrant count (2, 4, 8, 16,
   32...).
-- **Modified Single Elimination** requires a multiple of 8 that's also a power of 2
-  (8, 16, 32, 64...).
+- **Modified Single Elimination** requires a count that divides into independent
+  brackets of 6-8 entrants: 6-8 for one bracket, 12-16 for two, 18-24 for three, and
+  so on. Counts that would leave a bracket with fewer than 6 (namely 9, 10, 11 and 17)
+  are rejected.
 - Single Elimination, Round Robin, Ring Game, and Chip Tournament accept any entrant
   count (2 or more).
 
@@ -285,6 +287,9 @@ lost yet.
 
 Modified Single Elimination: see [Section 7](#7-the-tournament-formats-explained) for the exact structure — every
 entrant gets at least two matches, but it moves faster than full Double Elimination.
+Each group of 8 is its own independent bracket with its own winner, so the tournament
+ends with one winner per bracket (no single overall champion, no prize pool); the
+winners are listed as "Qualified" in the Final Results.
 
 If the tournament has prize payouts configured, a **Prize Payouts** panel appears
 below the bracket once the champion and runner-up are decided (see
@@ -389,7 +394,10 @@ each place's payout:
 - **Round Robin and Chip Tournament** show live, updating payouts throughout
   the event, since every entrant's finishing place is always known (Round
   Robin from the Standings ranking, Chip Tournament from elimination order).
-- **Single/Double/Modified Single Elimination** only show payouts once the
+- **Modified Single Elimination** never shows prize payouts — it's a qualifier
+  format with no prize pool. Its Final Results simply list each bracket's winner
+  as "Qualified" once the whole tournament is complete.
+- **Single/Double Elimination** only show payouts once the
   tournament is complete. The champion (1st) and runner-up (2nd) are always
   exact. For 3rd place and below, a bracket doesn't actually decide a strict
   order among everyone eliminated earlier — for example, both players who
@@ -433,34 +441,40 @@ carry through into the Losers bracket automatically.
 
 ### Modified Single Elimination
 
-APA's format — a shorter, faster alternative to Double Elimination that still
-guarantees everyone at least two matches. Entrants are split into **pods** of up to
-8, using as few pods as possible and splitting entrants as evenly as it can across
-them (16 entrants → 2 pods of 8; 20 → pods of 7, 7, 6; 24 → 3 pods of 8). A pod with
-fewer than 8 entrants simply has first-round **byes**, so any field of 8 or more
-works — the count no longer has to be a neat power of two. Each pod plays out
-independently:
+APA's **qualifier** format — a shorter, faster alternative to Double Elimination that
+still guarantees everyone at least two matches. It's designed to qualify entrants for
+a higher-level event: **every group of 8 is its own independent bracket that crowns
+its own winner.** So a 24-entrant tournament runs three separate brackets and finishes
+with **three winners** — one per bracket. Brackets never cross; an entrant plays only
+within the bracket they were drawn into.
 
-1. **Round 1 (Winners)** — all 8 entrants in the pod, randomly drawn (not
-   rating-seeded), play 4 matches.
+The field is split into as few brackets as possible while keeping each between **6 and
+8** entrants, as evenly as it can (16 → two brackets of 8; 20 → 7, 7, 6; 24 → three of
+8; 12 → 6, 6). A bracket with fewer than 8 entrants simply has first-round **byes**.
+Each bracket plays out on its own:
+
+1. **Round 1 (Winners)** — all 8 slots in the bracket, randomly drawn (not
+   rating-seeded), play 4 matches (a slot with no entrant is a bye).
 2. **Losers Round 1** — the 4 Round-1 losers play each other. **Lose here and you're
    eliminated** — you've had your two guaranteed matches.
 3. **Winners Round 2** — the 4 Round-1 winners (still unbeaten) play each other.
 4. **Losers Round 2** — the losers of Winners Round 2 drop down to play the winners
    of Losers Round 1. Lose this match and you're eliminated.
 5. **Final Four** — the 2 unbeaten Winners-Round-2 winners each play one of the 2
-   Losers-Round-2 winners. The 2 winners of these matches become that pod's
-   representatives.
+   Losers-Round-2 winners.
+6. **Bracket Final** — the 2 Final-Four winners play for that bracket's single winner.
+   **From the Final Four on it's plain single elimination**, with no more consolation
+   matches and no bracket reset.
 
-Every pod's 2 representatives then feed into one ordinary single-elimination
-bracket (a straight semifinal/final for a 2-pod, 16-entrant tournament; quarterfinal
-onward for larger fields) — **from this point on it's plain single elimination**,
-with no more consolation matches and no bracket reset. When the number of pods isn't
-a power of two, some representatives get a bye into the next round of that final
-stage. Requires at least 8 entrants (one full pod); above that, any count works.
+The tournament is complete only once **every** bracket's final is played. There is no
+overall champion and **no prize pool** — the winners are simply listed as "Qualified"
+in the Final Results (one row per bracket winner). Needs a count that divides into
+brackets of 6-8 (6-8, 12-16, 18-24, ...); 9, 10, 11 and 17 are rejected because a
+bracket would fall under 6.
 
-Note: within a pod, entrants that are fewer than 8 get their round-1 byes; the byes
-are spread across the pod's four round-1 matches rather than clustered.
+Note: within a bracket with fewer than 8 entrants, the first-round byes are placed
+randomly (they fall on random entrants and reshuffle whenever the bracket is
+reshuffled) and spread across the bracket's four round-1 matches rather than clustered.
 
 ### Round Robin
 
