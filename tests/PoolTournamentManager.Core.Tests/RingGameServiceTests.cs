@@ -189,4 +189,26 @@ public class RingGameServiceTests
         // Sum of all nets equals the negative of the pot still on the table (money conserved).
         Assert.Equal(-RingGameService.PotRemaining(t), standings.Sum(s => s.Net));
     }
+
+    [Fact]
+    public void RecordMoneyBall_WhenPotDepletedToZero_CompletesTournament()
+    {
+        var t = MakeRing("A", "B");
+        var svc = Service();
+        var detail = svc.StartRingGame(t, RingGameType.NineBall, 20m, 20m, 20m);
+        var a = t.Entrants[0];
+        var b = t.Entrants[1];
+
+        // A pockets the 5: pot goes from 40 to 20
+        svc.RecordMoneyBall(t, a.Id, RingMoneyBall.Five);
+        Assert.Equal(TournamentStatus.InProgress, t.Status);
+        Assert.Equal(20m, RingGameService.PotRemaining(t));
+
+        // B pockets the 9: pot goes from 20 to 0 - tournament should end
+        svc.RecordMoneyBall(t, b.Id, RingMoneyBall.Nine);
+
+        Assert.Equal(TournamentStatus.Completed, t.Status);
+        Assert.Null(detail.CurrentShooterEntrantId);
+        Assert.Equal(0m, RingGameService.PotRemaining(t));
+    }
 }

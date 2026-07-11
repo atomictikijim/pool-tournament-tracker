@@ -109,6 +109,13 @@ public class RingGameService
             detail.CurrentShooterEntrantId = shooter.Id;
         }
 
+        // End the tournament if the prize pool is now depleted
+        if (PotRemaining(tournament) <= 0)
+        {
+            tournament.Status = TournamentStatus.Completed;
+            detail.CurrentShooterEntrantId = null;
+        }
+
         return entry;
     }
 
