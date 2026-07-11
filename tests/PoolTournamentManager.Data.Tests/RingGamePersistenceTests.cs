@@ -59,7 +59,7 @@ public class RingGamePersistenceTests : IDisposable
             // Persist the players so the entrant FK (Restrict) is satisfiable.
             foreach (var e in t.Entrants) { ctx.Add(e.Player!); }
 
-            svc.StartRingGame(t, buyInAmount: 20m, fiveBallPayout: 5m, nineBallPayout: 10m);
+            svc.StartRingGame(t, RingGameType.NineBall, buyInAmount: 20m, fiveBallPayout: 5m, nineBallPayout: 10m);
             await repo.AddAsync(t);
         }
 

@@ -32,7 +32,7 @@ public class RingGameServiceTests
         var t = MakeRing("A", "B", "C");
         var svc = Service();
 
-        var detail = svc.StartRingGame(t, buyInAmount: 20m, fiveBallPayout: 5m, nineBallPayout: 10m);
+        var detail = svc.StartRingGame(t, RingGameType.NineBall, buyInAmount: 20m, fiveBallPayout: 5m, nineBallPayout: 10m);
 
         Assert.Equal(TournamentStatus.InProgress, t.Status);
         Assert.Equal(1, t.Entrants[0].SeedNumber);
@@ -49,7 +49,7 @@ public class RingGameServiceTests
     public void StartRingGame_RejectsFewerThanTwoPlayers()
     {
         var t = MakeRing("Solo");
-        Assert.Throws<InvalidOperationException>(() => Service().StartRingGame(t, 20m, 5m, 10m));
+        Assert.Throws<InvalidOperationException>(() => Service().StartRingGame(t, RingGameType.NineBall, 20m, 5m, 10m));
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class RingGameServiceTests
     {
         var t = MakeRing("A", "B");
         var svc = Service();
-        var detail = svc.StartRingGame(t, 20m, 5m, 10m);
+        var detail = svc.StartRingGame(t, RingGameType.NineBall, 20m, 5m, 10m);
         var a = t.Entrants[0];
 
         svc.RecordMoneyBall(t, a.Id, RingMoneyBall.Five);
@@ -74,7 +74,7 @@ public class RingGameServiceTests
     {
         var t = MakeRing("A", "B", "C");
         var svc = Service();
-        var detail = svc.StartRingGame(t, 20m, 5m, 10m);
+        var detail = svc.StartRingGame(t, RingGameType.NineBall, 20m, 5m, 10m);
         var a = t.Entrants[0];
         var b = t.Entrants[1];
 
@@ -91,7 +91,7 @@ public class RingGameServiceTests
     {
         var t = MakeRing("A", "B", "C");
         var svc = Service();
-        var detail = svc.StartRingGame(t, 20m, 5m, 10m);
+        var detail = svc.StartRingGame(t, RingGameType.NineBall, 20m, 5m, 10m);
 
         svc.AdvanceShooter(t);
         Assert.Equal(t.Entrants[1].Id, detail.CurrentShooterEntrantId);
@@ -106,7 +106,7 @@ public class RingGameServiceTests
     {
         var t = MakeRing("A", "B", "C");
         var svc = Service();
-        var detail = svc.StartRingGame(t, 20m, 5m, 10m);
+        var detail = svc.StartRingGame(t, RingGameType.NineBall, 20m, 5m, 10m);
         var b = t.Entrants[1];
 
         svc.CashOut(t, b.Id); // B leaves the ring
@@ -121,7 +121,7 @@ public class RingGameServiceTests
     {
         var t = MakeRing("A", "B", "C");
         var svc = Service();
-        var detail = svc.StartRingGame(t, 20m, 5m, 10m); // A is up
+        var detail = svc.StartRingGame(t, RingGameType.NineBall, 20m, 5m, 10m); // A is up
 
         svc.CashOut(t, t.Entrants[0].Id);
 
@@ -134,7 +134,7 @@ public class RingGameServiceTests
     {
         var t = MakeRing("A", "B");
         var svc = Service();
-        svc.StartRingGame(t, 20m, 5m, 10m);
+        svc.StartRingGame(t, RingGameType.NineBall, 20m, 5m, 10m);
         var a = t.Entrants[0];
         svc.RecordMoneyBall(t, a.Id, RingMoneyBall.Nine); // A: -20 + 10 = -10
 
@@ -151,7 +151,7 @@ public class RingGameServiceTests
     {
         var t = MakeRing("A", "B");
         var svc = Service();
-        var detail = svc.StartRingGame(t, 20m, 5m, 10m);
+        var detail = svc.StartRingGame(t, RingGameType.NineBall, 20m, 5m, 10m);
 
         svc.CashOut(t, t.Entrants[0].Id);
 
@@ -165,7 +165,7 @@ public class RingGameServiceTests
     {
         var t = MakeRing("A", "B", "C");
         var svc = Service();
-        svc.StartRingGame(t, 20m, 5m, 10m);
+        svc.StartRingGame(t, RingGameType.NineBall, 20m, 5m, 10m);
         svc.CashOut(t, t.Entrants[1].Id);
 
         Assert.Throws<InvalidOperationException>(() => svc.RecordMoneyBall(t, t.Entrants[1].Id, RingMoneyBall.Five));
@@ -176,7 +176,7 @@ public class RingGameServiceTests
     {
         var t = MakeRing("A", "B", "C");
         var svc = Service();
-        svc.StartRingGame(t, 20m, 5m, 10m);
+        svc.StartRingGame(t, RingGameType.NineBall, 20m, 5m, 10m);
         var a = t.Entrants[0];
         var c = t.Entrants[2];
         svc.RecordMoneyBall(t, a.Id, RingMoneyBall.Nine); // A +10

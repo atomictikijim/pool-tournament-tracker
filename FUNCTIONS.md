@@ -123,7 +123,7 @@ This tab holds the entire "create a new tournament" form.
    tournament has this many tables (you can also add more later from the
    Tournament tab).
 7. Format-specific setup fields appear automatically:
-   - **Ring Game**: Buy-in ($), 5-ball payout ($), 9-ball payout ($).
+   - **Ring Game**: Game type (9-ball or 10-ball), Buy-in ($), 5-ball payout ($), 9/10-ball payout ($).
    - **Chip Tournament**: Starting chips per player. Optionally tick **Assign
      starting chips by skill rating** to give stronger players fewer chips: pick a
      **Rating** (Fargo/TAP/APA 8-Ball/APA 9-Ball) and add one or more **chip ranges**
@@ -318,8 +318,9 @@ outlined and any cashed-out player's card dimmed.
 
 - **Made the 5** — the current shooter pocketed the 5-ball: they're paid the 5-ball
   payout, and play continues (they stay at the table).
-- **Made the 9** — the current shooter pocketed the 9-ball: they're paid the 9-ball
-  payout, the rack ends, and the break passes to the next player in rotation.
+- **Made the 9/10 (rack over)** — the current shooter pocketed the 9-ball (in 9-ball
+  games) or the 10-ball (in 10-ball games): they're paid the 9/10-ball payout, the
+  rack ends, and the break passes to the next player in rotation.
 - **Miss / Next Player** — the shooter's turn ends without a payout; the turn passes
   to the next active player.
 - **Cash Out** (on a player's card) — that player leaves the game and their final net
@@ -505,12 +506,13 @@ consulted.
 
 ### Ring Game
 
-A money game, not a bracket — based on rotation 9-ball rules. Every player buys in
-(funding a shared pot) and is drawn into a fixed shooting order. The current shooter
-keeps shooting until they miss; pocketing the 5-ball pays out and keeps them at the
-table, pocketing the 9-ball pays out, ends the rack, and passes the break to the next
-player. Any player can cash out at any point, locking in their net result; the
-session ends when only one player is left.
+A money game, not a bracket — based on rotation 9-ball or 10-ball rules (you choose
+which when setting up the tournament). Every player buys in (funding a shared pot)
+and is drawn into a fixed shooting order. The current shooter keeps shooting until
+they miss; pocketing the 5-ball pays out and keeps them at the table, pocketing the
+9-ball (or 10-ball) pays out, ends the rack, and passes the break to the next player.
+Any player can cash out at any point, locking in their net result; the session ends
+when only one player is left.
 
 ### Chip Tournament
 

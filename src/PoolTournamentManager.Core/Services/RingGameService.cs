@@ -30,7 +30,7 @@ public class RingGameService
     /// entrants' current order (positions 1..N), charges each a buy-in, seats the first player as
     /// the opening breaker, and marks the tournament InProgress.
     /// </summary>
-    public RingGameDetail StartRingGame(Tournament tournament, decimal buyInAmount, decimal fiveBallPayout, decimal nineBallPayout)
+    public RingGameDetail StartRingGame(Tournament tournament, RingGameType gameType, decimal buyInAmount, decimal fiveBallPayout, decimal nineBallPayout)
     {
         if (tournament.Entrants.Count < 2)
         {
@@ -40,6 +40,7 @@ public class RingGameService
         var detail = new RingGameDetail
         {
             TournamentId = tournament.Id,
+            GameType = gameType,
             BuyInAmount = buyInAmount,
             FiveBallPayout = fiveBallPayout,
             NineBallPayout = nineBallPayout,

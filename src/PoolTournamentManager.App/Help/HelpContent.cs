@@ -83,7 +83,7 @@ public static class HelpContentProvider
         .B("Use Teams — appears for the three elimination formats; tick it to enter Teams instead of individual Players.")
         .B("Seed by rating — appears for Single/Double Elimination and Round Robin when using Players; choose which rating to seed entrants by. Players with no rating on file are seeded last.")
         .B("Number of tables — required for every format except Ring Game. Matches can't be started until the tournament has this many tables (you can add more later from the Tournament tab).")
-        .B("Format-specific fields appear automatically: Ring Game asks for the buy-in and 5-ball/9-ball payouts; Chip Tournament asks for starting chips per player.")
+        .B("Format-specific fields appear automatically: Ring Game asks for the game type (9-ball or 10-ball), buy-in and 5-ball/9/10-ball payouts; Chip Tournament asks for starting chips per player.")
         .B("Entrants — tick everyone who's playing. Click Refresh if you just added someone on another tab. The Filter panel on the right narrows a long roster without ever unchecking anyone already selected.")
         .Sub("Entrant count requirements")
         .B("Double Elimination requires an exact power of 2 (2, 4, 8, 16, 32…).")
@@ -103,7 +103,7 @@ public static class HelpContentProvider
         .B("Double Elimination — losing once drops you to a Losers bracket instead of eliminating you. The Winners- and Losers-bracket champions meet in a Grand Final, with a possible bracket-reset rematch if the Losers-bracket champion wins it.")
         .B("Modified Single Elimination — APA's qualifier format; everyone is guaranteed at least two matches. Entrants split into independent brackets of 6-8, and each bracket crowns its own winner (so a field of 24 produces three winners). Brackets never cross - entrants stay in the bracket they were drawn into. Winners are shown as \"Qualified\" in the Final Results; there is no prize pool for this format.")
         .B("Round Robin — no elimination; everyone plays everyone once. Standings rank by wins, then head-to-head, then point differential, then games-won %.")
-        .B("Ring Game — a rotation 9-ball money game (not a bracket): players buy in, shoot in a fixed order, and cash out individually.")
+        .B("Ring Game — a rotation 9-ball or 10-ball money game (not a bracket, you choose the game type): players buy in, shoot in a fixed order, and cash out individually.")
         .B("Chip Tournament — a lives game: every player starts with the same chips, loses one per loss, and is eliminated at zero. The last player standing wins.")
         .Build());
 
@@ -135,7 +135,7 @@ public static class HelpContentProvider
         .P("Because the rules are applied strictly in that order, a player can finish ahead of someone who has a better Diff and a higher games-won %: if the two are tied on match wins and one beat the other head-to-head, that head-to-head result settles it and the later measures are never even looked at.")
         .Sub("Running a Ring Game")
         .B("Made the 5 — the current shooter pockets the 5-ball, is paid the 5-ball payout, and keeps shooting.")
-        .B("Made the 9 — the current shooter pockets the 9-ball, is paid, the rack ends, and the break passes to the next player.")
+        .B("Made the 9/10 (rack over) — the current shooter pockets the 9-ball (in 9-ball games) or the 10-ball (in 10-ball games), is paid, the rack ends, and the break passes to the next player.")
         .B("Miss / Next Player — the turn passes to the next active player with no payout.")
         .B("Cash Out (on a player's card) — that player leaves the game and their net is locked in. The session ends when one player remains. A live Ledger tracks every player's buy-in, winnings and net.")
         .Sub("Running a Chip Tournament")

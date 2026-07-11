@@ -486,7 +486,7 @@
 
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
                             <Button Content="Made the 5" Command="{Binding RecordFiveBallCommand}" Padding="10,4" Margin="0,0,8,0" />
-                            <Button Content="Made the 9 (rack over)" Command="{Binding RecordNineBallCommand}" Padding="10,4" Margin="0,0,8,0" />
+                            <Button Content="Made the 9/10 (rack over)" Command="{Binding RecordNineBallCommand}" Padding="10,4" Margin="0,0,8,0" />
                             <Button Content="Miss / Next Player" Command="{Binding AdvanceShooterCommand}" Padding="10,4" />
                         </StackPanel>
 
@@ -791,13 +791,15 @@
                         <TextBox Text="{Binding NewTournamentTableCount, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
                     </StackPanel>
 
-                    <!-- Ring-game-only setup: buy-in and money-ball payouts -->
+                    <!-- Ring-game-only setup: game type, buy-in and money-ball payouts -->
                     <StackPanel Visibility="{Binding IsCreatingRingGame, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="Game type" />
+                        <ComboBox ItemsSource="{Binding RingGameTypes}" SelectedItem="{Binding NewRingGameType}" Margin="0,0,0,6" />
                         <TextBlock Text="Buy-in ($)" />
                         <TextBox Text="{Binding NewRingBuyIn}" Margin="0,0,0,6" />
                         <TextBlock Text="5-ball payout ($)" />
                         <TextBox Text="{Binding NewRingFivePayout}" Margin="0,0,0,6" />
-                        <TextBlock Text="9-ball payout ($)" />
+                        <TextBlock Text="9/10-ball payout ($)" />
                         <TextBox Text="{Binding NewRingNinePayout}" Margin="0,0,0,6" />
                     </StackPanel>
 

@@ -145,6 +145,7 @@ public partial class TournamentViewModel : ObservableObject
     public IEnumerable<GameType> GameTypes { get; } = Enum.GetValues<GameType>();
     public IEnumerable<TournamentFormat> Formats { get; } = Enum.GetValues<TournamentFormat>();
     public IEnumerable<RatingSystem> RatingSystems { get; } = Enum.GetValues<RatingSystem>();
+    public IEnumerable<RingGameType> RingGameTypes { get; } = Enum.GetValues<RingGameType>();
 
     [ObservableProperty]
     private Tournament? _selectedTournamentSummary;
@@ -169,6 +170,9 @@ public partial class TournamentViewModel : ObservableObject
     /// Only offered for Single/Double Elimination - see <see cref="IsTeamEligibleFormat"/>.</summary>
     [ObservableProperty]
     private bool _useTeams;
+
+    [ObservableProperty]
+    private RingGameType _newRingGameType = RingGameType.NineBall;
 
     [ObservableProperty]
     private decimal _newRingBuyIn = 20m;
@@ -1035,6 +1039,7 @@ public partial class TournamentViewModel : ObservableObject
 
         if (tournament.RingGame is not null)
         {
+            NewRingGameType = tournament.RingGame.GameType;
             NewRingBuyIn = tournament.RingGame.BuyInAmount;
             NewRingFivePayout = tournament.RingGame.FiveBallPayout;
             NewRingNinePayout = tournament.RingGame.NineBallPayout;
@@ -1256,7 +1261,7 @@ public partial class TournamentViewModel : ObservableObject
         if (NewTournamentFormat == TournamentFormat.RingGame)
         {
             // Rotation order is a draw (the entrant selection order), not a rating seed.
-            _ringGameService.StartRingGame(tournament, NewRingBuyIn, NewRingFivePayout, NewRingNinePayout);
+            _ringGameService.StartRingGame(tournament, NewRingGameType, NewRingBuyIn, NewRingFivePayout, NewRingNinePayout);
         }
         else if (NewTournamentFormat == TournamentFormat.ChipTournament)
         {
