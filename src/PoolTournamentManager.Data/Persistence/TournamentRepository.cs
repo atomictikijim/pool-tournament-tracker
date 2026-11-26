@@ -15,8 +15,14 @@ public class TournamentRepository : ITournamentRepository
 
     public async Task<List<Tournament>> GetAllAsync()
     {
+        // Newest first, by real creation time. (Id is a random v4 GUID, so ordering by it produced
+        // an arbitrary list order in which a newly created tournament landed anywhere.) The Id
+        // tie-break only matters for rows that share a timestamp - e.g. tournaments that predate
+        // CreatedAtUtc and were backfilled together by the AddTournamentCreatedAt migration - and
+        // keeps that order deterministic between loads.
         return await _dbContext.Tournaments
-            .OrderByDescending(t => t.Id)
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .ThenBy(t => t.Id)
             .ToListAsync();
     }
 

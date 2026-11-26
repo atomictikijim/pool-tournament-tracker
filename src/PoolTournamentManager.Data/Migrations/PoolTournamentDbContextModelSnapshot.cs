@@ -389,6 +389,9 @@ namespace PoolTournamentManager.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<decimal>("EntryFee")
                         .HasColumnType("TEXT");
 

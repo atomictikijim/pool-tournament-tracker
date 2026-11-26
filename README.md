@@ -11,7 +11,7 @@ live results on a second screen.
   pool hall they play out of), reused across tournaments. Add and edit records in a
   focused pop-up editor, and delete one or many at a time (with a confirmation
   prompt; anyone still entered in a tournament is protected from deletion).
-- **Five tournament formats**, selectable per event:
+- **Six tournament formats**, selectable per event:
   - **Single Elimination** — standard seeded knockout bracket, with byes for
     non-power-of-2 entrant counts.
   - **Double Elimination** — winners/losers brackets with a grand final and
@@ -27,8 +27,11 @@ live results on a second screen.
     18-24, ...).
   - **Round Robin** — every entrant plays every other entrant once; standings ranked
     by wins, then head-to-head, then point differential, then games-won %.
-  - **Ring Game** — a rotation-order money game (9-ball rules): players buy in, shoot
-    in a fixed order, and cash out individually as the session runs.
+  - **Ring Game** — a rotation-order money game, played under 9-ball or 10-ball rules
+    (chosen per event): players buy in, shoot in a fixed order, and are paid the 5-ball
+    and 9/10-ball payouts as they pocket them. Players cash out individually, and the
+    session ends when only one player is left or as soon as the buy-in pot has been
+    fully paid out.
   - **Chip Tournament** — a buy-in "lives" tournament: every player starts with a
     chip count, loses a chip on a loss, and is eliminated at zero; last player
     standing wins, with configurable 1st/2nd/3rd payouts. Starting chips can be a

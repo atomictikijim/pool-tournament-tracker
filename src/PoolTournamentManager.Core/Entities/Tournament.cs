@@ -5,6 +5,12 @@ namespace PoolTournamentManager.Core.Entities;
 public class Tournament
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>When the tournament was created (UTC). The picker lists newest first, so this - not
+    /// the random <see cref="Id"/> GUID - is what orders the list (see
+    /// TournamentRepository.GetAllAsync).</summary>
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
     public required string Name { get; set; }
     public GameType GameType { get; set; }
     public TournamentFormat Format { get; set; }

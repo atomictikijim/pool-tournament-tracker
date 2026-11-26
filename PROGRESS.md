@@ -5,6 +5,28 @@ the top of each section.
 
 ## Current status
 
+v0.37 complete: **Ring games now end on their own once the prize pool is fully paid out.** A ring
+game could previously only finish by cashing players out until one remained, so a session whose
+buy-in money had all been won just sat at a $0 pot. `RingGameService.RecordMoneyBall` now checks
+`PotRemaining(tournament) <= 0` after applying a money-ball payout and, when the pot is empty, sets
+`Tournament.Status = Completed` and clears `CurrentShooterEntrantId` - the same terminal state a
+cash-out end produces, so the Tournament tab, Display window and ledger all finish consistently.
++1 Core test (`RecordMoneyBall_WhenPotDepletedToZero_CompletesTournament`: two $20 buy-ins with $20
+payouts, 40 -> 20 -> 0, asserting the tournament is still InProgress after the first payout and
+Completed with no current shooter after the second). Version synced to 0.37 (App `.csproj` +
+installer `.iss`).
+
+v0.36 complete: **Ring Game setup now asks whether the session is 9-ball or 10-ball, and the
+rack-ending ball follows that choice.** New `RingGameType` enum (`NineBall`, `TenBall`) and a
+`RingGameDetail.GameType` column (migration `20260711172716_AddRingGameType`: an additive INTEGER
+defaulting to 0 = 9-ball, so sessions created earlier keep their behavior). The Tournament Settings
+form gained a game-type picker ahead of the buy-in/payout fields; the "Made the 9 (rack over)"
+button became **Made the 9/10 (rack over)** and the payout field is labelled 9/10-ball, because
+payouts and the rotation are otherwise identical between the two games - only which ball ends the
+rack changes. Other game types remain unsupported. `StartRingGame` takes the new type, so every
+call site and test was updated, and FUNCTIONS.md plus the in-app ring-game help text were updated
+with the picker, the button names, and the game description. 229 tests green.
+
 v0.35 complete (Major): **Double Elimination now accepts any entrant count ≥2 and automatically
 waitlists the overflow — any entrants beyond the largest power of two that fits sit on the waitlist
 until the field grows to the next power of two, at which point the whole bracket (active + waitlist)

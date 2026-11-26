@@ -100,7 +100,7 @@ This tab holds the entire "create a new tournament" form.
 1. **Name** — whatever you want to call the event.
 2. **Game** — 8-Ball, 9-Ball, or 10-Ball. This is a label only; it doesn't change any
    scoring or bracket logic.
-3. **Format** — pick one of the five formats (see [Section 7](#7-the-tournament-formats-explained) for full rules on
+3. **Format** — pick one of the six formats (see [Section 7](#7-the-tournament-formats-explained) for full rules on
    each):
    - Single Elimination
    - Double Elimination
@@ -324,8 +324,12 @@ outlined and any cashed-out player's card dimmed.
 - **Miss / Next Player** — the shooter's turn ends without a payout; the turn passes
   to the next active player.
 - **Cash Out** (on a player's card) — that player leaves the game and their final net
-  win/loss is locked in. The session ends automatically once only one player
-  remains.
+  win/loss is locked in.
+
+The session ends automatically as soon as only one player remains, **or** the moment the
+pot has been fully paid out (the last money-ball payout that takes it to $0) — whichever
+happens first. Ending on an empty pot is normal for a ring game where all the buy-in money
+has been won; the Ledger keeps every payout, so the final totals stay readable.
 
 A **Ledger** grid below lists every player's buy-in, total winnings, and net
 result — the money always balances (everyone's net sums to the pot still on the
@@ -511,8 +515,10 @@ which when setting up the tournament). Every player buys in (funding a shared po
 and is drawn into a fixed shooting order. The current shooter keeps shooting until
 they miss; pocketing the 5-ball pays out and keeps them at the table, pocketing the
 9-ball (or 10-ball) pays out, ends the rack, and passes the break to the next player.
-Any player can cash out at any point, locking in their net result; the session ends
-when only one player is left.
+Any player can cash out at any point, locking in their net result. The session ends when
+only one player is left, or immediately once the pot has been paid out to $0 — so a ring
+game where all the buy-in money has been won finishes on its own, with no need to cash
+players out one by one.
 
 ### Chip Tournament
 
