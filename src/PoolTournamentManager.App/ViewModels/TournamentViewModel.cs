@@ -110,7 +110,8 @@ public partial class TournamentViewModel : ObservableObject
 
     /// <summary>
     /// True while the active tournament hasn't had any match/game actually played yet, so a new
-    /// entrant can be added and the bracket/schedule safely regenerated from scratch.
+    /// entrant can be added and the bracket/schedule safely regenerated from scratch. An
+    /// auto-completed first-round bye does not count as "played" (see ComputeCanAddEntrant).
     /// </summary>
     public bool CanAddEntrant { get; private set; }
 
@@ -746,7 +747,13 @@ public partial class TournamentViewModel : ObservableObject
             TournamentFormat.RingGame => tournament.RingGame is not null
                 && tournament.RingGame.LedgerEntries.All(l => l.Type == RingLedgerEntryType.BuyIn),
             TournamentFormat.ChipTournament => tournament.ChipGame is not null && tournament.ChipGame.Entries.Count == 0,
-            _ => tournament.Matches.All(m => m.Status == MatchStatus.Scheduled)
+            // First-round byes are materialized as *Completed* matches the moment the bracket is
+            // generated (see BracketGenerationService.MaterializeRound1Match), so counting them as
+            // "played" would disable adding entrants for exactly the field sizes whose bracket has
+            // byes: any non-power-of-two Single Elimination, and 6/7-entrant Modified Single
+            // Elimination pods. Only a real match (two entrants) starting or finishing locks the
+            // field, so ignore byes here.
+            _ => tournament.Matches.All(m => m.Status == MatchStatus.Scheduled || m.IsBye)
         };
     }
 
@@ -1557,6 +1564,10 @@ public partial class TournamentViewModel : ObservableObject
                 _tournamentRepository.TrackNew(newMatch);
             }
 
+            // Safe to require every match to be Completed here: round robin schedules exactly one
+            // match per paid pairing and never materializes a bye (RoundRobinSchedulingService skips
+            // the odd-count ghost slot), so unlike the bracket formats no auto-completed match can
+            // exist in this collection (see ComputeCanAddEntrant, which has to exclude byes).
             if (tournament.Format == TournamentFormat.RoundRobin && tournament.Matches.All(m => m.Status == MatchStatus.Completed))
             {
                 tournament.Status = TournamentStatus.Completed;
