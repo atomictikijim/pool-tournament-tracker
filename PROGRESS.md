@@ -5,6 +5,31 @@ the top of each section.
 
 ## Current status
 
+Unreleased fixes (after v0.37): four bug fixes, each with regression tests. **Add Entrant no longer
+disappears when the only completed matches are first-round byes** - a bye is materialized as a
+Completed match at generation time, so `ComputeCanAddEntrant`'s "has anything been played?" check now
+ignores byes (`Status == Scheduled || IsBye`). Before that, adding an entrant was impossible for any
+non-power-of-two Single Elimination field and for 6/7-entrant Modified Single Elimination pods. A new
+`[Theory]` covers 3- and 5-entrant SE and 6-entrant MSE including the add round trip, and the Round
+Robin completion check (safe because RR never materializes a bye) is documented as such. **The
+tournament picker lists newest first** - `Tournament.CreatedAtUtc` replaces the random-GUID ordering
+in `TournamentRepository.GetAllAsync` (the Id only breaks exact ties); migration
+`20261126161522_AddTournamentCreatedAt` backfills existing rows from SQLite's rowid (insertion order,
+one second apart), so old tournaments keep a sensible order and still sort below anything created
+after the upgrade. Three Data tests pin newest-first ordering from out-of-order inserts, stable
+tie-breaking, and the `UtcNow` default. **Prize payouts are paid in whole dollars** -
+`PrizePayoutService.PrizePool` now returns the awardable whole-dollar amount (floored, never more than
+was collected) and `ComputeRows` works in dollars: each placement group's share is floored to the
+dollar and the dollars lost to rounding go to the highest places, so funded places add up to the pool
+exactly (a $10 pool split 33.33/33.33/33.34 pays $4/$3/$3). Cents left after the host's cut stay with
+the host, a deliberately partial structure (50%+30%) still pays only its configured share, and the
+payout/pool readouts are whole-dollar formatted again. Two Core tests cover the reconciliation and the
+never-overpay floor. **A ring-game payout can no longer overdraw the pot** - `RecordMoneyBall` caps
+the 5-ball / 9-10-ball payout at what's left, the status line says the payout was capped, and the
+emptied pot ends the session, so the ledger can never go negative. Two Core tests cover the capped and
+the unchanged full-payout cases. FUNCTIONS.md and the in-app help were updated for the whole-dollar
+prizes and the payout cap.
+
 v0.37 complete: **Ring games now end on their own once the prize pool is fully paid out.** A ring
 game could previously only finish by cashing players out until one remained, so a session whose
 buy-in money had all been won just sat at a $0 pot. `RingGameService.RecordMoneyBall` now checks

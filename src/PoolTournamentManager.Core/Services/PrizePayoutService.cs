@@ -14,6 +14,7 @@ public class PrizePayoutRow
     public int PlaceRangeStart { get; init; }
     public int PlaceRangeEnd { get; init; }
 
+    /// <summary>Whole dollars - prizes are never paid in cents (see PrizePayoutService).</summary>
     public decimal Payout { get; init; }
 }
 
@@ -40,8 +41,11 @@ public static class PrizePayoutService
     /// <summary>The portion of total entry fees kept by the tournament host.</summary>
     public static decimal HostCut(Tournament tournament) => TotalEntryFees(tournament) * (tournament.HostFeePercentage / 100m);
 
-    /// <summary>What's left to award across the configured prize places.</summary>
-    public static decimal PrizePool(Tournament tournament) => TotalEntryFees(tournament) - HostCut(tournament);
+    /// <summary>What's left to award across the configured prize places, in whole dollars: prizes are
+    /// paid as exact dollar amounts, so any final cents left after the host's cut stay with the host
+    /// instead of being divided into sub-dollar fractions.</summary>
+    public static decimal PrizePool(Tournament tournament) =>
+        Math.Floor(Math.Max(0m, TotalEntryFees(tournament) - HostCut(tournament)));
 
     /// <summary>
     /// The per-entrant prize breakdown for the configured prize places. Returns empty when no
@@ -122,7 +126,12 @@ public static class PrizePayoutService
 
     /// <summary>Shared placement-to-payout projection behind both public entry points: turns each
     /// placement group into one row per entrant, splitting the group's combined funded percentage
-    /// evenly across its members (zero when none of the group's places are funded).</summary>
+    /// evenly across its members (zero when none of the group's places are funded).
+    ///
+    /// All money math happens in whole dollars - prizes are paid as exact dollar amounts, never cents.
+    /// Each group's share is floored to the dollar and the dollars left over from rounding go to the
+    /// highest places, so the rows reconcile to the pool exactly (when the configured percentages
+    /// total 100%) without over-paying any place by more than a dollar.</summary>
     private static List<PrizePayoutRow> ComputeRows(Tournament tournament)
     {
         var placements = ComputePlacements(tournament);
@@ -131,10 +140,10 @@ public static class PrizePayoutService
             return new List<PrizePayoutRow>();
         }
 
-        var pool = PrizePool(tournament);
+        var poolDollars = (long)PrizePool(tournament);
         var percentageByPlace = tournament.PrizePlaces.ToDictionary(p => p.Place, p => p.Percentage);
 
-        var rows = new List<PrizePayoutRow>();
+        var groups = new List<(PlacementGroup Group, decimal Percentage, long Dollars)>();
         foreach (var group in placements)
         {
             var groupPercentage = 0m;
@@ -143,17 +152,56 @@ public static class PrizePayoutService
                 groupPercentage += percentageByPlace.GetValueOrDefault(place);
             }
 
-            var perEntrant = group.Entrants.Count > 0 ? pool * groupPercentage / 100m / group.Entrants.Count : 0m;
-            rows.AddRange(group.Entrants.Select(entrant => new PrizePayoutRow
-            {
-                Entrant = entrant,
-                PlaceRangeStart = group.RangeStart,
-                PlaceRangeEnd = group.RangeEnd,
-                Payout = perEntrant
-            }));
+            // Floor each group to the dollar, so no group is paid more than its percentage; the
+            // sub-dollar remainder is reconciled below.
+            groups.Add((group, groupPercentage, (long)Math.Floor(poolDollars * groupPercentage / 100m)));
         }
 
-        return rows;
+        // What the configured percentages should pay in total: the whole pool when they add up to
+        // 100%, less when the payout structure is deliberately partial (that shortfall belongs to
+        // nobody and must not be handed out as a "remainder").
+        var targetDollars = (long)Math.Floor(poolDollars * groups.Sum(g => g.Percentage) / 100m);
+
+        var allocations = new List<(TournamentEntrant Entrant, int Start, int End, long Dollars)>();
+        foreach (var (group, _, dollars) in groups)
+        {
+            var members = group.Entrants
+                .OrderBy(e => e.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (members.Count == 0)
+            {
+                continue;
+            }
+
+            // Split the group's dollars evenly; odd dollars go to the first members by name so the
+            // split is deterministic between runs.
+            var share = dollars / members.Count;
+            var extra = dollars % members.Count;
+            for (var i = 0; i < members.Count; i++)
+            {
+                allocations.Add((members[i], group.RangeStart, group.RangeEnd, share + (i < extra ? 1 : 0)));
+            }
+        }
+
+        // Hand out the dollars lost to flooring, highest place first, so the funded rows add up to
+        // the pool exactly.
+        var leftover = targetDollars - allocations.Sum(a => a.Dollars);
+        for (var i = 0; leftover > 0 && allocations.Count > 0; i++, leftover--)
+        {
+            var index = i % allocations.Count;
+            var allocation = allocations[index];
+            allocations[index] = (allocation.Entrant, allocation.Start, allocation.End, allocation.Dollars + 1);
+        }
+
+        return allocations
+            .Select(a => new PrizePayoutRow
+            {
+                Entrant = a.Entrant,
+                PlaceRangeStart = a.Start,
+                PlaceRangeEnd = a.End,
+                Payout = a.Dollars
+            })
+            .ToList();
     }
 
     private sealed record PlacementGroup(List<TournamentEntrant> Entrants, int RangeStart, int RangeEnd);

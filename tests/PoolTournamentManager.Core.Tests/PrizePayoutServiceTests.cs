@@ -325,6 +325,88 @@ public class PrizePayoutServiceTests
     }
 
     [Fact]
+    public void ComputePayouts_RoundsToWholeDollars_AndFundedPlacesReconcileToThePool()
+    {
+        // 4 x $2.50 = a $10 pool, split 33.33 / 33.33 / 33.34. A third is $3.3333, so paying
+        // fractions of a dollar left the funded rows short of the pool; prizes are whole dollars.
+        var tournament = new Tournament { Name = "Test", Format = TournamentFormat.RoundRobin, EntryFee = 2.5m };
+        var entrants = new[] { "A", "B", "C", "D" }
+            .Select(name => new TournamentEntrant
+            {
+                TournamentId = tournament.Id,
+                PlayerId = Guid.NewGuid(),
+                Player = new Player { FirstName = name, LastName = "P" }
+            })
+            .ToList();
+        tournament.Entrants.AddRange(entrants);
+        SetPrizePlaces(tournament, (1, 33.33m), (2, 33.33m), (3, 33.34m));
+
+        var rows = PrizePayoutService.ComputePayouts(tournament);
+
+        Assert.Equal(10m, PrizePayoutService.PrizePool(tournament));
+        Assert.Equal(10m, rows.Sum(r => r.Payout));
+        Assert.All(rows, r => Assert.Equal(Math.Truncate(r.Payout), r.Payout)); // whole dollars, no cents
+
+        // The highest place absorbs the dollars lost to rounding, so nobody is short-changed.
+        Assert.Equal(4m, PayoutFor(rows, entrants[0]));
+        Assert.Equal(3m, PayoutFor(rows, entrants[1]));
+        Assert.Equal(3m, PayoutFor(rows, entrants[2]));
+        Assert.Equal(0m, PayoutFor(rows, entrants[3])); // 4th place isn't funded
+    }
+
+    [Fact]
+    public void PrizePool_WithCentRemainder_IsFlooredSoPayoutsNeverExceedWhatWasCollected()
+    {
+        // 3 x $10.01 = $30.03. Prizes are whole dollars, so only $30 is awardable; the 3 cents stay
+        // with the host rather than being paid out as an odd fraction.
+        var tournament = new Tournament { Name = "Test", Format = TournamentFormat.RoundRobin, EntryFee = 10.01m };
+        var entrants = new[] { "A", "B", "C" }
+            .Select(name => new TournamentEntrant
+            {
+                TournamentId = tournament.Id,
+                PlayerId = Guid.NewGuid(),
+                Player = new Player { FirstName = name, LastName = "P" }
+            })
+            .ToList();
+        tournament.Entrants.AddRange(entrants);
+        SetPrizePlaces(tournament, (1, 100m));
+
+        Assert.Equal(30m, PrizePayoutService.PrizePool(tournament));
+
+        var rows = PrizePayoutService.ComputePayouts(tournament);
+
+        Assert.Equal(30m, PayoutFor(rows, entrants[0]));
+        Assert.All(rows, r => Assert.Equal(Math.Truncate(r.Payout), r.Payout));
+        Assert.True(rows.Sum(r => r.Payout) <= PrizePayoutService.TotalEntryFees(tournament));
+    }
+
+    [Fact]
+    public void ComputePayouts_PartialPercentageStructure_DoesNotPayOutTheUnconfiguredRemainder()
+    {
+        // Only 80% of the pool is configured (50 + 30). The other 20% belongs to nobody, so the
+        // cent reconciliation must not mistake it for a rounding remainder and hand it out.
+        var tournament = new Tournament { Name = "Test", Format = TournamentFormat.RoundRobin, EntryFee = 25m };
+        var entrants = new[] { "A", "B", "C", "D" }
+            .Select(name => new TournamentEntrant
+            {
+                TournamentId = tournament.Id,
+                PlayerId = Guid.NewGuid(),
+                Player = new Player { FirstName = name, LastName = "P" }
+            })
+            .ToList();
+        tournament.Entrants.AddRange(entrants);
+        SetPrizePlaces(tournament, (1, 50m), (2, 30m));
+
+        var rows = PrizePayoutService.ComputePayouts(tournament);
+
+        Assert.Equal(100m, PrizePayoutService.PrizePool(tournament));
+        Assert.Equal(80m, rows.Sum(r => r.Payout));
+        Assert.Equal(50m, PayoutFor(rows, entrants[0]));
+        Assert.Equal(30m, PayoutFor(rows, entrants[1]));
+        Assert.Equal(0m, PayoutFor(rows, entrants[2]));
+    }
+
+    [Fact]
     public void ComputeFinalResults_ReturnsEmpty_ForRingGame()
     {
         var tournament = new Tournament { Name = "Test", Format = TournamentFormat.RingGame };

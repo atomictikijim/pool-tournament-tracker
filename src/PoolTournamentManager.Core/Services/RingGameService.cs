@@ -85,7 +85,12 @@ public class RingGameService
             throw new InvalidOperationException($"{Name(shooter)} has cashed out and can't pocket a ball.");
         }
 
-        var payout = ball == RingMoneyBall.Nine ? detail.NineBallPayout : detail.FiveBallPayout;
+        // A payout can only be funded by money actually on the table. If the pot holds less than the
+        // configured payout (a small field, or earlier payouts already drained it), cap this payout
+        // at what's left rather than paying money the game doesn't have and leaving the pot negative.
+        // Capping to the remaining pot always empties it, so the session then ends below.
+        var requestedPayout = ball == RingMoneyBall.Nine ? detail.NineBallPayout : detail.FiveBallPayout;
+        var payout = Math.Min(requestedPayout, Math.Max(0m, PotRemaining(tournament)));
         var entry = new RingLedgerEntry
         {
             RingGameDetailId = detail.Id,

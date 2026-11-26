@@ -331,6 +331,12 @@ pot has been fully paid out (the last money-ball payout that takes it to $0) —
 happens first. Ending on an empty pot is normal for a ring game where all the buy-in money
 has been won; the Ledger keeps every payout, so the final totals stay readable.
 
+A payout can never exceed what's actually in the pot. If the pot holds less than the
+configured 5-ball or 9/10-ball payout (a small field, or earlier payouts already
+drained it), the shooter is paid the remaining pot instead — the status line says the
+payout was capped — and the session ends with the pot at $0, so the ledger never goes
+negative.
+
 A **Ledger** grid below lists every player's buy-in, total winnings, and net
 result — the money always balances (everyone's net sums to the pot still on the
 table).
@@ -393,9 +399,16 @@ tab when you create the tournament:
   configured places must add up to exactly 100% before the tournament can be
   created.
 
-Example: 8 entrants pay a $10 entry fee ($80 total). A 10% host fee takes $8,
-leaving a $72 prize pool. If 1st/2nd/3rd are set to 60%/30%/10%, 1st place
-wins $43.20, 2nd wins $21.60, and 3rd wins $7.20.
+Example: 8 entrants pay a $10 entry fee ($80 total). A 12.5% host fee takes $10,
+leaving a $70 prize pool. If 1st/2nd/3rd are set to 60%/30%/10%, 1st place
+wins $42, 2nd wins $21, and 3rd wins $7.
+
+Payouts are paid as exact dollars - never cents. Each place's share is worked out
+in whole dollars and the dollars lost to rounding go to the highest places, so the
+funded places add up to the prize pool exactly: a $10 pool split
+33.33%/33.33%/33.34% pays $4 / $3 / $3. Because prizes are whole dollars, any
+final cents left in the pool after the host's cut (e.g. from a fractional host
+percentage like 12.5%) stay with the host instead of being paid out.
 
 Once the tournament is running, a **Prize Payouts** panel (on the Tournament
 tab, and mirrored on the [Display window](#8-the-display-window)) shows the
@@ -518,7 +531,8 @@ they miss; pocketing the 5-ball pays out and keeps them at the table, pocketing 
 Any player can cash out at any point, locking in their net result. The session ends when
 only one player is left, or immediately once the pot has been paid out to $0 — so a ring
 game where all the buy-in money has been won finishes on its own, with no need to cash
-players out one by one.
+players out one by one. A payout larger than the remaining pot is capped at what's left,
+so the game can never pay out money it doesn't hold.
 
 ### Chip Tournament
 

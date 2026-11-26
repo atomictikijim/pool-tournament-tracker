@@ -1651,7 +1651,13 @@ public partial class TournamentViewModel : ObservableObject
             await _tournamentRepository.SaveChangesAsync();
             State.RebuildRounds();
             var who = tournament.Entrants.FirstOrDefault(e => e.Id == shooterId)?.Player?.FullName ?? "Player";
-            StatusMessage = $"{who} made the {(ball == RingMoneyBall.Nine ? "9" : "5")}.";
+            var made = ball == RingMoneyBall.Nine ? "9" : "5";
+            var requested = ball == RingMoneyBall.Nine
+                ? tournament.RingGame!.NineBallPayout
+                : tournament.RingGame!.FiveBallPayout;
+            StatusMessage = entry.Amount < requested
+                ? $"{who} made the {made}. The pot only had {entry.Amount.ToString("C2")} left, so that payout was capped and the game is over."
+                : $"{who} made the {made}.";
         }
         catch (InvalidOperationException ex)
         {

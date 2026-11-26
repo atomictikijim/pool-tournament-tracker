@@ -96,6 +96,7 @@ public static class HelpContentProvider
         .B("Tournament host fee (%) — the cut the organizer keeps before anything is paid out. Leave at 0 if the whole entry fee goes to prizes.")
         .B("Number of payout places — how many finishing places get paid (e.g. 3 for 1st/2nd/3rd). Leave at 0 for no prizes.")
         .B("Place N: % — each place's share of the prize pool (entry fees minus the host cut). The percentages across all places must add up to exactly 100% before the tournament can be created.")
+        .B("Prizes are paid in whole dollars. Each place's share is worked out in dollars and any dollar left over from rounding goes to the highest places, so the payouts add up to the prize pool exactly; leftover cents after the host cut stay with the host.")
         .Sub("Editing an existing tournament")
         .P("While a tournament is still Not Started you can reopen it here using the Edit Tournament button on the Tournament tab; every field pre-fills from its current settings and Create Tournament becomes Save Settings. Saving rebuilds the bracket from scratch but keeps it as the same tournament.")
         .Sub("The formats")

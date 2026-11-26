@@ -211,4 +211,36 @@ public class RingGameServiceTests
         Assert.Null(detail.CurrentShooterEntrantId);
         Assert.Equal(0m, RingGameService.PotRemaining(t));
     }
+
+    [Fact]
+    public void RecordMoneyBall_WhenPayoutExceedsThePot_CapsItAndNeverGoesNegative()
+    {
+        var t = MakeRing("A", "B");
+        var svc = Service();
+        // Only $20 in the pot, but a $25 configured payout - more money than the game holds.
+        svc.StartRingGame(t, RingGameType.NineBall, buyInAmount: 10m, fiveBallPayout: 25m, nineBallPayout: 25m);
+        var a = t.Entrants[0];
+
+        var entry = svc.RecordMoneyBall(t, a.Id, RingMoneyBall.Five);
+
+        Assert.Equal(20m, entry.Amount); // paid what the pot held, not the configured $25
+        Assert.Equal(0m, RingGameService.PotRemaining(t));
+        Assert.Equal(TournamentStatus.Completed, t.Status);
+        Assert.Equal(20m, Row(t, a).Winnings); // the ledger records exactly what was paid
+    }
+
+    [Fact]
+    public void RecordMoneyBall_WhenPayoutFitsThePot_PaysItInFull()
+    {
+        var t = MakeRing("A", "B", "C");
+        var svc = Service();
+        svc.StartRingGame(t, RingGameType.NineBall, buyInAmount: 20m, fiveBallPayout: 5m, nineBallPayout: 10m);
+        var a = t.Entrants[0];
+
+        var entry = svc.RecordMoneyBall(t, a.Id, RingMoneyBall.Nine);
+
+        Assert.Equal(10m, entry.Amount);
+        Assert.Equal(50m, RingGameService.PotRemaining(t));
+        Assert.Equal(TournamentStatus.InProgress, t.Status);
+    }
 }
